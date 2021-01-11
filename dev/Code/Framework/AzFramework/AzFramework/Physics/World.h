@@ -228,6 +228,7 @@ namespace Physics
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::MultipleAndOrdered;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::Crc32;
+        using MutexType = AZStd::recursive_mutex;
 
         //! Broadcast before each world simulation tick.
         //! @param fixedDeltaTime the timestep between simulation ticks.

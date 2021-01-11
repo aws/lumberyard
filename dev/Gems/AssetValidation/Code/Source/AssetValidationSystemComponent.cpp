@@ -23,6 +23,7 @@
 #include <AzFramework/FileTag/FileTag.h>
 #include <AzFramework/FileTag/FileTagBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AssetSeedUtil.h>
 
 #include <ISystem.h>
 #include <IConsole.h>
@@ -265,6 +266,7 @@ namespace AssetValidation
     {
         AZ::Data::AssetId assetId;
         const bool AutoRegister{ false };
+
         AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetId, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetIdByPath, seedPath, AZ::Data::s_invalidAssetType, AutoRegister);
         if (!assetId.IsValid())
         {
@@ -414,7 +416,7 @@ namespace AssetValidation
         return true;
     }
 
-    bool AssetValidationSystemComponent::AddSeedList(const char* seedPath)
+    bool AssetValidationSystemComponent::AddSeedListHelper(const char* seedPath)
     {
         AZStd::string absoluteSeedPath;
         AZ::Outcome<AzFramework::AssetSeedList, AZStd::string> loadSeedOutcome = LoadSeedList(seedPath, absoluteSeedPath);
@@ -439,6 +441,62 @@ namespace AssetValidation
         return true;
     }
 
+    bool GetDefaultSeedListFiles(AZStd::vector<AZStd::string>& defaultSeedListFiles)
+    {
+        const char* engineRoot = nullptr;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
+
+        const char* appRoot = nullptr;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
+
+        AZStd::string gameFolder;
+        bool result;
+        AzFramework::BootstrapReaderRequestBus::BroadcastResult(result, &AzFramework::BootstrapReaderRequestBus::Events::SearchConfigurationForKey, "sys_game_folder", false, gameFolder);
+
+        if (!result)
+        {
+            AZ_Warning("AssetValidation", false, "Unable to locate game name in bootstrap.");
+            return false;
+        }
+
+        AZStd::vector<AssetSeed::GemInfo> gemInfoList;
+
+        if (!AssetSeed::GetGemsInfo(engineRoot, appRoot, gameFolder.c_str(), gemInfoList))
+        {
+            AZ_Warning("AssetValidation", false, "Unable to get gem information.");
+            return false;
+        }
+
+        defaultSeedListFiles = AssetSeed::GetDefaultSeedListFiles(gemInfoList, AzFramework::PlatformFlags::Platform_PC);
+
+        return true;
+    }
+
+    bool AssetValidationSystemComponent::AddSeedList(const char* seedPath)
+    {
+        if (AZ::StringFunc::Equal(seedPath, "default"))
+        {
+            AZStd::vector<AZStd::string> defaultSeedListFiles;
+
+            if(!GetDefaultSeedListFiles(defaultSeedListFiles))
+            {
+                return false;
+            }
+
+            for (const AZStd::string& seedListFile : defaultSeedListFiles)
+            {
+                if (!AddSeedListHelper(seedListFile.c_str()))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        return AddSeedListHelper(seedPath);
+    }
+
     void AssetValidationSystemComponent::ConsoleCommandRemoveSeedList(IConsoleCmdArgs* pCmdArgs)
     {
         if (pCmdArgs->GetArgCount() < 2)
@@ -453,28 +511,35 @@ namespace AssetValidation
 
     AZ::Outcome<AzFramework::AssetSeedList, AZStd::string> AssetValidationSystemComponent::LoadSeedList(const char* seedPath, AZStd::string& seedListPath)
     {
-        AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
-        if (!fileIO)
+        AZStd::string absoluteSeedPath = seedPath;
+
+        if (AZ::StringFunc::Path::IsRelative(seedPath))
         {
-            return AZ::Failure(AZStd::string("Couldn't get fileIO"));
+            const char* appRoot = nullptr;
+            AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
+
+            if (!appRoot)
+            {
+                return AZ::Failure(AZStd::string("Couldn't get engine root"));
+            }
+
+            absoluteSeedPath = AZStd::string::format("%s/%s", appRoot, seedPath);
         }
-        const char* appRoot = nullptr;
-        AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
-        if (!appRoot)
-        {
-            return AZ::Failure(AZStd::string("Couldn't get engine root"));
-        }
-        AZStd::string absoluteSeedPath = AZStd::string::format("%s/%s", appRoot, seedPath);
+
         AzFramework::StringFunc::Path::Normalize(absoluteSeedPath);
         AzFramework::AssetSeedList seedList;
+
         if (!AZ::Utils::LoadObjectFromFileInPlace(absoluteSeedPath, seedList))
         {
             return AZ::Failure(AZStd::string::format("Failed to load seed list %s", absoluteSeedPath.c_str()));
         }
+
         seedListPath = absoluteSeedPath;
+
         return AZ::Success(seedList);
     }
-    bool AssetValidationSystemComponent::RemoveSeedList(const char* seedPath)
+
+    bool AssetValidationSystemComponent::RemoveSeedListHelper(const char* seedPath)
     {
         AZStd::string absoluteSeedPath;
         AZ::Outcome<AzFramework::AssetSeedList, AZStd::string> loadSeedOutcome = LoadSeedList(seedPath, absoluteSeedPath);
@@ -501,5 +566,30 @@ namespace AssetValidation
         AZ_TracePrintf("AssetValidation", "Removed seed list %s with %u elements", absoluteSeedPath.c_str(), seedList.size());
 
         return true;
+    }
+
+    bool AssetValidationSystemComponent::RemoveSeedList(const char* seedPath)
+    {
+        if (AZ::StringFunc::Equal(seedPath, "default"))
+        {
+            AZStd::vector<AZStd::string> defaultSeedListFiles;
+
+            if (!GetDefaultSeedListFiles(defaultSeedListFiles))
+            {
+                return false;
+            }
+
+            for (const AZStd::string& seedListFile : defaultSeedListFiles)
+            {
+                if (!RemoveSeedListHelper(seedListFile.c_str()))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        return RemoveSeedListHelper(seedPath);
     }
 }

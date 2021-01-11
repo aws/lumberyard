@@ -1339,15 +1339,12 @@ namespace Audio
 
             for (auto& trigger : m_cTriggers)
             {
-                if (const char* name = pDebugNameStore->LookupAudioTriggerName(trigger.second.nTriggerID))
-                {
-                    AZStd::string triggerName(name);
-                    AZStd::to_lower(triggerName.begin(), triggerName.end());
+                AZStd::string triggerName(pDebugNameStore->LookupAudioTriggerName(trigger.second.nTriggerID));
+                AZStd::to_lower(triggerName.begin(), triggerName.end());
 
-                    if (AudioDebugDrawFilter(triggerName, triggerFilter))
-                    {
-                        ++cTriggerCounts[trigger.second.nTriggerID];
-                    }
+                if (AudioDebugDrawFilter(triggerName, triggerFilter))
+                {
+                    ++cTriggerCounts[trigger.second.nTriggerID];
                 }
             }
 

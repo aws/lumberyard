@@ -91,7 +91,7 @@ QWidgetVector::QWidgetVector(CAttributeItem* parent, unsigned int size, bool all
     setSizePolicy(sizePolicy);
 
     setLayout(layout);
-    m_tooltip = new QToolTipWidget(this);
+    m_tooltip = new QToolTipWrapper(this);
 }
 
 QWidgetVector::~QWidgetVector()

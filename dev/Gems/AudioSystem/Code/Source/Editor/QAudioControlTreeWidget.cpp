@@ -118,7 +118,7 @@ bool QAudioControlSortProxy::lessThan(const QModelIndex& left, const QModelIndex
     {
         return eLeftType > eRightType;
     }
-    return left.data(Qt::DisplayRole) > right.data(Qt::DisplayRole);
+    return left.data(Qt::DisplayRole).toString() > right.data(Qt::DisplayRole).toString();
 }
 
 //-----------------------------------------------------------------------------------------------//

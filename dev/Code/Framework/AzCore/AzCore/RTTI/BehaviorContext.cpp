@@ -567,6 +567,61 @@ namespace AZ
             // This ensures that, for example, checking Common for Launcher returns true, but checking Launcher for Common does not.
             return ((static_cast<AZ::u64>(scopeType) & static_cast<AZ::u64>(scope)) == static_cast<AZ::u64>(scope));
         }
+
+        const AZ::TypeId& GetUnderlyingTypeId(const IRttiHelper& enumRttiHelper)
+        {
+            const size_t underlyingTypeSize = enumRttiHelper.GetTypeSize();
+            const TypeTraits underlyingTypeTraits = enumRttiHelper.GetTypeTraits();
+            const bool isSigned = (underlyingTypeTraits & TypeTraits::is_signed) == TypeTraits::is_signed;
+            const bool isUnsigned = (underlyingTypeTraits & TypeTraits::is_unsigned) == TypeTraits::is_unsigned;
+            const bool isEnum = (underlyingTypeTraits & TypeTraits::is_enum) == TypeTraits::is_enum;
+            if (isEnum)
+            {
+                if (isSigned)
+                {
+                    // Cast to either an int16_t, int32_t, int64_t depending on the size of the underlying type
+                    switch (underlyingTypeSize)
+                    {
+                    case 1:
+                        return azrtti_typeid<AZ::s8>();
+                    case 2:
+                        return azrtti_typeid<AZ::s16>();
+                    case 4:
+                        return azrtti_typeid<AZ::s32>();
+                    case 8:
+                        return azrtti_typeid<AZ::s64>();
+                    default:
+                        // The enum indicates that it is of signed type, but none of the sizes matches
+                        // the fundamental integral types
+                        AZ_Warning("BehaviorContext", false, "Type indicates that it is signed which is reserved for fundamental types, yet"
+                            " the size of the type %zu does not match the size of a fundamental type(int8_t, int16_t, int32_t, int64_t)",
+                            underlyingTypeSize);
+                    }
+                }
+                else if (isUnsigned)
+                {
+                    switch (underlyingTypeSize)
+                    {
+                    case 1:
+                        return azrtti_typeid<AZ::u8>();
+                    case 2:
+                        return azrtti_typeid<AZ::u16>();
+                    case 4:
+                        return azrtti_typeid<AZ::u32>();
+                    case 8:
+                        return azrtti_typeid<AZ::u64>();
+                    default:
+                        // The enum indicates that it is of signed type, but none of the sizes matches
+                        // the fundamental integral types
+                        AZ_Warning("BehaviorContext", false, "Type indicates that it is unsigned which is reserved for fundamental types, yet"
+                            " the size of the type %zu does not match the size of a fundamental type(uint8_t, uint16_t, uint32_t, uint64_t)",
+                            underlyingTypeSize);
+                        break;
+                    }
+                }
+            }
+            return enumRttiHelper.GetTypeId();
+        }
     }
  
 } // namespace AZ

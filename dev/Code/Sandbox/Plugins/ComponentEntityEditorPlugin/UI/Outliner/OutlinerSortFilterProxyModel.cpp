@@ -37,7 +37,7 @@ bool OutlinerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelI
 
 bool OutlinerSortFilterProxyModel::lessThan(const QModelIndex& leftIndex, const QModelIndex& rightIndex) const
 {
-    return sourceModel()->data(leftIndex) < sourceModel()->data(rightIndex);
+    return sourceModel()->data(leftIndex).toString() < sourceModel()->data(rightIndex).toString();
 }
 
 void OutlinerSortFilterProxyModel::sort(int /*column*/, Qt::SortOrder /*order*/)

@@ -906,10 +906,37 @@ namespace ScriptCanvas
             {
                 if (slotCache.m_variableId.IsValid())
                 {
-                    if (currentSlot.CanConvertToReference())
+                    if (currentSlot.ConvertToReference())
                     {
-                        currentSlot.SetVariableReference(slotCache.m_variableId);
-                        currentSlot.InitializeVariables();
+                        ScriptCanvas::GraphVariable* variable = FindGraphVariable(slotCache.m_variableId);
+
+                        if (variable)
+                        {
+                            auto dynamicGroup = currentSlot.GetDynamicGroup();
+
+                            bool canAssignVariable = false;
+
+                            // Helper function for this is tied up in a different CL that cannot be merged, these should be replaced with those once available.
+                            if (dynamicGroup != AZ::Crc32())
+                            {
+                                canAssignVariable = currentSlot.GetNode()->IsValidTypeForGroup(dynamicGroup, variable->GetDataType()).IsSuccess();
+                            }
+                            else
+                            {
+                                canAssignVariable = currentSlot.IsTypeMatchFor(variable->GetDataType()).IsSuccess();
+                            }
+
+                            if (canAssignVariable)
+                            {
+                                currentSlot.SetVariableReference(slotCache.m_variableId);
+                            }
+
+                        }
+
+                        if (currentSlot.GetVariableReference().IsValid())
+                        {
+                            currentSlot.InitializeVariables();
+                        }
                     }
                 }
                 else
@@ -1527,18 +1554,27 @@ namespace ScriptCanvas
         }
     }
 
-    bool Node::SlotAcceptsType(const SlotId& slotID, const Data::Type& type) const
+    AZ::Outcome<void, AZStd::string> Node::SlotAcceptsType(const SlotId& slotID, const Data::Type& type) const
     {
         if (auto slot = GetSlot(slotID))
         {
             if (slot->IsData())
             {
-                return slot->IsTypeMatchFor(type).IsSuccess();
+                AZ::Crc32 dynamicGroup = slot->GetDynamicGroup();
+
+                if (dynamicGroup == AZ::Crc32())
+                {
+                    return slot->IsTypeMatchFor(type);
+                }
+                else
+                {
+                    return IsValidTypeForGroup(dynamicGroup, type);
+                }
             }
         }
 
         AZ_Error("ScriptCanvas", false, "SlotID not found in node");
-        return false;
+        return AZ::Failure(AZStd::string("SlotID not found in Node"));
     }
 
     Data::Type Node::GetSlotDataType(const SlotId& slotId) const
@@ -1873,6 +1909,12 @@ namespace ScriptCanvas
 
         if (insertSlotOutcome)
         {
+            // Signal out that a slot was recreated so that local updates can occur before any innate signals are fired.
+            if (!isNewSlot)
+            {
+                EndpointNotificationBus::Event(Endpoint(GetEntityId(), addSlotIter->GetId()), &EndpointNotifications::OnSlotRecreated);
+            }
+
             if (slotConfig.GetSlotDescriptor().IsData())
             {
                 if (slotConfig.GetSlotDescriptor().IsInput())
@@ -1942,10 +1984,6 @@ namespace ScriptCanvas
             if (isNewSlot)
             {
                 NodeNotificationsBus::Event((GetEntity() != nullptr) ? GetEntityId() : AZ::EntityId(), &NodeNotifications::OnSlotAdded, addSlotIter->GetId());
-            }
-            else
-            {
-                EndpointNotificationBus::Event(Endpoint(GetEntityId(), addSlotIter->GetId()), &EndpointNotifications::OnSlotRecreated);
             }
 
             if (GetExecutionType() == ExecutionType::Editor)
@@ -2274,6 +2312,14 @@ namespace ScriptCanvas
     {
         ExploredDynamicGroupCache exploredCache;
         SanityCheckDynamicDisplay(exploredCache);
+
+        for (Slot& slot : m_slots)
+        {
+            if (slot.IsData())
+            {
+                NodeNotificationsBus::Event(GetEntityId(), &NodeNotifications::OnSlotDisplayTypeChanged, slot.GetId(), slot.GetDataType());
+            }
+        }
     }
 
     void Node::SanityCheckDynamicDisplay(ExploredDynamicGroupCache& exploredGroupCache)
@@ -2391,7 +2437,7 @@ namespace ScriptCanvas
             {
                 Slot* otherSlot = node->GetSlot(endpoint.GetSlotId());
 
-                if (!otherSlot->IsDynamicSlot() || otherSlot->HasDisplayType())
+                if (otherSlot && (!otherSlot->IsDynamicSlot() || otherSlot->HasDisplayType()))
                 {
                     Data::Type displayType = otherSlot->GetDataType();
 

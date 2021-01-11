@@ -74,6 +74,9 @@ namespace ScriptCanvas
 
     RuntimeComponent::~RuntimeComponent()
     {
+        m_performanceTimer.DisconnectTimer();
+        m_performanceTimer.Reset();
+
         for (auto& nodeEntity : m_runtimeData.m_graphData.m_nodes)
         {
             if (nodeEntity)
@@ -128,10 +131,14 @@ namespace ScriptCanvas
             auto& assetManager = AZ::Data::AssetManager::Instance();
             m_runtimeAsset = assetManager.GetAsset(m_runtimeAsset.GetId(), GetAssetType(), true, nullptr, false);            
         }
+
+        m_performanceTimer.ConnectTimer(GetScriptCanvasId());
     }
 
     void RuntimeComponent::Activate()
     {
+        m_performanceTimer.OnReadyStart();
+
         RuntimeRequestBus::Handler::BusConnect(GetScriptCanvasId());
 
         AZ::Data::AssetBus::Handler::BusConnect(m_runtimeAsset.GetId());
@@ -151,6 +158,7 @@ namespace ScriptCanvas
 
     void RuntimeComponent::Deactivate()
     {
+        CollectPerformanceTiming();
         AZ::Data::AssetBus::Handler::BusDisconnect();
         m_executionContext.DeactivateContext();
         DeactivateGraph();
@@ -440,6 +448,11 @@ namespace ScriptCanvas
         }
     }
 
+    void RuntimeComponent::CollectPerformanceTiming()
+    {
+        m_performanceTimer.Reset();
+    }
+
     ActivationInfo RuntimeComponent::CreateActivationInfo() const
     {
         return ActivationInfo(GraphInfo(GetRuntimeEntityId(), GetGraphIdentifier()), CreateVariableValues());
@@ -475,10 +488,13 @@ namespace ScriptCanvas
         {
             m_executionContext.AddToExecutionStack(*startNode, SlotId());
         }
+        m_performanceTimer.OnReadyStop();
 
         if (RuntimeRequestBus::Handler::BusIsConnected())
         {
+            m_performanceTimer.OnInstantStart();
             m_executionContext.Execute();
+            m_performanceTimer.OnInstantStop();
         }
 
         AZ::EntityBus::Handler::BusDisconnect();

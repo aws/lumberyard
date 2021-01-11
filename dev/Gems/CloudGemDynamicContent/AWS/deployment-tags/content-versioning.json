@@ -1,0 +1,73 @@
+{
+    "CloudGemDynamicContent": {
+        "Resources:ContentBucket:Properties:VersioningConfiguration": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Status": "Enabled"
+            }
+        },
+        "Resources:VersionedStagingSettingsTable": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "Custom::DynamoDBTable",
+                "Properties": {
+                    "ServiceToken": {
+                        "Ref": "ProjectResourceHandler"
+                    },
+                    "AttributeDefinitions": [
+                        {
+                            "AttributeName": "FileName",
+                            "AttributeType": "S"
+                        },
+                        {
+                            "AttributeName": "VersionId",
+                            "AttributeType": "S"
+                        }
+                    ],
+                    "KeySchema": [
+                        {
+                            "AttributeName": "FileName",
+                            "KeyType": "HASH"
+                        },
+                        {
+                            "AttributeName": "VersionId",
+                            "KeyType": "RANGE"
+                        }
+                    ],
+                    "ProvisionedThroughput": {
+                        "ReadCapacityUnits": { "Ref": "ReadCapacityUnits" },
+                        "WriteCapacityUnits": { "Ref": "WriteCapacityUnits" }
+                    }
+                },
+                "Metadata": {
+                    "CloudCanvas": {
+                        "Permissions": [
+                            {
+                                "AbstractRole": "ServiceLambda",
+                                "Action": [ "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:UpdateItem", "dynamodb:DeleteItem" ]
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "Resources:StagingSettingsTable": {
+            "EditType": "Delete"
+        },
+        "Resources:AccessControl:DependsOn": {
+            "EditType": "Replace",
+            "TemplateData": [
+                "ServiceLambda",
+                "ServiceApi",
+                "ContentBucket",
+                "VersionedStagingSettingsTable"
+            ]
+        },
+        "Resources:ServiceLambdaConfiguration:Properties:Settings:StagingTable": {
+            "EditType": "Replace",
+            "TemplateData": {
+                "Ref": "VersionedStagingSettingsTable"
+            }
+        }
+    }
+}

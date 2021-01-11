@@ -88,7 +88,7 @@ namespace LegacyGameInterface
 
     void LegacyGameInterfaceSystemComponent::Deactivate()
     {
-        EditorGameRequestBus::Handler::BusConnect();
+        EditorGameRequestBus::Handler::BusDisconnect();
         LegacyGameInterfaceRequestBus::Handler::BusDisconnect();
     }
 }

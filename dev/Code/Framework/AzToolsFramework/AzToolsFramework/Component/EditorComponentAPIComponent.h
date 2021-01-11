@@ -20,9 +20,6 @@ namespace AzToolsFramework
 {
     namespace Components
     {
-        // This disables the warning about calling deprecated functions.  It is necessary because several functions from
-        // EditorComponentAPIBus have been deprecated, and the bus handling causes these functions to be called here.
-        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
         //! A System Component to reflect Editor operations on Components to Behavior Context
         class EditorComponentAPIComponent
             : public AZ::Component
@@ -41,13 +38,8 @@ namespace AzToolsFramework
             void Deactivate() override;
 
             // EditorComponentAPIBus ...
-            AZ_DEPRECATED(
-                AZStd::vector<AZ::Uuid> FindComponentTypeIds(const AZStd::vector<AZStd::string>& componentTypeNames) override;, //@deprecated. Use FindComponentTypeIdsByEntityType
-                "FindComponentTypeIds is deprecated, please use FindComponentTypeIdsByEntityType")
             AZStd::vector<AZ::Uuid> FindComponentTypeIdsByEntityType(const AZStd::vector<AZStd::string>& componentTypeNames, EditorComponentAPIRequests::EntityType entityType) override;
             AZStd::vector<AZStd::string> FindComponentTypeNames(const AZ::ComponentTypeList& componentTypeIds) override;
-            AZ_DEPRECATED(AZStd::vector<AZStd::string> BuildComponentTypeNameList() override;, //@deprecated. Use BuildComponentTypeNameListByEntityType
-                "BuildComponentTypeNameList is deprecated, please use BuildComponentTypeNameListByEntityType")
             AZStd::vector<AZStd::string> BuildComponentTypeNameListByEntityType(EditorComponentAPIRequests::EntityType entityType) override;
 
             AddComponentsOutcome AddComponentsOfType(AZ::EntityId entityId, const AZ::ComponentTypeList& componentTypeIds) override;
@@ -79,6 +71,5 @@ namespace AzToolsFramework
             bool m_usePropertyVisibility = false;
             AZ::SerializeContext* m_serializeContext = nullptr;
         };
-        AZ_POP_DISABLE_WARNING
     } // Components
 } // AzToolsFramework

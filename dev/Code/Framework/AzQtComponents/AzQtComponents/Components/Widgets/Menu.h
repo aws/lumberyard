@@ -16,24 +16,19 @@
 #include <QPixmap>
 
 class QLineEdit;
-class QSettings;
 class QPainter;
+class QSettings;
 class QStyleOption;
 
 namespace AzQtComponents
 {
     class Style;
 
-    /**
-     * Class to provide extra functionality for working with Menu controls.
-     *
-     * QMenu controls are styled in Menu.qss
-     *
-     */
+    //! Class to handle styling and painting of QMenu controls.
     class AZ_QT_COMPONENTS_API Menu
     {
     public:
-
+        //! Settings for margins around the menu.
         struct Margins
         {
             int top;
@@ -42,27 +37,25 @@ namespace AzQtComponents
             int left;
         };
 
+        //! Style configuration for the Menu class.
         struct Config
         {
-            QPixmap shadowPixmap;
-            Margins shadowMargins;
-            QColor backgroundColor;
-            int radius;
-            int horizontalMargin;
-            int verticalMargin;
-            int horizontalPadding;
-            int verticalPadding;
-            int subMenuOverlap;
+            QPixmap shadowPixmap;       //!< Pixmap for the shadow shown around the Menu.
+            Margins shadowMargins;      //!< Margins for drop shadow around the Menu.
+            QColor backgroundColor;     //!< Background color for the Menu.
+            int radius;                 //!< Corner radius for the Menu rect.
+            int horizontalMargin;       //!< Margin for the Menu on the horizontal directions (left, right).
+            int verticalMargin;         //!< Margin for the Menu on the vertical directions (top, bottom).
+            int horizontalPadding;      //!< Padding for the Menu on the horizontal directions (left, right).
+            int verticalPadding;        //!< Padding for the Menu on the vertical directions (top, bottom).
+            int subMenuOverlap;         //!< Amount of pixels submenus overlap with their parent Menu.
         };
 
-        /*!
-        * Loads the config data from a settings object.
-        */
+        //! Sets the Menu style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the Menu.
         static Config loadConfig(QSettings& settings);
-
-        /*!
-        * Returns default config data.
-        */
+        //! Gets the default Menu style configuration.
         static Config defaultConfig();
 
     private:

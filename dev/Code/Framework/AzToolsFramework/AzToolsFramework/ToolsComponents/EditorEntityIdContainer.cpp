@@ -36,7 +36,8 @@ namespace AzToolsFramework
         {
             serializeContext->Class<EditorEntityIdContainer>()
                 ->Field("m_entityIds", &EditorEntityIdContainer::m_entityIds)
-                ->Version(1);
+                ->Field("m_layerIds", &EditorEntityIdContainer::m_layerIds)
+                ->Version(2);
         }
     }
 
@@ -55,6 +56,7 @@ namespace AzToolsFramework
         if (pContainer)
         {
             m_entityIds = AZStd::move(pContainer->m_entityIds);
+            m_layerIds = AZStd::move(pContainer->m_layerIds);
             delete pContainer;
             return true;
         }

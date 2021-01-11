@@ -25,6 +25,7 @@
 #include <ScriptCanvas/Core/GraphData.h>
 #include <ScriptCanvas/Core/ExecutionNotificationsBus.h>
 #include <ScriptCanvas/Execution/ExecutionContext.h>
+#include <ScriptCanvas/Execution/ExecutionPerformanceTimer.h>
 #include <ScriptCanvas/Execution/RuntimeBus.h>
 #include <ScriptCanvas/Variable/GraphVariableNetBindings.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
@@ -187,6 +188,7 @@ namespace ScriptCanvas
         }
 
     private:
+        ExecutionPerformanceTimer m_performanceTimer;
         ScriptCanvasId m_scriptCanvasId;
         RuntimeData m_runtimeData;
         AZ::Data::Asset<RuntimeAssetBase> m_runtimeAsset;
@@ -224,6 +226,7 @@ namespace ScriptCanvas
         bool m_isObserved = false;
         bool m_createdAsset = false;
 
+        void CollectPerformanceTiming();
 
         RuntimeData* GetRuntimeData()
         {

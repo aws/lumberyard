@@ -65,7 +65,7 @@ protected:
 private:
     QMenu* m_menu;
     bool m_ignoreSetVar;
-    QToolTipWidget* m_tooltip;
+    QToolTipWrapper* m_tooltip;
     IVariable* m_Var1;
     IVariable* m_VarEnableVar1;
     IVariable* m_AlphaVar;

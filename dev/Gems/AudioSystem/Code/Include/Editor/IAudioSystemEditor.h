@@ -139,6 +139,11 @@ namespace AudioControls
         //! @return A string with the path to the icon corresponding to the control type.
         virtual const AZStd::string_view GetTypeIcon(TImplControlType type) const = 0;
 
+        //! Returns the selected state icon corresponding to the middleware control type passed as argument.
+        //! @param type Middleware control type.
+        //! @return A string with the path to the icon corresponding to the control type.
+        virtual const AZStd::string_view GetTypeIconSelected(TImplControlType type) const = 0;
+
         //! Gets the name of the implementation which might be used in the ACE UI.
         //! @return String with the name of the implementation.
         virtual AZStd::string GetName() const = 0;

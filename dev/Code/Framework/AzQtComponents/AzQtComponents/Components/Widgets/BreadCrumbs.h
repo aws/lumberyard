@@ -81,6 +81,13 @@ namespace AzQtComponents
 
         //! Returns a string with the current breadcrumb path.
         QString currentPath() const;
+        //! Sets the current breadcrumb path without updating the navigation stack.
+        void setCurrentPath(const QString& newPath);
+
+        //! Returns true if activating a link should automatically push a new path to the navigation stack.
+        bool getPushPathOnLinkActivation() const;
+        //! Sets whether activating a link should automatically push a new path to the navigation stack.
+        void setPushPathOnLinkActivation(bool pushPath);
 
         //! Creates a button of the type specified.
         //! @param type The type of button to create.
@@ -115,6 +122,10 @@ namespace AzQtComponents
         //! Triggered when the currently displayed path changes via any of the slots.
         //! @return fullPath The new path after the change.
         void pathChanged(const QString& fullPath);
+        //! Triggered when a link is clicked.
+        //! @param linkPath The path of the clicked link.
+        //! @param linkIndex The index of the link.
+        void linkClicked(const QString& linkPath, int linkIndex);
         //! Triggered after a change to the navigation stack, if back is available. Used to update back buttons.
         //! @param enabled The new back availability state after the change.
         void backAvailabilityChanged(bool enabled);
@@ -149,6 +160,7 @@ namespace AzQtComponents
         Config m_config;
         QStringList m_truncatedPaths;
         AZ_POP_DISABLE_WARNING
+        bool m_pushPathOnLinkActivation = true;
 
         friend class Style;
 

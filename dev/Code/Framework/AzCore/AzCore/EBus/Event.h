@@ -99,7 +99,7 @@ namespace AZ
 
         //! Signal an event.
         //! @param params variadic set of event parameters
-        void Signal(Params&&... params) const;
+        void Signal(const Params&... params) const;
 
     private:
 

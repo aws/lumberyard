@@ -76,8 +76,7 @@ private:
     void GotoObjectMaterial();
     void OnEditorNotifyEvent(EEditorNotifyEvent event) override;
 
-    void OnBrushRadiusChange();
-    void OnBrushRadiusSliderChange(int value);
+    void OnBrushRadiusSliderChange();
     void OnRemoveDuplVegetation();
 
     void OnAdd();

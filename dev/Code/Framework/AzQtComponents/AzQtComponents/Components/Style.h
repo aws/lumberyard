@@ -12,19 +12,22 @@
 #pragma once
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
+
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
+#include <QPainterPath>
+#include <QPointer>
 #include <QProxyStyle>
 #include <QScopedPointer>
-#include <QPainterPath>
 #include <QVariant>
-#include <QPointer>
+AZ_POP_DISABLE_WARNING
 
-class QLineEdit;
-class QPainter;
-class QMainWindow;
-class QToolBar;
-class QIcon;
-class QPushButton;
 class QEvent;
+class QIcon;
+class QLineEdit;
+class QMainWindow;
+class QPainter;
+class QPushButton;
+class QToolBar;
 
 namespace AzQtComponents
 {

@@ -121,18 +121,6 @@ namespace PhysX
         return m_shapes;
     }
 
-    bool BaseColliderComponent::IsStaticRigidBody()
-    {
-        const auto* component = GetEntity()->FindComponent<StaticRigidBodyComponent>();
-        return component != nullptr;
-    }
-
-    PhysX::RigidBodyStatic* BaseColliderComponent::GetStaticRigidBody()
-    {
-        auto* component = GetEntity()->FindComponent<StaticRigidBodyComponent>();
-        return component ? component->GetStaticRigidBody() : nullptr;
-    }
-
     // TransformNotificationsBus
     void BaseColliderComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {

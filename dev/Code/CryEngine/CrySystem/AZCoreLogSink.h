@@ -169,7 +169,7 @@ public:
             return false; // allow AZCore to do its default behavior.
         }
 
-        if (window == AZ::Debug::Trace::GetDefaultSystemWindow())
+        if (strcmp(window, AZ::Debug::Trace::GetDefaultSystemWindow()) == 0)
         {
             CryLogAlways("%s", message);
         }

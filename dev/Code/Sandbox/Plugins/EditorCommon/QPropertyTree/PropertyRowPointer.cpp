@@ -312,7 +312,7 @@ int PropertyRowPointer::widgetSizeMin(const QPropertyTree* tree) const
 {
     QFontMetrics fm(tree->_boldFont());
     QString str(fromWideChar(generateLabel().c_str()).c_str());
-    return fm.width(str) + 24;
+    return fm.horizontalAdvance(str) + 24;
 }
 
 static Color parseColorString(const char* str)

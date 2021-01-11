@@ -42,7 +42,7 @@ void QComponentLevelEntityEditorInspectorWindow::Init()
 {
     QVBoxLayout* layout = new QVBoxLayout();
 
-    m_propertyEditor = new AzToolsFramework::EntityPropertyEditor(nullptr, 0, true);
+    m_propertyEditor = new AzToolsFramework::EntityPropertyEditor(nullptr, Qt::WindowFlags(), true);
     layout->addWidget(m_propertyEditor);
 
     // On initialization, notify our property editor about the root metadata entity if it exists

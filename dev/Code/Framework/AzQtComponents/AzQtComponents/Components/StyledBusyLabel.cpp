@@ -19,6 +19,7 @@ AZ_POP_DISABLE_WARNING
 #include <QSvgWidget>
 #include <QSvgRenderer>
 #include <QHBoxLayout>
+#include <QPainter>
 
 namespace AzQtComponents
 {
@@ -126,6 +127,7 @@ namespace AzQtComponents
         if (m_useNewWidget)
         {
             m_busyIcon->renderer()->load(iconSource);
+            connect(m_busyIcon->renderer(), &QSvgRenderer::repaintNeeded, this, &StyledBusyLabel::movieUpdated);
         }
         else
         {
@@ -189,6 +191,23 @@ namespace AzQtComponents
         {
             m_busyIcon->setFixedSize(m_busyIconSize, m_busyIconSize);
         }
+    }
+
+    void StyledBusyLabel::DrawTo(QPainter* painter, const QRectF& bounds) const
+    {
+        if (m_useNewWidget)
+        {
+            m_busyIcon->renderer()->render(painter, bounds);
+        }
+        else
+        {
+            painter->drawImage(bounds, m_oldBusyIcon->movie()->currentImage());
+        }
+    }
+
+    void StyledBusyLabel::movieUpdated()
+    {
+        emit repaintNeeded();
     }
 
 #include <Components/StyledBusyLabel.moc>

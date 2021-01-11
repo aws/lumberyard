@@ -183,7 +183,7 @@ namespace DrawingPrimitives
             {
                 painter.drawLine(QPoint(x, top + height - options.m_markHeight), QPoint(x, top + height));
                 painter.setPen(palette.color(QPalette::Disabled, QPalette::Text));
-                str.sprintf(format, value);
+                str.asprintf(format, value);
                 painter.drawText(QPoint(x + 2, top + height - options.m_markHeight + 1), str);
                 painter.setPen(midDark);
             }

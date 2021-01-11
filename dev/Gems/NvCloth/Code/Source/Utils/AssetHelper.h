@@ -15,11 +15,14 @@
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Asset/AssetCommon.h>
 
-#include <System/DataTypes.h>
+#include <NvCloth/Types.h>
 
 namespace NvCloth
 {
     extern const int InvalidIndex;
+
+    //! List of mesh nodes (names) inside an Asset.
+    using MeshNodeList = AZStd::vector<AZStd::string>;
 
     //! Structure holding information about the submeshes of a render mesh node.
     //! While the simulation data is a single buffer for vertices and indices,
@@ -28,23 +31,40 @@ namespace NvCloth
     //! of an specific submesh (lodLevel and primitiveIndex).
     struct MeshNodeInfo
     {
-        // LOD level of the mesh node inside the asset.
+        //! LOD level of the mesh node inside the asset.
         int m_lodLevel = InvalidIndex;
 
+        //! Identifies a submesh inside the render mesh.
         struct SubMesh
         {
-            // Primitive index inside the asset.
+            //! Primitive index inside the asset.
             int m_primitiveIndex = InvalidIndex;
 
+            //! First vertex of the submesh.
             int m_verticesFirstIndex = InvalidIndex;
+
+            //! Number of vertices of the submesh after the first vertex.
             int m_numVertices = 0;
 
+            //! First index inside the asset.
             int m_indicesFirstIndex = InvalidIndex;
+
+            //! Number of indices of the submesh after the first index.
             int m_numIndices = 0;
         };
 
-        // List of submeshes.
+        //! List of submeshes.
         AZStd::vector<SubMesh> m_subMeshes;
+    };
+
+    //! Structure with all the cloth information asset helper can obtain from the mesh.
+    struct MeshClothInfo
+    {
+        AZStd::vector<SimParticleFormat> m_particles;
+        AZStd::vector<SimIndexType> m_indices;
+        AZStd::vector<SimUVType> m_uvs;
+        AZStd::vector<float> m_motionConstraints;
+        AZStd::vector<AZ::Vector2> m_backstopData; //!< X contains offset, Y contains radius.
     };
 
     //! Interface to obtain cloth information from inside an Asset.
@@ -66,9 +86,7 @@ namespace NvCloth
         virtual bool ObtainClothMeshNodeInfo(
             const AZStd::string& meshNode,
             MeshNodeInfo& meshNodeInfo,
-            AZStd::vector<SimParticleType>& meshParticles,
-            AZStd::vector<SimIndexType>& meshIndices,
-            AZStd::vector<SimUVType>& meshUVs) = 0;
+            MeshClothInfo& meshClothInfo) = 0;
 
         //! Returns whether the asset has support for skinned animation or not.
         virtual bool DoesSupportSkinnedAnimation() const = 0;

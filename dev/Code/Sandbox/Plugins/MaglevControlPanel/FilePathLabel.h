@@ -68,7 +68,7 @@ public:
         // truncate and prefix with "...".
         QPainter p(this);
         QFontMetrics fm(font());
-        if (fm.width(text()) > contentsRect().width())
+        if (fm.horizontalAdvance(text()) > contentsRect().width())
         {
             QString elidedText {
                 this->fontMetrics().elidedText(text(), Qt::ElideLeft, rect().width())

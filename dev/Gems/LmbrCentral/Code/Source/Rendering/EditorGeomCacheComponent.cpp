@@ -109,7 +109,6 @@ namespace LmbrCentral
     void EditorGeometryCacheCommon::Activate()
     {
         GeometryCacheCommon::Activate();
-        EditorGeometryCacheComponentRequestBus::Handler::BusConnect(m_entityId);
 
         //Store the serialized results here so that we can properly react to stand-in changes after level load
         m_prevFirstFrameStandin = m_firstFrameStandin;
@@ -119,50 +118,7 @@ namespace LmbrCentral
 
     void EditorGeometryCacheCommon::Deactivate()
     {
-        EditorGeometryCacheComponentRequestBus::Handler::BusDisconnect(m_entityId);
         GeometryCacheCommon::Deactivate();
-    }
-
-    void EditorGeometryCacheCommon::SetMinSpec(EngineSpec minSpec)
-    {
-        m_minSpec = minSpec;
-        OnRenderOptionsChanged();
-    }
-
-    void EditorGeometryCacheCommon::SetPlayOnStart(bool playOnStart)
-    {
-        m_playOnStart = playOnStart;
-        OnPlayOnStartChanged();
-    }
-
-    void EditorGeometryCacheCommon::SetMaxViewDistance(float maxViewDistance)
-    {
-        m_maxViewDistance = maxViewDistance;
-        OnMaxViewDistanceChanged();
-    }
-
-    void EditorGeometryCacheCommon::SetViewDistanceMultiplier(float viewDistanceMultiplier)
-    {
-        m_viewDistanceMultiplier = viewDistanceMultiplier;
-        OnViewDistanceMultiplierChanged();
-    }
-
-    void EditorGeometryCacheCommon::SetLODDistanceRatio(AZ::u32 lodDistanceRatio)
-    {
-        m_lodDistanceRatio = lodDistanceRatio;
-        OnLODDistanceRatioChanged();
-    }
-
-    void EditorGeometryCacheCommon::SetCastShadows(bool castShadows)
-    {
-        m_castShadows = castShadows;
-        OnRenderOptionsChanged();
-    }
-
-    void EditorGeometryCacheCommon::SetUseVisAreas(bool useVisAreas)
-    {
-        m_useVisAreas = useVisAreas;
-        OnRenderOptionsChanged();
     }
     
     void EditorGeometryCacheCommon::OnFirstFrameStandinChanged()

@@ -81,7 +81,7 @@ namespace PhysX
 
         const char* HeightFieldAssetHandler::GetBrowserIcon() const
         {
-            return "Editor/Icons/Components/ColliderMesh.png";
+            return "Editor/Icons/Components/ColliderMesh.svg";
         }
 
         const char* HeightFieldAssetHandler::GetGroup() const

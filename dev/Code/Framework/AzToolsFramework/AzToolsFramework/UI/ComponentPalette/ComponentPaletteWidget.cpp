@@ -121,12 +121,14 @@ namespace AzToolsFramework
         AZ::SerializeContext* serializeContext,
         const AzToolsFramework::EntityIdList& selectedEntityIds,
         const AzToolsFramework::ComponentFilter& componentFilter,
-        const AZStd::vector<AZ::ComponentServiceType>& serviceFilter)
+        const AZStd::vector<AZ::ComponentServiceType>& serviceFilter,
+        const AZStd::vector<AZ::ComponentServiceType>& incompatibleServiceFilter)
     {
         m_serializeContext = serializeContext;
         m_selectedEntityIds = selectedEntityIds;
         m_componentFilter = componentFilter;
         m_serviceFilter = serviceFilter;
+        m_incompatibleServiceFilter = incompatibleServiceFilter;
 
         UpdateContent();
         Present();
@@ -143,7 +145,13 @@ namespace AzToolsFramework
         // Gather all components that match our filter and group by category.
         ComponentPaletteUtil::ComponentDataTable componentDataTable;
         ComponentPaletteUtil::ComponentIconTable componentIconTable;
-        ComponentPaletteUtil::BuildComponentTables(m_serializeContext, m_componentFilter, m_serviceFilter, componentDataTable, componentIconTable);
+        ComponentPaletteUtil::BuildComponentTables(
+            m_serializeContext, 
+            m_componentFilter, 
+            m_serviceFilter, 
+            m_incompatibleServiceFilter, 
+            componentDataTable, 
+            componentIconTable);
 
         AzFramework::Components::DeprecatedComponentsList deprecatedList;
         AzFramework::Components::DeprecatedComponentsRequestBus::Broadcast(&AzFramework::Components::DeprecatedComponentsRequestBus::Events::EnumerateDeprecatedComponents, deprecatedList);
@@ -166,7 +174,7 @@ namespace AzToolsFramework
         {
             //get the full category name/path and split it by separators for iteration
             const QString& categoryPath = categoryPair.first;
-            const QStringList& categoryPathSegments = categoryPath.split('/', QString::SkipEmptyParts);
+            const QStringList& categoryPathSegments = categoryPath.split('/', Qt::SkipEmptyParts);
             QString categoryPathBuilder;
 
             //for every segment of the category path, create an expandable header
@@ -373,7 +381,7 @@ namespace AzToolsFramework
             QModelIndex indexToSelect = m_componentModel->index(0, 0);
             while (indexToSelect.isValid() && m_componentModel->rowCount(indexToSelect) > 0)
             {
-                indexToSelect = indexToSelect.child(0, 0);
+                indexToSelect = indexToSelect.model()->index(0, 0, indexToSelect);
             }
             m_componentTree->setCurrentIndex(indexToSelect);
         }

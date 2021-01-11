@@ -13,15 +13,15 @@
 #define AZSTD_BINARY_SEMAPHORE_H
 
 #include <AzCore/base.h>
+#include <AzCore/std/chrono/types.h>
+#include <AzCore/std/chrono/clocks.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 #if AZ_TRAIT_OS_USE_WINDOWS_SET_EVENT
 #   include <AzCore/std/parallel/config.h>
-#   include <AzCore/std/chrono/types.h>
-
 #elif !AZ_TRAIT_SEMAPHORE_HAS_NATIVE_MAX_COUNT
 #   include <AzCore/std/parallel/mutex.h>
 #   include <AzCore/std/parallel/condition_variable.h>
-
 #else
 #   include <AzCore/std/parallel/semaphore.h>
 #endif
@@ -67,7 +67,20 @@ namespace AZStd
         bool try_acquire_for(const chrono::duration<Rep, Period>& rel_time)
         {
             chrono::milliseconds timeToTry = rel_time;
-            return (WaitForSingleObject(m_event, static_cast<DWORD>(timeToTry.count())) == AZ_WAIT_OBJECT_0);
+            return (WaitForSingleObject(m_event, aznumeric_cast<DWORD>(timeToTry.count())) == AZ_WAIT_OBJECT_0);
+        }
+        
+        template <class Clock, class Duration>
+        bool try_acquire_until(const chrono::time_point<Clock, Duration>& abs_time)
+        {
+            auto timeNow = chrono::system_clock::now();
+            if (timeNow >= absTime)
+            {
+                return false; // we timed out already!
+            }
+            auto deltaTime = absTime - timeNow;
+            auto timeToTry = chrono::duration_cast<chrono::milliseconds>(deltaTime);
+            return (WaitForSingleObject(m_event, aznumeric_cast<DWORD>(timeToTry.count())) == AZ_WAIT_OBJECT_0);
         }
 
         void release()  { SetEvent(m_event); }
@@ -105,7 +118,30 @@ namespace AZStd
             AZStd::unique_lock<AZStd::mutex> ulock(m_mutex);
             if (!m_isReady)
             {
-                m_condVar.wait_for(ulock, rel_time); // technically this can return soner than rel_time
+                auto absTime = chrono::system_clock::now() + rel_time;
+
+                // Note that the standard specifies that try_acquire_for(.. rel_time) is the MINIMUM time to wait
+                // whereas condition_var's wait_for is the maximum time to wait, and may return early.
+                // Thus, we call wait_until, instead of wait_for, here.
+                m_condVar.wait_until(ulock, absTime);
+                
+                if (!m_isReady)
+                {
+                    return false;
+                }
+            }
+            m_isReady = false;
+            return true;
+        }
+        
+        template <class Clock, class Duration>
+        bool try_acquire_until(const chrono::time_point<Clock, Duration>& abs_time)
+        {
+            AZStd::unique_lock<AZStd::mutex> ulock(m_mutex);
+            if (!m_isReady)
+            {
+                m_condVar.wait_until(ulock, abs_time, [&](){ return m_isReady; });
+                
                 if (!m_isReady)
                 {
                     return false;
@@ -146,7 +182,16 @@ namespace AZStd
         void acquire()  { m_semaphore.acquire(); }
 
         template <class Rep, class Period>
-        bool try_acquire_for(const chrono::duration<Rep, Period>& rel_time) { return m_semaphore.try_acquire_for(rel_time); }
+        bool try_acquire_for(const chrono::duration<Rep, Period>& rel_time)
+        {
+            return m_semaphore.try_acquire_for(rel_time);
+        }
+        
+        template <class Clock, class Duration>
+        bool try_acquire_until(const chrono::time_point<Clock, Duration>& abs_time)
+        {
+            m_semaphore.try_acquire_until(abs_time);
+        }
 
         void release()  { m_semaphore.release(1); }
 

@@ -17,15 +17,17 @@
 #include "DrawingPrimitives/TimeSlider.h"
 #include "DrawingPrimitives/Ruler.h"
 
-#include <QPainter>
-#include <QMouseEvent>
-#include <QColor>
-#include <QMenu>
-#include <QIcon>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // class '...' needs to have dll-interface to be used by clients of class '...'
 #include <QBitmap>
+#include <QColor>
+#include <QIcon>
+#include <QMenu>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QPainterPath>
 #include <QPixmap>
-
 #include <QToolTip>
+AZ_POP_DISABLE_WARNING
 
 // C6201: buffer overrun for <variable>, which is possibly stack allocated: index <name> is out of valid index range <min> to <max>
 #if defined(__clang__)
@@ -550,7 +552,7 @@ void showTooltip(const SCurveEditorKey& key, const QPoint& pos, QWidget* parent,
         return QToolTip::showText(pos, tipOverride, parent);
     }
 
-    QString tip = QString().sprintf("%s <- [%5.2f, %5.2f] -> %s",
+    QString tip = QString().asprintf("%s <- [%5.2f, %5.2f] -> %s",
             CCurveEditor::TangentTypeToString(key.m_inTangentType).toUtf8().data(),
             key.m_time, key.m_time,
             CCurveEditor::TangentTypeToString(key.m_outTangentType).toUtf8().data());
@@ -1085,7 +1087,7 @@ void CCurveEditor::paintEvent(QPaintEvent* pEvent)
             return TransformPointFromScreen(m_zoom, m_translation, GetCurveArea(), screenPoint);
         };
 
-    const QColor rangeHighlightColor = CurveEditorHelpers::LerpColor(palette.color(QPalette::Foreground), palette.color(QPalette::Background), 0.95f);
+    const QColor rangeHighlightColor = CurveEditorHelpers::LerpColor(palette.color(QPalette::WindowText), palette.color(QPalette::Window), 0.95f);
     const QRectF rangesRect(Vec2ToPoint(transformFunc(Vec2(m_timeRange.start, m_valueRange.start))), Vec2ToPoint(transformFunc(Vec2(m_timeRange.end, m_valueRange.end))));
     painter.setPen(QPen(Qt::NoPen));
     if ((m_optOutFlags & EOptOutBackground))
@@ -1410,13 +1412,13 @@ void CCurveEditor::wheelEvent(QWheelEvent* pEvent)
     windowSize.y = (windowSize.y > 0.0f) ? windowSize.y : 1.0f;
 
     const QRect curveArea = GetCurveArea();
-    const float mouseXNormalized = (float)(pEvent->x() - curveArea.left()) / (float)curveArea.width();
-    const float mouseYNormalized = (float)(pEvent->y() - curveArea.top()) / (float)curveArea.height();
+    const float mouseXNormalized = (float)(pEvent->position().x() - curveArea.left()) / (float)curveArea.width();
+    const float mouseYNormalized = (float)(pEvent->position().y() - curveArea.top()) / (float)curveArea.height();
 
     const float pivotX = (mouseXNormalized - m_translation.x) / m_zoom.x;
     const float pivotY = (mouseYNormalized - m_translation.y) / m_zoom.y;
 
-    float zoomFactor = pow(1.2f, (float)pEvent->delta() * 0.01f);
+    float zoomFactor = pow(1.2f, (float)pEvent->angleDelta().y() * 0.01f);
 
     if (!m_timeRangeEnforced)
     {

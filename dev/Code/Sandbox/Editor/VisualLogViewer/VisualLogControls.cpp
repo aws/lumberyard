@@ -129,7 +129,7 @@ void CVisualLogDialog::OnPlayerFirst()
 
     m_ui->VLSLIDER_CURFRAME->setValue(m_pCD->nCurFrame);
     QString strTmp;
-    strTmp.sprintf("%d/%d", m_pCD->nCurFrame, m_pCD->nLastFrame);
+    strTmp.asprintf("%d/%d", m_pCD->nCurFrame, m_pCD->nLastFrame);
     m_ui->VLSTATIC_FRAME->setText(strTmp);
 }
 
@@ -141,7 +141,7 @@ void CVisualLogDialog::OnPlayerPrev()
 
     m_ui->VLSLIDER_CURFRAME->setValue(m_pCD->nCurFrame);
     QString strTmp;
-    strTmp.sprintf("%d/%d", m_pCD->nCurFrame, m_pCD->nLastFrame);
+    strTmp.asprintf("%d/%d", m_pCD->nCurFrame, m_pCD->nLastFrame);
     m_ui->VLSTATIC_FRAME->setText(strTmp);
 }
 
@@ -170,7 +170,7 @@ void CVisualLogDialog::OnPlayerNext()
 
     m_ui->VLSLIDER_CURFRAME->setValue(m_pCD->nCurFrame);
     QString strTmp;
-    strTmp.sprintf("%d/%d", m_pCD->nCurFrame, m_pCD->nLastFrame);
+    strTmp.asprintf("%d/%d", m_pCD->nCurFrame, m_pCD->nLastFrame);
     m_ui->VLSTATIC_FRAME->setText(strTmp);
 }
 
@@ -182,7 +182,7 @@ void CVisualLogDialog::OnPlayerLast()
 
     m_ui->VLSLIDER_CURFRAME->setValue(m_pCD->nCurFrame);
     QString strTmp;
-    strTmp.sprintf("%d/%d", m_pCD->nCurFrame, m_pCD->nLastFrame);
+    strTmp.asprintf("%d/%d", m_pCD->nCurFrame, m_pCD->nLastFrame);
     m_ui->VLSTATIC_FRAME->setText(strTmp);
 }
 
@@ -268,11 +268,11 @@ void CVisualLogDialog::FolderValid(bool validity)
         m_ui->VLCHK_KEEPASPECTR->setEnabled(true);
 
         QString strTmp;
-        strTmp.sprintf("0/%d", m_pCD->nLastFrame);
+        strTmp.asprintf("0/%d", m_pCD->nLastFrame);
         m_ui->VLSTATIC_FRAME->setText(strTmp);
 
         int nPos = m_ui->VLSLIDER_SPEED->value();
-        strTmp.sprintf("%0.2f", 1000.f / ((101 - abs(nPos)) * 10.f));
+        strTmp.asprintf("%0.2f", 1000.f / ((101 - abs(nPos)) * 10.f));
         if (nPos < 0)
         {
             strTmp = "-" + strTmp;
@@ -333,7 +333,7 @@ void CVisualLogDialog::OnSpeedSliderMoved(int value)
     else
     {
         QString strTmp;
-        strTmp.sprintf("%0.2f", 1000.f / ((101 - abs(value)) * 10.f));
+        strTmp.asprintf("%0.2f", 1000.f / ((101 - abs(value)) * 10.f));
         if (value < 0)
         {
             strTmp = "-" + strTmp;
@@ -353,7 +353,7 @@ void CVisualLogDialog::OnFrameSliderMoved(int value)
         m_pCD->nCurFrame = value;
 
         QString strTmp;
-        strTmp.sprintf("%d/%d", m_pCD->nCurFrame, m_pCD->nLastFrame);
+        strTmp.asprintf("%d/%d", m_pCD->nCurFrame, m_pCD->nLastFrame);
         m_ui->VLSTATIC_FRAME->setText(strTmp);
 
         Q_EMIT FrameChanged();
@@ -403,7 +403,7 @@ void CVisualLogDialog::timerEvent(QTimerEvent* event)
 
         m_ui->VLSLIDER_CURFRAME->setValue(m_pCD->nCurFrame);
         QString strTmp;
-        strTmp.sprintf("%d/%d", m_pCD->nCurFrame, m_pCD->nLastFrame);
+        strTmp.asprintf("%d/%d", m_pCD->nCurFrame, m_pCD->nLastFrame);
         m_ui->VLSTATIC_FRAME->setText(strTmp);
     }
 

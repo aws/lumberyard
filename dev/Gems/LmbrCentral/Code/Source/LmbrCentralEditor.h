@@ -15,6 +15,12 @@
 
 #include <LmbrCentral/Rendering/EditorMeshBus.h>
 
+#ifdef LMBR_CENTRAL_EDITOR_EXPORTS
+#define LMBR_CENTRAL_EDITOR_API AZ_DLL_EXPORT
+#else
+#define LMBR_CENTRAL_EDITOR_API AZ_DLL_IMPORT
+#endif
+
 namespace Water
 {
     class WaterVolumeConverter;

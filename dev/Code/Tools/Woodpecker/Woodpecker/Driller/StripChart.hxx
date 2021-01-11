@@ -29,10 +29,10 @@ namespace StripChart
 {
     enum TransformResult
     {
-        OUTSIDE_LEFT	= -1,
-        INSIDE_RANGE	= 0,
-        OUTSIDE_RIGHT	= 1,
-        INVALID_RANGE	= 2
+        OUTSIDE_LEFT    = -1,
+        INSIDE_RANGE    = 0,
+        OUTSIDE_RIGHT   = 1,
+        INVALID_RANGE   = 2
     }; 
 
     struct Channel
@@ -87,7 +87,7 @@ namespace StripChart
         static int s_invalidChannelId;
 
         AZ_CLASS_ALLOCATOR(DataStrip,AZ::SystemAllocator,0);
-        DataStrip(QWidget* parent = NULL, Qt::WindowFlags flags = 0);
+        DataStrip(QWidget* parent = NULL, Qt::WindowFlags flags = Qt::WindowFlags());
         virtual ~DataStrip(void);
 
         void Reset();

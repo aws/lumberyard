@@ -119,9 +119,6 @@ namespace AZ
                 DataTypes::IManifestObject* m_ownerObject;
                 ManifestVectorType m_manifestVector;
                 size_t m_capSize;
-
-            private slots:
-                void OnPropertyGridContraction();
             };
         } // namespace UI
     } // namespace SceneAPI

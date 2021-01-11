@@ -811,7 +811,7 @@ void SpriteBorderEditor::AddPropertiesSection(QGridLayout* gridLayout, int& rowN
             // Used for setting tab order
             SlicerEdit* prevEditField = nullptr;
 
-            for (const auto& b : SpriteBorder())
+            for (const auto b : SpriteBorder())
             {
                 SlicerEdit* edit = new SlicerEdit(
                     this,

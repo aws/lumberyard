@@ -989,8 +989,7 @@ namespace AzToolsFramework
 
     bool CloneInstantiatedEntities(const EntityIdSet& entitiesToClone, EntityIdSet& clonedEntities)
     {
-        EditorMetricsEventsBus::Broadcast(
-            &EditorMetricsEventsBus::Events::EntitiesAboutToBeCloned);
+        EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnEntitiesAboutToBeCloned);
         ScopedUndoBatch undoBatch("Clone Selection");
 
         // Track the mapping of source to cloned entity. This both helps make sure that an entity is not accidentally
@@ -1033,8 +1032,7 @@ namespace AzToolsFramework
         // Also replace the selection with the entities that have been cloned.
         Internal::UpdateUndoStackAndSelectClonedEntities(allEntityClonesContainer.m_entities, undoBatch);
 
-        EditorMetricsEventsBus::Broadcast(
-            &EditorMetricsEventsBus::Events::EntitiesCloned);
+        EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnEntitiesCloned);
 
         for (const AZ::Entity* entity : allEntityClonesContainer.m_entities)
         {

@@ -219,6 +219,12 @@ namespace EMotionFX
 
             return 0;
         }
+
+        //////////////////////////////////////////////////////////////////////////
+        SkinningMethod EditorActorComponent::GetSkinningMethod() const
+        {
+            return m_skinningMethod;
+        }
         
         //////////////////////////////////////////////////////////////////////////
         void EditorActorComponent::CreateActorInstance()
@@ -265,6 +271,22 @@ namespace EMotionFX
             return m_actorAsset.GetId();
         }
 
+        void EditorActorComponent::SetActorAsset(const AZ::Data::AssetId& id)
+        {
+            if (m_actorAsset.GetId() != id && id.IsValid())
+            {
+                AZ::Data::AssetBus::Handler::BusDisconnect();
+
+                AZ::Data::AssetBus::Handler::BusConnect(id);
+                m_actorAsset.Create(id, true);
+            }
+        }
+
+        AZ::Data::Asset<AZ::Data::AssetData> EditorActorComponent::GetActorAsset()
+        {
+            return m_actorAsset;
+        }
+
         //////////////////////////////////////////////////////////////////////////
         void EditorActorComponent::OnEntityVisibilityChanged(bool visibility)
         {
@@ -285,12 +307,9 @@ namespace EMotionFX
             if (!m_actorAsset.GetId().IsValid())
             {
                 m_materialPerLOD.clear();
-
-                // Only need to refresh the values here.
-                return AZ::Edit::PropertyRefreshLevels::ValuesOnly;
             }
 
-            return AZ::Edit::PropertyRefreshLevels::None;
+            return AZ::Edit::PropertyRefreshLevels::EntireTree;
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -307,6 +326,9 @@ namespace EMotionFX
             if (m_actorInstance)
             {
                 m_materialPerLOD.resize(m_actorInstance->GetActor()->GetNumLODLevels());
+                AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+                    &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
+                    AzToolsFramework::Refresh_EntireTree);
                 for (auto& materialPath : m_materialPerLOD)
                 {
                     materialPath.SetAssetPath(m_materialPerActor.GetAssetPath().c_str());
@@ -477,14 +499,6 @@ namespace EMotionFX
         }
 
         //////////////////////////////////////////////////////////////////////////
-        void EditorActorComponent::OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset)
-        {
-            // Escalate the job if the asset failed.
-            AZ::Outcome<AzToolsFramework::AssetSystem::JobInfoContainer> jobOutcome = AZ::Failure();
-            AzToolsFramework::AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AzToolsFramework::AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, asset.GetId(), true, true);
-        }
-
-        //////////////////////////////////////////////////////////////////////////
         void EditorActorComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
         {
             m_actorAsset = asset;
@@ -579,9 +593,6 @@ namespace EMotionFX
 
                         // Update the rendernode and the property grid
                         OnMaterialPerActorChanged();
-                        AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
-                            &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
-                            AzToolsFramework::Refresh_AttributesAndValues);
                     });
             }
 

@@ -175,7 +175,7 @@ protected:
     QColor m_gradientKeyInactive;
     QColor m_gradientKeyHovered;
     QColor m_gradientKeySelected;
-    QToolTipWidget* m_tooltip;
+    QToolTipWrapper* m_tooltip;
 
     float alphaMin, alphaMax;
     bool m_leftDown;

@@ -73,7 +73,6 @@ namespace Driller
         pen.setBrush(brush);
 
         QPainter painter(this);
-        painter.setRenderHint(QPainter::HighQualityAntialiasing, true);
         painter.setRenderHint(QPainter::Antialiasing, true);
         painter.setRenderHint(QPainter::TextAntialiasing, true);
 

@@ -646,6 +646,11 @@ void CRenderer::FinalizeRendItems_FindShadowFrustums(int nThreadID)
     // shadow frustums
     for (int nRecursionLevel = 0; nRecursionLevel < MAX_REND_RECURSION_LEVELS; ++nRecursionLevel)
     {
+        for (int i = 0; i < m_RP.m_SMFrustums[nThreadID][nRecursionLevel].size(); ++i)
+        {
+            //need to manually decrement the refcount for pDepthTex before we clear the list (since it bypasses the destructor)
+            m_RP.m_SMFrustums[nThreadID][nRecursionLevel][i].pDepthTex = nullptr;
+        }
         m_RP.m_SMFrustums[nThreadID][nRecursionLevel].SetUse(0);
         m_RP.m_SMCustomFrustumIDs[nThreadID][nRecursionLevel].SetUse(0);
     }

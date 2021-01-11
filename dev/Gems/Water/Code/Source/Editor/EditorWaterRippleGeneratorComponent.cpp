@@ -35,6 +35,7 @@ namespace Water
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Environment")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/WaterRippleGenerator.svg")
                     ->DataElement(0, &EditorWaterRippleGeneratorComponent::m_rippleGenerator, "Ripple Generator Settings", "Settings for the Ripple Generator.")
                     ;
             }

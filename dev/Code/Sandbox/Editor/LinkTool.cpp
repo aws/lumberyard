@@ -17,6 +17,8 @@
 #include "Viewport.h"
 #include "Objects/EntityObject.h"
 #include "Objects/MiscEntities.h"
+#include <AzCore/Component/Entity.h>
+#include <Plugins/ComponentEntityEditorPlugin/Objects/ComponentEntityObject.h>
 #include <QMenu>
 #include <QCursor>
 
@@ -40,11 +42,13 @@ CLinkTool::CLinkTool()
     m_hLinkCursor = CMFCUtils::LoadCursor(IDC_POINTER_LINK);
     m_hLinkNowCursor = CMFCUtils::LoadCursor(IDC_POINTER_LINKNOW);
     m_hCurrCursor = &m_hLinkCursor;
+    AZ::EntitySystemBus::Handler::BusConnect();
 }
 
 //////////////////////////////////////////////////////////////////////////
 CLinkTool::~CLinkTool()
 {
+    AZ::EntitySystemBus::Handler::BusDisconnect();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -316,7 +320,7 @@ bool CLinkTool::OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 
     if (nChar == VK_ESCAPE)
     {
         // Cancel selection.
-        GetIEditor()->SetEditTool(0);
+        GetIEditor()->SetEditTool(nullptr);
     }
     return false;
 }
@@ -328,6 +332,20 @@ void CLinkTool::Display(DisplayContext& dc)
     {
         ColorF lineColor = (m_hCurrCursor == &m_hLinkNowCursor) ? ColorF(0, 1, 0) : ColorF(1, 0, 0);
         dc.DrawLine(m_StartDrag, m_EndDrag, lineColor, lineColor);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CLinkTool::OnEntityDestruction(const AZ::EntityId& entityId)
+{
+    if (m_pChild && (m_pChild->GetType() == OBJTYPE_AZENTITY))
+    {
+        CComponentEntityObject* childComponentEntity = static_cast<CComponentEntityObject*>(m_pChild);
+        AZ::EntityId childEntityId = childComponentEntity->GetAssociatedEntityId();
+        if(entityId == childEntityId)
+        {
+            GetIEditor()->SetEditTool(nullptr);
+        }
     }
 }
 

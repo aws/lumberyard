@@ -24,6 +24,7 @@
 #include <AzFramework/Input/System/InputSystemComponent.h>
 #include <AzFramework/Network/NetBindingComponent.h>
 #include <AzFramework/Network/NetBindingSystemComponent.h>
+#include <AzFramework/Render/GameIntersectorComponent.h>
 #include <AzFramework/Scene/SceneSystemComponent.h>
 #include <AzFramework/Script/ScriptComponent.h>
 #include <AzFramework/Script/ScriptRemoteDebugging.h>
@@ -45,6 +46,7 @@ namespace AzFramework
             AzFramework::NetBindingSystemComponent::CreateDescriptor(),
             AzFramework::TransformComponent::CreateDescriptor(),
             AzFramework::GameEntityContextComponent::CreateDescriptor(),
+            AzFramework::RenderGeometry::GameIntersectorComponent::CreateDescriptor(),
     #if !defined(_RELEASE)
             AzFramework::TargetManagementComponent::CreateDescriptor(),
             AzFramework::Debug::StatisticalProfilerProxySystemComponent::CreateDescriptor(),

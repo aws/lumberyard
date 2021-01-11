@@ -221,7 +221,8 @@ namespace WwiseBuilder
                     jobProduct.m_pathDependencies = AZStd::move(dependencyPaths);
                 }
             }
-
+            
+            jobProduct.m_dependenciesHandled = true; // We've output the dependencies immediately above so it's OK to tell the AP we've handled dependencies
             response.m_outputProducts.push_back(jobProduct);
         }
     }

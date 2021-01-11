@@ -43,7 +43,9 @@ namespace EMotionFX
          * Called whenever the motion extraction node of an actor changed.
          */
         virtual void OnMotionExtractionNodeChanged(Actor* actor, Node* newMotionExtractionNode) { AZ_UNUSED(actor); AZ_UNUSED(newMotionExtractionNode); }
- 
+
+        virtual void OnActorCreated(Actor* actor) { AZ_UNUSED(actor); }
+        virtual void OnActorDestroyed(Actor* actor) { AZ_UNUSED(actor); }
     };
 
     using ActorNotificationBus = AZ::EBus<ActorNotifications>;

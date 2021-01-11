@@ -103,7 +103,7 @@ namespace EMotionFX
                 bool hasUVs2 = false;
                 bool hasTangents = false;
                 bool hasBitangents = false;
-                bool hasClothInverseMasses = false;
+                bool hasClothData = false;
 
                 // Find the number of submeshes in the full actor.
                 // This will be the number of primitives.
@@ -138,7 +138,7 @@ namespace EMotionFX
                     hasUVs  = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0) != nullptr);
                     hasUVs2 = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 1) != nullptr);
                     hasTangents = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS) != nullptr);
-                    hasClothInverseMasses = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_CLOTH_INVMASSES) != nullptr);
+                    hasClothData = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_CLOTH_DATA) != nullptr);
 
                     const AZ::Vector3* sourcePositions = static_cast<AZ::Vector3*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
                     const AZ::Vector3* sourceNormals = static_cast<AZ::Vector3*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
@@ -162,7 +162,7 @@ namespace EMotionFX
                         Primitive& primitive = lod.m_primitives[primitiveIndex++];
                         primitive.m_mesh = new CMesh();
                         primitive.m_isDynamic = (meshType == EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED);
-                        primitive.m_useUniqueMesh = primitive.m_isDynamic || hasClothInverseMasses;
+                        primitive.m_useUniqueMesh = primitive.m_isDynamic || hasClothData;
                         primitive.m_subMesh = subMesh;
 
                         if (primitive.m_isDynamic)

@@ -15,11 +15,12 @@
 #include <AzQtComponents/Components/TitleBarOverdrawScreenHandler_win.h>
 #include <QDockWidget>
 
-#include <QtGui/qpa/qplatformnativeinterface.h>
 #include <QApplication>
+#include <QOperatingSystemVersion>
+#include <QScreen>
 #include <QWindow>
 #include <QWidget>
-#include <QScreen>
+#include <QtGui/qpa/qplatformnativeinterface.h>
 
 #include <VersionHelpers.h>
 
@@ -138,7 +139,7 @@ void TitleBarOverdrawHandlerWindows::applyOverdrawMargins(QWindow* window)
         const static unsigned exStyle = 0;
         const auto margins = customTitlebarMargins(nullptr, style, exStyle, false, 96);
         // ... and apply them to the creation context for the future window
-        window->setProperty("_q_windowsCustomMargins", qVariantFromValue(margins));
+        window->setProperty("_q_windowsCustomMargins", QVariant::fromValue(margins));
     }
 }
 
@@ -152,7 +153,8 @@ void TitleBarOverdrawHandlerWindows::polish(QWidget* widget)
 
 void TitleBarOverdrawHandlerWindows::addTitleBarOverdrawWidget(QWidget* widget)
 {
-    if (QSysInfo::windowsVersion() != QSysInfo::WV_WINDOWS10 || m_overdrawWidgets.contains(widget))
+    if(QOperatingSystemVersion::current() < QOperatingSystemVersion(QOperatingSystemVersion::Windows, 10) ||
+        m_overdrawWidgets.contains(widget))
     {
         return;
     }
@@ -210,7 +212,7 @@ void TitleBarOverdrawHandlerWindows::applyOverdrawMargins(QPlatformWindow* windo
             const auto margins = customTitlebarMargins(monitor, static_cast<int>(style), static_cast<int>(exStyle), maximized, dpi);
             RECT rect;
             GetWindowRect(hWnd, &rect);
-            pni->setWindowProperty(window, QStringLiteral("WindowsCustomMargins"), qVariantFromValue(margins));
+            pni->setWindowProperty(window, QStringLiteral("WindowsCustomMargins"), QVariant::fromValue(margins));
             const auto width = rect.right - rect.left;
             const auto height = rect.bottom - rect.top;
             SetWindowPos(hWnd, 0, rect.left, rect.top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);

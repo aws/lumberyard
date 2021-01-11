@@ -279,8 +279,55 @@ namespace LuaBuilder
 
     void LuaBuilderWorker::ParseDependencies(const AZStd::string& file, AssetBuilderSDK::ProductPathDependencySet& outDependencies)
     {
-        AzFramework::FileFunc::ReadTextFileByLine(file, [&outDependencies](const char* line) -> bool
+        bool isInsideBlockComment = false;
+        AzFramework::FileFunc::ReadTextFileByLine(file, [&outDependencies, &isInsideBlockComment](const char* line) -> bool
         {
+            AZStd::string lineCopy(line);
+
+            // Block comments can be negated by adding an extra '-' to the front of the comment marker
+            // We should strip these out of every line, as a negated block comment should be parsed like regular code
+            AzFramework::StringFunc::Replace(lineCopy, "---[[", "");
+
+            // Splitting the line into tokens with "--" will give us the following behavior:
+            //   case 1: "code to parse -- commented out line" -> {"code to parse "," commented out line"}
+            //   case 2: "code to parse --[[ contents of block comment --]] more code to parse"
+            //               -> {"code to parse ","[[ contents of block comment ","]] more code to parse"}
+            AZStd::vector<AZStd::string> tokens;
+            AzFramework::StringFunc::Tokenize(lineCopy, tokens, "--", true, true);
+
+            if (isInsideBlockComment)
+            {
+                // If the block comment ends this line, we'll handle that later
+                lineCopy.clear();
+            }
+            else if (!tokens.empty())
+            {
+                // Unless inside a block comment, all characters to the left of "--" should be parsed
+                lineCopy = tokens[0];
+            }
+
+            for (int tokenIndex = 1; tokenIndex < tokens.size(); ++tokenIndex)
+            {
+                if (AzFramework::StringFunc::StartsWith(tokens[tokenIndex].c_str(), "[["))
+                {
+                    // "--[[" indicates the start of a block comment. Ignore contents of this token.
+                    isInsideBlockComment = true;
+                    continue;
+                }
+                else if (AzFramework::StringFunc::StartsWith(tokens[tokenIndex].c_str(), "]]"))
+                {
+                    // "--]]" indicates the end of a block comment. Parse contents of this token.
+                    isInsideBlockComment = false;
+                    AzFramework::StringFunc::LChop(tokens[tokenIndex], 2);
+                    lineCopy.append(tokens[tokenIndex]);
+                }
+                else if(!tokens[tokenIndex].empty())
+                {
+                    // "--" (with no special characters after) indicates a whole line comment. Ignore all further tokens.
+                    break;
+                }
+            }
+
             // Regex to match lines looking similar to require("a") or Script.ReloadScript("a") or require "a"
             // Group 1: require or empty
             // Group 2: quotation mark ("), apostrophe ('), or empty
@@ -296,7 +343,7 @@ namespace LuaBuilder
             AZStd::regex consoleCommandRegex(R"~(ExecuteConsoleCommand\("exec (.*)"\))~");
 
             AZStd::smatch match;
-            if (AZStd::regex_search(line, match, requireRegex))
+            if (AZStd::regex_search(lineCopy, match, requireRegex))
             {
                 if (!match[2].matched || !match[4].matched)
                 {
@@ -327,11 +374,11 @@ namespace LuaBuilder
                     outDependencies.emplace(filePath, AssetBuilderSDK::ProductPathDependencyType::ProductFile);
                 }
             }
-            else if (AZStd::regex_search(line, match, consoleCommandRegex))
+            else if (AZStd::regex_search(lineCopy, match, consoleCommandRegex))
             {
                 outDependencies.emplace(match[1].str().c_str(), AssetBuilderSDK::ProductPathDependencyType::ProductFile);
             }
-            else if(AZStd::regex_search(line, match, pathRegex))
+            else if(AZStd::regex_search(lineCopy, match, pathRegex))
             {
                 AZ_TracePrintf("LuaBuilder", "Found potential dependency on file: %s\n", match[1].str().c_str());
 

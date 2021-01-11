@@ -48,6 +48,13 @@ namespace CloudCanvas
                 m_manifestHash += valueIter->value.GetString();
             }
 
+            valueIter = initData.FindMember("versionId");
+
+            if (valueIter != initData.MemberEnd() && valueIter->value.IsString())
+            {
+                m_versionId += valueIter->value.GetString();
+            }
+
             valueIter = initData.FindMember("cacheRoot");
 
             if (valueIter != initData.MemberEnd() && valueIter->value.IsString())

@@ -56,6 +56,7 @@ namespace EditorPythonBindings
         ////////////////////////////////////////////////////////////////////////
         // PythonSymbolEventBus::Handler
         void LogClass(AZStd::string_view moduleName, AZ::BehaviorClass* behaviorClass) override;
+        void LogClassWithName(AZStd::string_view moduleName, AZ::BehaviorClass* behaviorClass, AZStd::string_view className) override;
         void LogClassMethod(AZStd::string_view moduleName, AZStd::string_view globalMethodName, AZ::BehaviorClass* behaviorClass, AZ::BehaviorMethod* behaviorMethod) override;
         void LogBus(AZStd::string_view moduleName, AZStd::string_view busName, AZ::BehaviorEBus* behaviorEBus) override;
         void LogGlobalMethod(AZStd::string_view moduleName, AZStd::string_view methodName, AZ::BehaviorMethod* behaviorMethod) override;

@@ -23,6 +23,8 @@
 #include <Editor/View/Widgets/GraphTabBar.h>
 #include <Editor/View/Windows/MainWindow.h>
 
+#include <ScriptCanvas/Asset/Functions/ScriptCanvasFunctionAsset.h>
+
 namespace ScriptCanvasEditor
 {
     //////////////////////
@@ -32,7 +34,7 @@ namespace ScriptCanvasEditor
     BatchOperatorTool::BatchOperatorTool(MainWindow* mainWindow, QStringList directories, QString progressDialogTitle)
         : m_mainWindow(mainWindow)
         , m_originalActive(-1)
-        , m_originalActiveTab(-1)        
+        , m_originalActiveTab(-1)
         , m_progressDialog(nullptr)
     {
         ISystem* system = nullptr;
@@ -170,9 +172,14 @@ namespace ScriptCanvasEditor
                     {
                         tailRecurse = true;
                     }
-                    else if (newElement.endsWith(".scriptcanvas"))
+                    else if (newElement.endsWith(ScriptCanvas::AssetDescription::GetExtension<ScriptCanvasAsset>()))
                     {
-                        OperationStatus status = OperateOnFile(newElement);
+                        OperationStatus status = OperateOnFile(newElement, azrtti_typeid<ScriptCanvasAsset>());
+                        tailRecurse = (status == OperationStatus::Complete);
+                    }
+                    else if (newElement.endsWith(ScriptCanvas::AssetDescription::GetExtension<ScriptCanvas::ScriptCanvasFunctionAsset>()))
+                    {
+                        OperationStatus status = OperateOnFile(newElement, azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset>());
                         tailRecurse = (status == OperationStatus::Complete);
                     }
                     else

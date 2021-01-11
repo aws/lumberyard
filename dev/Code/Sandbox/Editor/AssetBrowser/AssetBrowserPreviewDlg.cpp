@@ -249,7 +249,7 @@ bool CAssetBrowserPreviewDlg::eventFilter(QObject* object, QEvent* event)
         QWheelEvent* ev = static_cast<QWheelEvent*>(event);
         if (m_pAssetItem)
         {
-            const int zDelta = ev->delta();
+            const int zDelta = ev->angleDelta().y();
             const bool bAltClick = (ev->modifiers() & Qt::AltModifier);
             const bool bCtrlClick = (ev->modifiers() & Qt::ControlModifier);
             const bool bShiftClick = (ev->modifiers() & Qt::ShiftModifier);

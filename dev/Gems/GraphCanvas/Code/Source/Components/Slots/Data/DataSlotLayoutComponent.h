@@ -55,10 +55,14 @@ namespace GraphCanvas
             AZ::Outcome<DragDropState> OnDragEnterEvent(QGraphicsSceneDragDropEvent* dragDropEvent) override;
             void OnDragLeaveEvent(QGraphicsSceneDragDropEvent* dragDropEvent) override;
             void OnDropEvent(QGraphicsSceneDragDropEvent* dropEvent) override;
+            void OnDropCancelled() override;
 
         private:
 
             SlotId m_slotId;
+
+            ViewId  m_viewId;
+            ToastId m_toastId;
         };
 
         class DoubleClickSceneEventFilter

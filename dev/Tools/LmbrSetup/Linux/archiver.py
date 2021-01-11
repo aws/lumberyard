@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 #
 # All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 # its licensors.
@@ -9,13 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # Modifications copyright Amazon.com, Inc. or its affiliates.
-#
-#!/usr/bin/env python
-# encoding: utf-8
 
 import argparse
 import collections
-import io
 import json
 import mimetypes
 import os
@@ -25,6 +23,8 @@ import stat
 import sys
 import tarfile
 
+from typing import List
+
 _3RDPARTY_ROOT_IDENTIFIER = '3rdParty.txt'
 _ENGINE_ROOT_IDENTIFIER = 'engineroot.txt'
 _USER_PREFERENCE_FILE_NAME = 'SetupAssistantUserPreferences.ini'
@@ -33,6 +33,7 @@ _SETUP_CONFIG_FILE_NAME = 'SetupAssistantConfig.json'
 _INTERESTING_ROLES = set(['compileengine', 'compilegame', 'setuplinux', 'compilesandbox'])
 _INTERESTING_HOST_OS = set(['linux'])
 _PROJECT_NAME = 'MultiplayerSample'
+
 
 # A few force excludes to keep the file size in check.
 _EXCLUDED_PATH_PATTERNS = [
@@ -45,6 +46,8 @@ _EXCLUDED_PATH_PATTERNS = [
     re.compile('dev/Gems/PBSreferenceMaterials($|/.*)', re.I),
     re.compile('dev/Gems/LyShineExamples($|/.*)', re.I),
     re.compile('dev/Gems/Clouds($|/.*)', re.I),
+    re.compile('dev/Gems/CloudGemFramework/v1/Website/CloudGemPortal/node_modules($|/.*)', re.I),
+    re.compile('dev/Gems/CloudGemFramework/v1/Website/CloudGemPortal/jspm_packages($|/.*)', re.I),
     re.compile('dev/Tools/3dsmax($|/.*)', re.I),
     re.compile('dev/Tools/AWSNativeSDK($|/.*)', re.I),
     re.compile('dev/Tools/crashpad($|/.*)', re.I),
@@ -91,7 +94,7 @@ _EXCLUDED_EXTENSIONS = set([
     '.xbm', '.xcscheme', '.xcsettings', '.xcworkspacedata', '.xib'
 ])
 
-_PRINTABLE_CHARS = bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})
+_PRINTABLE_CHARS = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7f})
 
 _KNOWN_EXECUTABLES = {
     '2to3',
@@ -176,9 +179,11 @@ def _conform_path(path):
     '''
     return path.replace('\\', '/')
 
+
 def _get_datetime_as_tar_filename():
     import time
     return time.strftime('%Y-%m-%d_%H-%M-%S.tar', time.localtime())
+
 
 def _get_dev_sources_root(cwd):
     '''
@@ -198,11 +203,13 @@ def _get_dev_sources_root(cwd):
 
     raise RuntimeError('Failed to locate engine root directory. Missing file: ' + _ENGINE_ROOT_IDENTIFIER)
 
+
 def _get_dev_destination_root():
     '''
     Returns the relative path to dev folder within the archive
     '''
     return _PROJECT_NAME + '/dev'
+
 
 def _get_3rdparty_sources_root(user_preference_file_path):
     '''
@@ -219,11 +226,13 @@ def _get_3rdparty_sources_root(user_preference_file_path):
 
     raise RuntimeError('3rd party path missing in user configuration file: ' + user_preference_file_path)
 
+
 def _get_3rdparty_destination_root():
     '''
     Returns the relative path for 3rd party dependencies within the archive
     '''
     return _PROJECT_NAME + '/3rdParty'
+
 
 def _build_3rdparty_sources_map(config_file_path, source_root, destination_root):
     '''
@@ -258,7 +267,7 @@ def _build_3rdparty_sources_map(config_file_path, source_root, destination_root)
                     for symlink in sdk['symlinks'] if _is_interesting(sdk, symlink)]
 
     sources = {
-        _conform_path(os.path.join(source_root, dependency['source'])) :
+        _conform_path(os.path.join(source_root, dependency['source'])):
             _conform_path(os.path.join(destination_root, dependency['source']))
                 for dependency in dependencies
     }
@@ -267,6 +276,7 @@ def _build_3rdparty_sources_map(config_file_path, source_root, destination_root)
     identifier_filepath = _conform_path(os.path.join(source_root, _3RDPARTY_ROOT_IDENTIFIER))
     sources[identifier_filepath] = destination_root + '/' + _3RDPARTY_ROOT_IDENTIFIER
     return sources
+
 
 def _build_dev_sources_map(source_root, destination_root):
     '''
@@ -303,7 +313,7 @@ def _build_dev_sources_map(source_root, destination_root):
     ])
 
     return {
-        _conform_path(os.path.join(source_root, rel_path)) :
+        _conform_path(os.path.join(source_root, rel_path)):
             _conform_path(os.path.join(destination_root, rel_path))
                 for rel_path in relative_file_paths
     }
@@ -318,9 +328,12 @@ def _is_executable(name, source_root_dev, source_root_3rdparty):
     # Ref: https://stackoverflow.com/questions/898669/how-can-i-detect-if-a-file-is-binary-non-text-in-python
     return bool(open(path, 'rb').read(1024).translate(None, _PRINTABLE_CHARS))
 
+
 _file_extensions = set()
 _file_mimetypes = set()
-def _create_tarfile(sources_map, source_root_dev, source_root_3rdparty, output_filepath):
+
+
+def _create_tarfile(sources_map, source_root_dev, source_root_3rdparty, output_filepath) -> List[str]:
     '''
     Iterate input sources map and add each of the source to create a tar ball
     '''
@@ -333,7 +346,7 @@ def _create_tarfile(sources_map, source_root_dev, source_root_3rdparty, output_f
         filename = os.path.basename(name)
 
         if tarinfo.isfile():
-            # Exclude the file if its in exluded extensions
+            # Exclude the file if its in excluded extensions
             extension = os.path.splitext(name)[1]
             if extension:
                 _file_extensions.add(extension)
@@ -349,7 +362,7 @@ def _create_tarfile(sources_map, source_root_dev, source_root_3rdparty, output_f
             if filename in _KNOWN_EXECUTABLES:
                 tarinfo.mode = tarinfo.mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
             elif (extension in _NON_EXECUTABLE_EXTENSIONS) or (type in set(['text', 'image', 'audio'])):
-                pass # Do nothing!
+                pass  # Do nothing!
             elif (extension in _EXECUTABLE_EXTENSIONS) or _is_executable(name, source_root_dev, source_root_3rdparty):
                 tarinfo.mode = tarinfo.mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
         else:
@@ -364,6 +377,7 @@ def _create_tarfile(sources_map, source_root_dev, source_root_3rdparty, output_f
         tarinfo.mode = tarinfo.mode | stat.S_IRUSR | stat.S_IWUSR       # Owner has read/write permission
         return tarinfo
 
+    files_with_issues = []
     # Make sure the directory exists
     directory = os.path.dirname(output_filepath)
     if not os.path.exists(directory):
@@ -373,9 +387,16 @@ def _create_tarfile(sources_map, source_root_dev, source_root_3rdparty, output_f
     with tarfile.open(output_filepath, 'w') as ostrm:
         for src, dst in sources_map.items():
             print('Adding {0} => {1} ...'.format(src, dst))
-            ostrm.add(src, dst, filter=_filter)
+            try:
+                ostrm.add(src, dst, filter=_filter)
+            except FileNotFoundError as e:
+                print(f"[ERROR] Failed to add {src} to the archive as {dst}. {e}")
+                files_with_issues.append(src)
 
         ostrm.close()
+
+    return files_with_issues
+
 
 def _compress_tarfile(input_filepath):
     output_filepath = input_filepath + '.gz'
@@ -385,7 +406,10 @@ def _compress_tarfile(input_filepath):
 
     return output_filepath
 
+
 def main():
+    global _PROJECT_NAME
+
     parser = argparse.ArgumentParser('Script to create an archive of sources to build dedicated linux server')
     parser.add_argument('-c', '--cwd', type=str, help='Current working directory')
     parser.add_argument('-p', '--3rdparty', dest='third_party_sources_root', type=str,
@@ -394,7 +418,10 @@ def main():
     parser.add_argument('-o', '--output', type=str, help='Path to output file to generate')
     parser.add_argument('-ext', '--print_extensions', action='store_true', help='Print a list of all extensions found')
     parser.add_argument('-types', '--print_filetypes', action='store_true', help='Print a list of all filetypes found')
+    parser.add_argument('-n', '--name', type=str, help='Project name to archive', default=_PROJECT_NAME)
     args = parser.parse_args()
+
+    _PROJECT_NAME = args.name   # Override default if required
 
     cwd = _conform_path(args.cwd or os.path.dirname(os.path.abspath(__file__)))
 
@@ -419,7 +446,7 @@ def main():
 
     # Combine the sources map and print it out for records
     sources_map = collections.OrderedDict(sources_map_3rdparty, **sources_map_dev)
-    pprint.pprint({ key: value for key, value in sources_map.items() })
+    pprint.pprint({key: value for key, value in sources_map.items()})
     print('\n')
 
     if not args.output:
@@ -427,8 +454,16 @@ def main():
             source_root_dev, 'BinTemp', 'unix_archives', _get_datetime_as_tar_filename()))
 
     # Finally create the archive
-    _create_tarfile(sources_map, source_root_dev, source_root_3rdparty, args.output)
-    print('Uncompressed archive successfully generated at {}'.format(args.output))
+    problems = _create_tarfile(sources_map, source_root_dev, source_root_3rdparty, args.output)
+
+    if len(problems) == 0:
+        print('Uncompressed archive successfully generated at {}'.format(args.output))
+    else:
+        print('Uncompressed archive generated with issues at {}'.format(args.output))
+        print('The following src files had issues:')
+        for problem in problems:
+            print(problem)
+
     print('\n')
 
     if args.print_extensions:
@@ -453,6 +488,7 @@ def main():
         print('\n')
 
     print('Archive(s) successfully generated!!')
+
 
 if __name__ == "__main__":
     sys.exit(main())

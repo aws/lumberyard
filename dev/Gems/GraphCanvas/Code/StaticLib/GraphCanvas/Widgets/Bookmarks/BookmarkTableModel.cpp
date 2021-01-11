@@ -328,7 +328,7 @@ namespace GraphCanvas
     {
         if (!index.isValid())
         {
-            return 0;
+            return Qt::ItemFlags();
         }
 
         Qt::ItemFlags flags = Qt::ItemFlag::ItemIsEnabled | Qt::ItemFlag::ItemIsSelectable;
@@ -520,7 +520,7 @@ namespace GraphCanvas
         m_filter = filter;
         m_filterRegex = QRegExp(m_filter, Qt::CaseInsensitive);
 
-        filterChanged();
+        invalidateFilter();
     }
 
     void BookmarkTableSortProxyModel::ClearFilter()

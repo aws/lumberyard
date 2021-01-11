@@ -78,12 +78,6 @@ namespace AzToolsFramework
         void SetEntityInstantiationPosition(const AZ::EntityId& parent, const AZ::EntityId& beforeEntity) override;
         void ClearEntityInstantiationPosition() override;
 
-        ////////////////////////////////////////////////////////////////////////
-        // EditorMetricsEventsBus
-        ////////////////////////////////////////////////////////////////////////
-        void EntitiesAboutToBeCloned() override;
-        void EntitiesCloned() override;
-
         ///////////////////////////////////
         // EditorEntitySortNotificationBus
         ///////////////////////////////////
@@ -100,6 +94,9 @@ namespace AzToolsFramework
         void OnEntityStreamLoadBegin() override;
         void OnEntityStreamLoadSuccess() override;
         void OnEntityStreamLoadFailed() override;
+        void OnEntitiesAboutToBeCloned() override;
+        void OnEntitiesCloned() override;
+
 
         ////////////////////////////////////////////////
         // AzFramework::EntityContextEventBus::Handler

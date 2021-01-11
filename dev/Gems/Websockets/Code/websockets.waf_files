@@ -1,0 +1,18 @@
+{
+    "none":
+    {
+        "Include":
+        [
+            "Include/Websockets/WebsocketsBus.h"
+        ],
+        "Source": [
+            "Source/WebsocketsModule.cpp",
+            "Source/WebsocketsSystemComponent.cpp",
+            "Source/WebsocketsSystemComponent.h",
+            "Source/SecureWebsocketClient.cpp",
+            "Source/SecureWebsocketClient.h",
+            "Source/WebsocketClient.cpp",
+            "Source/WebsocketClient.h"
+        ]
+    }
+}

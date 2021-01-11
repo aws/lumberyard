@@ -281,7 +281,7 @@ namespace ScriptCanvasEditor
         AZStd::unique_ptr<UndoHelper> m_undoHelper;
 
         bool m_sourceInError;
-        bool m_triggerSaveCallback;
+        bool m_triggerErrorSaveCallback;
 
         // Callback flag to avoid the SourceFileChange callback, since there are situations
         // where that won't be called and we still need to complete our save loop

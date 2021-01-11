@@ -37,6 +37,13 @@ namespace Rain
         virtual void Toggle() = 0;
 
         /**
+         * Sets the enabled state of the snow component
+         *
+         * @param enabled The enabled state to set component to
+         */
+        virtual void SetEnabled(bool enabled) = 0;
+
+        /**
          * Gets whether or not the rain effect is enabled
          *
          * @return True if the rain effect is enabled

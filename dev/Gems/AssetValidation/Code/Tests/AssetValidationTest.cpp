@@ -10,11 +10,38 @@
  *
  */
 
+#include <AssetSeedUtil.h>
+
 #include "AssetValidationTestShared.h"
-#include <AssetValidationSystemComponent.h>
 #include <AzFramework/Platform/PlatformDefaults.h>
 #include <AzFramework/Asset/AssetSeedList.h>
 
+bool AssetValidationTest::CreateDummyFile(const char* path, const char* seedFileName, AZStd::string_view contents, AZStd::string& subfolderPath) const
+{
+    subfolderPath = (m_tempDir / path / seedFileName).concat(".").concat(AssetValidation::AssetSeed::SeedFileExtension).string().c_str();
+
+    AZ::IO::FileIOStream fileStream(subfolderPath.c_str(), AZ::IO::OpenMode::ModeAppend | AZ::IO::OpenMode::ModeUpdate | AZ::IO::OpenMode::ModeCreatePath);
+    
+    return fileStream.Write(contents.size(), contents.data()) != 0;
+}
+
+TEST_F(AssetValidationTest, DefaultSeedList_ReturnsExpectedSeedLists)
+{
+    AZStd::vector<AssetValidation::AssetSeed::GemInfo> gemInfo;
+
+    AZStd::string gemSeedList, engineSeedList, projectSeedList;
+
+    ASSERT_TRUE(CreateDummyFile("mockGem", "seedList", "Mock Gem Seed List", gemSeedList));
+    ASSERT_TRUE(CreateDummyFile("Engine", "SeedAssetList", "Engine Seed List", engineSeedList));
+    ASSERT_TRUE(CreateDummyFile(ProjectName, "SeedAssetList", "Project Seed List", projectSeedList));
+
+    AssetValidation::AssetSeed::GemInfo mockGem("MockGem", "mockGem", (m_tempDir / "mockGem").string().c_str(), "mockGem", true, false);
+    gemInfo.push_back(mockGem);
+
+    AZStd::vector<AZStd::string> defaultSeedLists = GetDefaultSeedListFiles(gemInfo, AzFramework::PlatformFlags::Platform_PC);
+
+    ASSERT_THAT(defaultSeedLists, ::testing::UnorderedElementsAre(gemSeedList, engineSeedList, projectSeedList));
+}
 
 TEST_F(AssetValidationTest, SeedListDependencyTest_AddAndRemoveList_Success)
 {

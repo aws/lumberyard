@@ -4642,12 +4642,11 @@ void CD3D9Renderer::FX_FlushShader_General()
         {
             rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_NEAREST];
         }
-        if (SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID] == 0 && CV_r_ParticlesSoftIsec)
+        if (SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID] == 0)
         {
-            //Enable soft particle shader flag for soft particles or particles have half resolution enabled
-            //Note: the half res render pass is relying on the soft particle flag to test z buffer. 
-            //I am not sure why they did this instead of just have enable z buffer test for that pass.
-            if ((objFlags & FOB_SOFT_PARTICLE) || (rRP.m_PersFlags2 & RBPF2_HALFRES_PARTICLES))
+            //Enable soft particle shader flag for soft particles or if particles have half resolution enabled
+            //Note: the half res render pass is relying on the soft particle flag to test z buffer.
+            if ((CV_r_ParticlesSoftIsec && (objFlags & FOB_SOFT_PARTICLE)) || (rRP.m_PersFlags2 & RBPF2_HALFRES_PARTICLES))
             {
                 rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SOFT_PARTICLE];
             }

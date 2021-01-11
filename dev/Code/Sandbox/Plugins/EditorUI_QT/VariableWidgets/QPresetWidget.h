@@ -57,7 +57,7 @@ private:
     QGridLayout*    layout;
     std::function<void(QString)> callback_on_click;
     std::function<void(QString)> callback_on_right_click;
-    QToolTipWidget* m_tooltip;
+    QToolTipWrapper* m_tooltip;
 };
 
 #endif // QPresetSwatchWidget_h__

@@ -74,7 +74,7 @@ void RulerWidget::paintEvent(QPaintEvent* event)
 
     // Create a painter for doing the drawing
     QPainter painter(this);
-    painter.setRenderHints(QPainter::TextAntialiasing | QPainter::HighQualityAntialiasing);
+    painter.setRenderHints(QPainter::TextAntialiasing | QPainter::Antialiasing);
 
     QRectF rulerRect = rect();
  
@@ -290,7 +290,7 @@ void RulerWidget::DrawRulerSection(QPainter* painter, QRectF rulerRect, float st
     else
     {
         QFontMetrics fontMetrics(painter->font());
-        textPosAlongSection = aznumeric_cast<float>(-(2 + fontMetrics.width(label)));
+        textPosAlongSection = aznumeric_cast<float>(-(2 + fontMetrics.horizontalAdvance(label)));
     }
 
     painter->drawText(aznumeric_cast<int>(textPosAlongSection), aznumeric_cast<int>(-(rulerBreadth-8)) , label);

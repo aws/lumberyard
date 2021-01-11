@@ -17,7 +17,7 @@
 #include <MCore/Source/StringConversions.h>
 
 // include qt headers
-#include <QPushButton>
+#include <QToolButton>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QHeaderView>
@@ -82,9 +82,9 @@ namespace EMStudio
         mNodeSelectionWindow = new NodeSelectionWindow(this, false);
 
         // create the selection buttons
-        mSelectNodesButton  = new QPushButton();
-        mAddNodesButton     = new QPushButton();
-        mRemoveNodesButton  = new QPushButton();
+        mSelectNodesButton  = new QToolButton();
+        mAddNodesButton     = new QToolButton();
+        mRemoveNodesButton  = new QToolButton();
 
         EMStudioManager::MakeTransparentButton(mSelectNodesButton, "/Images/Icons/Plus.svg",   "Select nodes and replace the current selection");
         EMStudioManager::MakeTransparentButton(mAddNodesButton,    "/Images/Icons/Plus.svg",   "Select nodes and add them to the current selection");
@@ -110,9 +110,9 @@ namespace EMStudio
         setLayout(layout);
 
         // connect controls to the slots
-        connect(mSelectNodesButton, &QPushButton::clicked, this, &AttachmentNodesWindow::SelectNodesButtonPressed);
-        connect(mAddNodesButton, &QPushButton::clicked, this, &AttachmentNodesWindow::SelectNodesButtonPressed);
-        connect(mRemoveNodesButton, &QPushButton::clicked, this, &AttachmentNodesWindow::RemoveNodesButtonPressed);
+        connect(mSelectNodesButton, &QToolButton::clicked, this, &AttachmentNodesWindow::SelectNodesButtonPressed);
+        connect(mAddNodesButton, &QToolButton::clicked, this, &AttachmentNodesWindow::SelectNodesButtonPressed);
+        connect(mRemoveNodesButton, &QToolButton::clicked, this, &AttachmentNodesWindow::RemoveNodesButtonPressed);
         connect(mNodeTable, &QTableWidget::itemSelectionChanged, this, &AttachmentNodesWindow::OnItemSelectionChanged);
         connect(mNodeSelectionWindow->GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, &AttachmentNodesWindow::NodeSelectionFinished);
         connect(mNodeSelectionWindow->GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnDoubleClicked), this, &AttachmentNodesWindow::NodeSelectionFinished);

@@ -76,6 +76,7 @@ namespace ScriptCanvasEditor
         // AssetSystemBus
         //! Called by the AssetCatalog when an asset has been modified
         void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
+        void OnCatalogAssetAdded(const AZ::Data::AssetId& /*assetId*/) override;
 
         //! Called by the AssetProcessor when an asset in the cache has been removed.
         void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;

@@ -176,7 +176,8 @@ void UiCanvasAssetRefComponent::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c));
 
             editInfo->DataElement("SimpleAssetRef", &UiCanvasAssetRefComponent::m_canvasAssetRef,
-                "Canvas pathname", "The pathname of the canvas.");
+                "Canvas pathname", "The pathname of the canvas.")
+                ->Attribute("BrowseIcon", ":/stylesheet/img/UI20/browse-edit-select-files.svg");
             editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiCanvasAssetRefComponent::m_isAutoLoad,
                 "Load automatically", "When checked, the canvas is loaded when this component is activated.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c));

@@ -37,6 +37,7 @@
 #include "Audio/AudioSystemComponent.h"
 #include "Audio/AudioTriggerComponent.h"
 #include "Bundling/BundlingSystemComponent.h"
+#include "Rendering/ClipVolumeComponent.h"
 #include "Rendering/DecalComponent.h"
 #include "Rendering/StereoRendererComponent.h"
 #include "Rendering/LensFlareComponent.h"
@@ -140,6 +141,7 @@
 #include "Shape/PolygonPrismShapeComponent.h"
 
 // Cry interfaces.
+#include <AliasComponent.h>
 #include <ICryAnimation.h>
 #include <I3DEngine.h>
 
@@ -255,6 +257,7 @@ namespace LmbrCentral
             AudioTriggerComponent::CreateDescriptor(),
             BehaviorTreeComponent::CreateDescriptor(),
             BundlingSystemComponent::CreateDescriptor(),
+            ClipVolumeComponent::CreateDescriptor(),
             DecalComponent::CreateDescriptor(),
             LensFlareComponent::CreateDescriptor(),
             LightComponent::CreateDescriptor(),
@@ -312,6 +315,7 @@ namespace LmbrCentral
             CylinderShapeDebugDisplayComponent::CreateDescriptor(),
             PolygonPrismShapeDebugDisplayComponent::CreateDescriptor(),
             TubeShapeDebugDisplayComponent::CreateDescriptor(),
+            AliasComponent::CreateDescriptor(),
 #if AZ_LOADSCREENCOMPONENT_ENABLED
             LoadScreenComponent::CreateDescriptor(),
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
@@ -345,6 +349,7 @@ namespace LmbrCentral
                    azrtti_typeid<GeometrySystemComponent>(),
                    azrtti_typeid<AudioSystemComponent>(),
                    azrtti_typeid<BundlingSystemComponent>(),
+                   azrtti_typeid<AliasComponent>(),
 #if AZ_LOADSCREENCOMPONENT_ENABLED
                    azrtti_typeid<LoadScreenComponent>(),
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED

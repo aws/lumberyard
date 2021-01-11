@@ -819,10 +819,10 @@ static float GetTimelineWheelScaleFactor()
 //////////////////////////////////////////////////////////////////////////
 void CSequencerDopeSheetBase::wheelEvent(QWheelEvent* event)
 {
-    const QPoint pt = event->pos();
+    const QPoint pt = event->position().toPoint();
 
     const float fAnchorTime = TimeFromPointUnsnapped(pt);
-    const float newTimeScale = m_timeScale * pow(GetTimelineWheelScaleFactor(), float(event->delta()) / WHEEL_DELTA);
+    const float newTimeScale = m_timeScale * pow(GetTimelineWheelScaleFactor(), float(event->angleDelta().y()) / WHEEL_DELTA);
 
     SetTimeScale(newTimeScale, fAnchorTime);
     event->accept();

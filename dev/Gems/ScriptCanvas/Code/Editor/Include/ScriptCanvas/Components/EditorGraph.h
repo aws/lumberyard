@@ -159,7 +159,7 @@ namespace ScriptCanvasEditor
 
         bool ConvertSlotToReference(const GraphCanvas::Endpoint& endpoint) override;
         bool CanConvertSlotToReference(const GraphCanvas::Endpoint& endpoint) override;
-        bool CanHandleReferenceMimeEvent(const GraphCanvas::Endpoint& endpoint, const QMimeData* mimeData) override;
+        GraphCanvas::CanHandleMimeEventOutcome CanHandleReferenceMimeEvent(const GraphCanvas::Endpoint& endpoint, const QMimeData* mimeData) override;
         bool HandleReferenceMimeEvent(const GraphCanvas::Endpoint& endpoint, const QMimeData* mimeData) override;
         bool CanPromoteToVariable(const GraphCanvas::Endpoint& endpoint) const override;
         bool PromoteToVariableAction(const GraphCanvas::Endpoint& endpoint) override;
@@ -167,7 +167,7 @@ namespace ScriptCanvasEditor
 
         bool ConvertSlotToValue(const GraphCanvas::Endpoint& endpoint) override;
         bool CanConvertSlotToValue(const GraphCanvas::Endpoint& endpoint) override;
-        bool CanHandleValueMimeEvent(const GraphCanvas::Endpoint& endpoint, const QMimeData* mimeData) override;
+        GraphCanvas::CanHandleMimeEventOutcome CanHandleValueMimeEvent(const GraphCanvas::Endpoint& endpoint, const QMimeData* mimeData) override;
         bool HandleValueMimeEvent(const GraphCanvas::Endpoint& endpoint, const QMimeData* mimeData) override;
 
         GraphCanvas::SlotId RequestExtension(const GraphCanvas::NodeId& nodeId, const GraphCanvas::ExtenderId& extenderId) override;
@@ -232,6 +232,7 @@ namespace ScriptCanvasEditor
         
         void RemoveUnusedVariables() override;
 
+        bool CanConvertVariableNodeToReference(const GraphCanvas::NodeId& nodeId) override;
         bool ConvertVariableNodeToReference(const GraphCanvas::NodeId& nodeId) override;
         bool ConvertReferenceToVariableNode(const GraphCanvas::Endpoint& endpoint) override;
 
@@ -240,6 +241,8 @@ namespace ScriptCanvasEditor
         bool IsRuntimeGraph() const override;
         bool IsFunctionGraph() const override;
 
+        bool CanExposeEndpoint(const GraphCanvas::Endpoint& endpoint) override;
+        
         ScriptCanvas::Endpoint ConvertToScriptCanvasEndpoint(const GraphCanvas::Endpoint& endpoint) const override;
         GraphCanvas::Endpoint ConvertToGraphCanvasEndpoint(const ScriptCanvas::Endpoint& endpoint) const override;
         ////

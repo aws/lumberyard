@@ -51,8 +51,6 @@ namespace AZ
                 m_propertyEditor = new AzToolsFramework::ReflectedPropertyEditor(this);
                 m_propertyEditor->Setup(m_serializeContext, this, false, 175);
                 m_propertyEditor->show();
-                connect(m_propertyEditor, &AzToolsFramework::ReflectedPropertyEditor::OnExpansionContractionDone,
-                    this, &ManifestVectorWidget::OnPropertyGridContraction);
                 m_ui->m_mainLayout->insertWidget(1, m_propertyEditor);
 
                 m_ui->m_addObjectButton->setProperty("class", "FixedMenu");
@@ -239,18 +237,6 @@ namespace AZ
                 }
                 m_propertyEditor->InvalidateAll();
                 m_propertyEditor->ExpandAll();
-
-                UpdatePropertyGridSize();
-            }
-
-            void ManifestVectorWidget::UpdatePropertyGridSize()
-            {
-                if (m_propertyEditor)
-                {
-                    int height = m_propertyEditor->GetContentHeight();
-                    m_propertyEditor->setMinimumHeight(height);
-                    m_propertyEditor->setMaximumHeight(height);
-                }
             }
 
             void ManifestVectorWidget::EmitObjectChanged(const DataTypes::IManifestObject* object)
@@ -312,11 +298,6 @@ namespace AZ
 
             void ManifestVectorWidget::SealUndoStack()
             {
-            }
-
-            void ManifestVectorWidget::OnPropertyGridContraction()
-            {
-                UpdatePropertyGridSize();
             }
 
             void ManifestVectorWidget::ObjectUpdated(const Containers::Scene& scene, const DataTypes::IManifestObject* target, void* sender)

@@ -1,8 +1,10 @@
 {
     "auto": {
       "Include": [
-          "Include/EditorPythonBindings/EditorPythonBindingsBus.h"
-        ],
+        "Include/EditorPythonBindings/CustomTypeBindingBus.h",
+        "Include/EditorPythonBindings/EditorPythonBindingsBus.h",
+        "Include/EditorPythonBindings/EditorPythonBindingsSymbols.h"
+      ],
       "Source": [
           "Source/EditorPythonBindingsModule.cpp",
           "Source/PythonCommon.h",

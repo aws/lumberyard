@@ -73,7 +73,7 @@ void QColorWidget::setColor(const QColor& color, int index)
     QString colStr;
     int r, g, b, a;
     m_color[index].getRgb(&r, &g, &b, &a);
-    colStr = colStr.sprintf("background: rgba(%d,%d,%d,%d);",
+    colStr = colStr.asprintf("background: rgba(%d,%d,%d,%d);",
             r, g, b, a);
     if (index == 0)
     {

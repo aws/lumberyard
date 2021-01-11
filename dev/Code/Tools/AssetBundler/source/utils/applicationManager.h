@@ -111,6 +111,8 @@ namespace AssetBundler
         bool m_printLast = false;
         bool m_allowOverwrites = false;
 
+        AzFramework::PlatformFlags m_platformFlags = AzFramework::PlatformFlags::Platform_NONE;
+
         // Comparison definitions
         FilePath m_comparisonRulesFile;
         ComparisonRulesParams m_comparisonRulesParams;
@@ -260,8 +262,12 @@ namespace AssetBundler
         void PrintComparisonRules(const AzToolsFramework::AssetFileInfoListComparison& assetListComparison, const AZStd::string& comparisonRulesAbsoluteFilePath);
         bool IsDefaultToken(const AZStd::string& pathOrToken);
         void PrintComparisonAssetList(const AzToolsFramework::AssetFileInfoList& infoList, const AZStd::string& resultName);
+        void AddPlatformToAllComparisonParams(ComparisonParams& params, const AZStd::string& platformName);
+        void AddPlatformToComparisonParam(AZStd::string& inOut, const AZStd::string& platformName);
         //! Error message to display when neither of two optional arguments was found
         static AZStd::string GetBinaryArgOptionFailure(const char* arg1, const char* arg2);
+
+        bool SeedsOperationRequiresCatalog(const SeedsParams& params);
         ////////////////////////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////////////////////////

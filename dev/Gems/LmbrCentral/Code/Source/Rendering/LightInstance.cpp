@@ -22,6 +22,8 @@
 #include "LightComponent.h"
 #include "LensFlareComponent.h"
 
+#include <LmbrCentral/Rendering/ClipVolumeComponentBus.h>
+
 namespace
 {
     const float kDefaultLightFrustumAngle = 45.f;
@@ -343,6 +345,50 @@ namespace LmbrCentral
         }
 
         return 0 == (m_renderLight->GetRndFlags() & ERF_HIDDEN);
+    }
+
+    void LightInstance::SetClipVolume(IClipVolume* clipVolume)
+    {
+        if (m_renderLight)
+        {
+            CDLight& lightProperties = m_renderLight->GetLightProperties();
+
+            // light properties supports 2 clip volumes
+            for (int i = 0; i < 2; ++i)
+            {
+                if (lightProperties.m_pClipVolumes[i] == nullptr)
+                {
+                    lightProperties.m_pClipVolumes[i] = clipVolume;
+                    lightProperties.m_Flags |= DLF_HAS_CLIP_VOLUME;
+
+                    break;
+                }
+            }
+        }
+    }
+
+    void LightInstance::ClearClipVolume(IClipVolume* clipVolume)
+    {
+        if (m_renderLight)
+        {
+            CDLight& lightProperties = m_renderLight->GetLightProperties();
+            bool hasClipVolume = false;
+            for (int i = 0; i < 2; ++i)
+            {
+                if (lightProperties.m_pClipVolumes[i] == clipVolume)
+                {
+                    lightProperties.m_pClipVolumes[i] = nullptr;
+                }
+                else if (lightProperties.m_pClipVolumes[i] && lightProperties.m_pClipVolumes[i] != clipVolume)
+                {
+                    hasClipVolume = true;
+                }
+            }
+            if (!hasClipVolume)
+            {
+                lightProperties.m_Flags &= ~DLF_HAS_CLIP_VOLUME;
+            }
+        }
     }
 
     void LightInstance::CreateRenderLight(const LightConfiguration& configuration)

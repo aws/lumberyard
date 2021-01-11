@@ -76,19 +76,31 @@ namespace EMotionFX
             // SimpleMotionComponentRequestBus::Handler
             void LoopMotion(bool enable) override;
             bool GetLoopMotion() const override;
+
             void RetargetMotion(bool enable) override;
+            bool GetRetargetMotion() const override;
+
             void ReverseMotion(bool enable) override;
+            bool GetReverseMotion() const override;
+
             void MirrorMotion(bool enable) override;
+            bool GetMirrorMotion() const override;
+
             void SetPlaySpeed(float speed) override;
             float GetPlaySpeed() const override;
+
             void PlayTime(float time) override;
             float GetPlayTime() const override;
+
             void Motion(AZ::Data::AssetId assetId) override;
             AZ::Data::AssetId  GetMotion() const override;
+
             void BlendInTime(float time) override;
             float GetBlendInTime() const override;
+
             void BlendOutTime(float time) override;
             float GetBlendOutTime() const override;
+
             void PlayMotion() override;
 
             // EditorSimpleMotionComponentRequestBus::Handler

@@ -1,0 +1,11 @@
+{
+    "none":
+    {
+        "Tests":
+        [
+            "Tests/WebsocketsTest.cpp",
+            "Tests/WebsocketsTest.h",
+            "Tests/SecureWebsocketsTest.cpp"
+        ]
+    }
+}

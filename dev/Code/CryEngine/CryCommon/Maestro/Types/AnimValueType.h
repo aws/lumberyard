@@ -40,6 +40,7 @@ enum class AnimValueType
     RGB = 20,
     CharacterAnim = 21,
     AssetBlend = 22,
+    AssetId = 23,
 
     Unknown = static_cast<int>(0xFFFFFFFF)
 };

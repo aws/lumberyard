@@ -24,8 +24,7 @@ class CLensFlareView
     , public ILensFlareChangeElementListener
 {
 public:
-
-    explicit CLensFlareView(QWidget* parent = nullptr, Qt::WindowFlags f = 0);
+    explicit CLensFlareView(QWidget* parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
     ~CLensFlareView();
 
     void OnInternalVariableChange(IVariable* pVar);

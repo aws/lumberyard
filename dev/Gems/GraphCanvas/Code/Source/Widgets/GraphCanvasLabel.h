@@ -38,6 +38,13 @@ namespace GraphCanvas
             ResizeToContent
         };
 
+        enum class RoundedCornersMode
+        {
+            AllCorners,
+            LeftCorners,
+            RightCorners
+        };
+
         GraphCanvasLabel(QGraphicsItem* parent = nullptr);
         ~GraphCanvasLabel() = default;
 
@@ -57,6 +64,9 @@ namespace GraphCanvas
         void RefreshDisplay();
 
         void SetWrapMode(WrapMode wrapMode);
+
+        //! Sets which corners to apply the radius to
+        void SetRoundedCornersMode(RoundedCornersMode roundedCornerMode);
 
         QRectF GetDisplayedSize() const;
 
@@ -116,6 +126,7 @@ namespace GraphCanvas
         QRectF m_desiredBounds;
 
         WrapMode m_wrapMode;
+        RoundedCornersMode m_roundedCornersMode;
 
         bool                 m_hasBorderOverride;
         QBrush               m_borderColorOverride;

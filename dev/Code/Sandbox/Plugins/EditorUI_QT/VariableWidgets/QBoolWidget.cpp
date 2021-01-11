@@ -37,7 +37,7 @@ QBoolWidget::QBoolWidget(CAttributeItem* parent)
             emit m_parent->SignalUndoPoint();
         });
 
-    m_tooltip = new QToolTipWidget(this);
+    m_tooltip = new QToolTipWrapper(this);
     setLayoutDirection(Qt::LeftToRight);
 }
 

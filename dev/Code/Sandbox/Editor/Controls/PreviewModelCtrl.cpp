@@ -882,7 +882,7 @@ void CPreviewModelCtrl::OnRButtonUp(QPoint point)
 
 void CPreviewModelCtrl::wheelEvent(QWheelEvent* event)
 {
-    const short zDelta = event->delta();
+    const short zDelta = event->angleDelta().y();
     // TODO: Add your message handler code here and/or call default
     Matrix34 m = m_camera.GetMatrix();
     Vec3 zdir = m.GetColumn1().GetNormalized();

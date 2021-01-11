@@ -430,5 +430,29 @@ public:
     AZ::Data::AssetId m_assetId;
 };
 
+// Class to hold ePropertyAsset (IVariable::DT_ASSET)
+class CReflectedVarAsset
+    : public CReflectedVar
+{
+public:
+    AZ_RTTI(CReflectedVarAsset, "{38F49605-F805-4756-BC0A-DCB5612ED122}", CReflectedVar)
+
+        CReflectedVarAsset(const AZStd::string& name)
+        : CReflectedVar(name)
+        , m_assetId()
+        , m_assetTypeName("")
+    {}
+
+    CReflectedVarAsset()
+        : m_assetId()
+        , m_assetTypeName("")
+    {}
+
+    AZStd::string varName() const { return m_varName; }
+    AZStd::string description() const { return m_description; }
+
+    AZ::Data::AssetId m_assetId;
+    AZStd::string m_assetTypeName;
+};
 
 #endif // CRYINCLUDE_EDITOR_UTILS_REFLECTEDVAR_H

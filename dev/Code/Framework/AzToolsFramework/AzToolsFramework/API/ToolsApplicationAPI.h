@@ -637,9 +637,9 @@ namespace AzToolsFramework
         struct SelectionConnectionPolicy
             : public AZ::EBusConnectionPolicy<Bus>
         {
-            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
+            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, typename Bus::Context::ConnectLockGuard& connectLock, const typename Bus::BusIdType& id = 0)
             {
-                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
+                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, connectLock, id);
                 EntityIdList selectedEntities;
                 EBUS_EVENT_RESULT(selectedEntities, ToolsApplicationRequests::Bus, GetSelectedEntities);
                 if (AZStd::find(selectedEntities.begin(), selectedEntities.end(), id) != selectedEntities.end())
@@ -690,6 +690,11 @@ namespace AzToolsFramework
     /// Type to inherit to implement EditorPickModeRequests
     using EditorPickModeRequestBus = AZ::EBus<EditorPickModeRequests>;
 
+    struct PickModeConfiguration
+    {
+        bool m_enableLayerPicking = false;
+    };
+
     /**
      * Bus for editor notifications related to Pick Mode.
      */
@@ -704,7 +709,7 @@ namespace AzToolsFramework
         /**
          * Notify other systems that the editor has entered Pick Mode select.
          */
-        virtual void OnEntityPickModeStarted() {}
+        virtual void OnEntityPickModeStarted(PickModeConfiguration pickModeConfiguration) { AZ_UNUSED(pickModeConfiguration); }
         /**
          * Notify other systems that the editor has left Pick Mode select.
          */
@@ -744,6 +749,11 @@ namespace AzToolsFramework
         /// \param widgetCreationFunc - function callback for constructing the pane.
         typedef AZStd::function<QWidget*(QWidget*)> WidgetCreationFunc;
         virtual void RegisterViewPane(const char* /*name*/, const char* /*category*/, const ViewPaneOptions& /*viewOptions*/, const WidgetCreationFunc& /*widgetCreationFunc*/) {};
+
+        //! Similar to EditorRequests::RegisterViewPane, although instead of specifying a widget creation function, the user
+        //! must connect to the ViewPaneCallbacks bus and respond to the CreateViewPaneWidget event that is called when
+        //! the view pane needs to be constructed.
+        virtual void RegisterCustomViewPane(const char* /*name*/, const char* /*category*/, const ViewPaneOptions& /*viewOptions*/) {};
 
         /// Unregisters a view pane by name from the main editor.
         /// \param name - the name of the pane to be unregistered. This must match the name used for registration.
@@ -955,6 +965,23 @@ namespace AzToolsFramework
     };
 
     using EditorEventsBus = AZ::EBus<EditorEvents>;
+
+    class ViewPaneCallbacks
+        : public AZ::EBusTraits
+    {
+    public:
+        //////////////////////////////////////////////////////////////////////////
+        // EBusTraits overrides
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZStd::string;
+        //////////////////////////////////////////////////////////////////////////
+
+        //! Return the window ID of the created view pane widget
+        virtual AZ::u64 CreateViewPaneWidget() { return AZ::u64(); }
+    };
+
+    using ViewPaneCallbackBus = AZ::EBus<ViewPaneCallbacks>;
 
     /**
      * RAII Helper class for undo batches.

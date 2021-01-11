@@ -460,6 +460,15 @@ namespace AssetProcessor
                 QString productNameWithPlatform = QString("%1%2%3").arg(platform.c_str(), AZ_CORRECT_DATABASE_SEPARATOR_STRING, dependencyPathSearch.c_str());
                 QString productNameWithPlatformAndGameName = QString("%1%2%3%2%4").arg(platform.c_str(), AZ_CORRECT_DATABASE_SEPARATOR_STRING, gameName, dependencyPathSearch.c_str());
 
+                if (AzFramework::StringFunc::Equal(productNameWithPlatformAndGameName.toUtf8().data(), productName.c_str()))
+                {
+                    AZ_Warning(AssetProcessor::ConsoleChannel, false,
+                        "Invalid dependency: Product Asset ( %s ) has listed itself as one of its own Product Dependencies.",
+                        productName.c_str());
+                    pathIter = pathDeps.erase(pathIter);
+                    continue;
+                }
+
                 if (isExactDependency)
                 {
                     m_stateData->GetProductsByProductName(productNameWithPlatformAndGameName, productInfoContainer);

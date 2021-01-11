@@ -20,10 +20,14 @@
 #include <Include/IImageUtil.h>
 
 // QT
-#include <QPainter>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
 #include <QEvent>
 #include <QKeyEvent>
+#include <QPainter>
+#include <QPainterPath>
 #include <qmath.h>
+AZ_POP_DISABLE_WARNING
+
 #include <Controls/ui_QBitmapPreviewDialog.h>
 
 static const int kDefaultWidth  = 256;
@@ -312,8 +316,8 @@ void QBitmapPreviewDialogImp::refreshData()
 
 
     setImageRgba8888(scaledImage.GetData(), w, h, "");
-    setSize(QString().sprintf("%d x %d", m_image->GetWidth(), m_image->GetHeight()));
-    setMips(QString().sprintf("%d", m_image->GetNumberOfMipMaps()));
+    setSize(QString().asprintf("%d x %d", m_image->GetWidth(), m_image->GetHeight()));
+    setMips(QString().asprintf("%d", m_image->GetNumberOfMipMaps()));
 
     setFullSize(m_showOriginalSize);
 

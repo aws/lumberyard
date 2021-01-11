@@ -37,3 +37,8 @@ if (azlmbr.qt.QtForPythonRequestBus(azlmbr.bus.Broadcast, 'IsActive')):
         newPath += path
         os.environ['PATH'] = newPath
         print('PySide2 bootstrapped PATH for Windows.')
+
+        # Once PySide2 has been bootstrapped, register our Object Tree visualizer with the Editor
+        import az_qt_helpers
+        from show_object_tree import ObjectTreeDialog
+        az_qt_helpers.register_view_pane('Object Tree', ObjectTreeDialog)

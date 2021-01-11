@@ -903,6 +903,10 @@ struct IVisAreaManager
     virtual void GetObjects(PodArray<IRenderNode*>& lstObjects, const AABB* pBBox) = 0;
 
     virtual bool IsOutdoorAreasVisible() = 0;
+
+    // Summary:
+    //   Clear terrain nodes, useful when terrain is being destroyed in the Editor, when entering game mode.
+    virtual void ClearTerrainNodes() = 0;
 };
 
 

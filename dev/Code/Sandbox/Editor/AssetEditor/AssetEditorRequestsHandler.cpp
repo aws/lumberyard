@@ -58,11 +58,10 @@ void AssetEditorRequestsHandler::OpenAssetEditor(const AZ::Data::Asset<AZ::Data:
 {
     using namespace AzToolsFramework::AssetEditor;
 
-    AssetEditorWindow::RegisterViewClass(asset);
+    // Open the AssetEditor if it isn't open already.
+    auto&& pane = QtViewPaneManager::instance()->OpenPane(LyViewPane::AssetEditor, QtViewPane::OpenMode::RestoreLayout);
 
-    auto& assetName = asset.GetHint();
-    const char* paneName = assetName.c_str();
-    auto&& pane = QtViewPaneManager::instance()->OpenPane(paneName, QtViewPane::OpenMode::RestoreLayout);
+    AssetEditorWidgetRequestsBus::Broadcast(&AssetEditorWidgetRequests::OpenAsset, asset);
 }
 
 void AssetEditorRequestsHandler::OpenAssetEditorById(const AZ::Data::AssetId assetId)

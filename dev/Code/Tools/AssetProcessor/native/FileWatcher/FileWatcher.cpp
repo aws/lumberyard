@@ -101,7 +101,7 @@ int FileWatcher::AddFolderWatch(FolderWatchBase* pFolderWatch)
             if (FolderWatchBase::IsSubfolder((*rootsIter)->m_root, pFolderWatch->m_folder))
             {
                 //union the sub folder map over to the new root
-                pFolderRootWatch->m_subFolderWatchesMap.unite((*rootsIter)->m_subFolderWatchesMap);
+                pFolderRootWatch->m_subFolderWatchesMap.insert((*rootsIter)->m_subFolderWatchesMap);
 
                 //clear the old root sub folders map so they don't get deleted when we
                 //delete the old root as they are now pointed to by the new root

@@ -47,7 +47,7 @@
     <file alias="object_toolbar-00.png">MainWindow/object_toolbar-00.png</file>
     <file alias="object_toolbar-01.png">MainWindow/object_toolbar-01.png</file>
     <file alias="object_toolbar-02.png">MainWindow/object_toolbar-02.png</file>
-    <file alias="object_toolbar-03.png">MainWindow/object_toolbar-03.png</file>
+    <file alias="object_toolbar-03.svg">MainWindow/object_toolbar-03.svg</file>
     <file alias="object_toolbar-04.png">MainWindow/object_toolbar-04.png</file>
     <file alias="object_toolbar-05.png">MainWindow/object_toolbar-05.png</file>
     <file alias="object_toolbar-06.png">MainWindow/object_toolbar-06.png</file>
@@ -148,9 +148,9 @@
     <file>res/Global.svg</file>
     <file>res/Motion.svg</file>
     <file>res/Viewport.svg</file>
-    <file>error_report_00.png</file>
-    <file>error_report_01.png</file>
-    <file>error_report_02.png</file>
+    <file alias="error_report_error.svg">res/error_report_error.svg</file>
+    <file alias="error_report_warning.svg">res/error_report_warning.svg</file>
+    <file alias="error_report_comment.svg">res/error_report_comment.svg</file>
     <file>prefabs_tree_00.png</file>
     <file>prefabs_tree_01.png</file>
     <file>prefabs_tree_02.png</file>

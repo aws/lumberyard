@@ -28,6 +28,7 @@
 #include <ITimer.h>
 #include <LegacyAllocator.h>
 #include <ParseEngineConfig.h>
+#include <LmbrCentral/FileSystem/AliasConfiguration.h>
 
 #if defined(AZ_MONOLITHIC_BUILD)
     #include <StaticModules.inl>
@@ -493,6 +494,52 @@ namespace LumberyardLauncher
             {
                 AZ_Error("Launcher", false, "Application descriptor file not found: %s", fullPathToGameDescriptorFile);
                 return ReturnCode::ErrAppDescriptor;
+            }
+
+            {
+                LmbrCentral::AliasConfiguration config;
+
+                SSystemInitParams initParams;
+                engineConfig.CopyToStartupParams(initParams);
+
+                bool usingAssetCache = initParams.WillAssetCacheExist();
+                const char* rootPath = usingAssetCache ? initParams.rootPathCache : initParams.rootPath;
+                const char* assetsPath = usingAssetCache ? initParams.assetsPathCache : initParams.assetsPath;
+                
+                if (usingAssetCache || mainInfo.m_appWriteStoragePath == nullptr)
+                {
+                    config.m_userPath = "@root@/user";
+                }
+                else
+                {
+                    char userPath[AZ_MAX_PATH_LEN];
+                    azsnprintf(userPath, AZ_MAX_PATH_LEN, "%s/user", mainInfo.m_appWriteStoragePath);
+                    config.m_userPath = userPath;
+                }
+
+                config.m_rootPath = rootPath;
+                config.m_assetsPath = assetsPath;
+                config.m_logPath = "@user@/log";
+                config.m_cachePath = "@user@/cache";
+
+                if (initParams.userPath[0] != 0)
+                {
+                    config.m_userPath = initParams.userPath;
+                }
+
+                if (initParams.logPath[0] != 0)
+                {
+                    config.m_logPath = initParams.logPath;
+                }
+
+                if (initParams.cachePath[0] != 0)
+                {
+                    config.m_cachePath = initParams.cachePath;
+                }
+
+                config.m_allowedRemoteIo = !initParams.bTestMode && initParams.remoteFileIO && !initParams.bEditor;
+
+                LmbrCentral::AliasConfigurationStorage::SetConfig(config);
             }
 
             AzGameFramework::GameApplication::StartupParameters gameApplicationStartupParams;

@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
+
 #include <QStyle>
 
 class QSettings;
@@ -20,35 +21,25 @@ namespace AzQtComponents
 {
     class Style;
 
-    /**
-     * Special class to handle styling and painting of RadioButtons.
-     *
-     * Some of the styling of QRadioButton are done via CSS, in RadioButton.qss
-     * Everything else that can be configured is in RadioButtonConfig.ini
-     *
-     */
+     //! Class to handle styling and painting of radio button controls.
     class AZ_QT_COMPONENTS_API RadioButton
     {
     public:
-
+        //! Style configuration for the RadioButton class.
         struct Config
         {
         };
 
-        /*!
-        * Loads the button config data from a settings object.
-        */
+        //! Sets the RadioButton style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the RadioButton.
         static Config loadConfig(QSettings& settings);
-
-        /*!
-        * Returns default button config data.
-        */
+        //! Gets the default RadioButton style configuration.
         static Config defaultConfig();
 
     private:
         friend class Style;
 
-        // methods used by Style
         static bool polish(Style* style, QWidget* widget, const Config& config);
 
         static QSize sizeFromContents(const Style* style, QStyle::ContentsType type, const QStyleOption* option, const QSize& size, const QWidget* widget, const Config& config);

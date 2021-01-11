@@ -425,7 +425,7 @@ def cleanup_item(file_name, args):
 
 def copy_dir(source_dir, dest_dir):
     if not os.path.isdir(dest_dir):
-        os.mkdir(dest_dir)
+        os.makedirs(dest_dir)
     filenames = os.listdir(source_dir)
     for filename in filenames:
         sourcefile = os.path.join(source_dir, filename)

@@ -38,6 +38,72 @@ namespace EditorPythonBindings
         constexpr const char s_lessThanOrEqual[] = "__le__";
     }
 
+    namespace Builtins
+    {
+        constexpr const char s_repr[] = "__repr__";
+        constexpr const char s_str[] = "__str__";
+    }
+
+    namespace Naming
+    {
+        void StripReplace(AZStd::string& inout, AZStd::string_view prefix, char bracketIn, char bracketOut, AZStd::string_view replacement)
+        {
+            size_t pos = inout.find(prefix);
+            while (pos != AZStd::string::npos)
+            {
+                const char* const start = &inout[pos];
+                pos += prefix.size();
+                const char* end = &inout[pos];
+                int bracketCount = 1;
+                do
+                {
+                    if (pos == inout.size())
+                    {
+                        break;
+                    }
+                    else if (inout[pos] == bracketIn)
+                    {
+                        bracketCount++;
+                    }
+                    else if (inout[pos] == bracketOut)
+                    {
+                        bracketCount--;
+                    }
+                    end++;
+                    pos++;
+                }
+                while (bracketCount > 0);
+
+                AZStd::string target{ start, end };
+                AZ::StringFunc::Replace(inout, target.c_str(), replacement.data());
+
+                pos = inout.find(prefix);
+            }
+        }
+
+        AZStd::optional<AZStd::string> GetPythonSyntax(const AZ::BehaviorClass& behaviorClass)
+        {
+            constexpr const char* invalidCharacters = " :<>,*&";
+            if (behaviorClass.m_name.find_first_of(invalidCharacters) == AZStd::string::npos)
+            {
+                // this class name is not using invalid characters
+                return AZStd::nullopt;
+            }
+
+            AZStd::string syntaxName = behaviorClass.m_name;
+
+            // replace common core template types and name spaces like AZStd
+            StripReplace(syntaxName, "AZStd::basic_string<", '<', '>', "string");
+            AZ::StringFunc::Replace(syntaxName, "AZStd", "");            
+
+            AZStd::vector<AZStd::string> tokens;
+            AZ::StringFunc::Tokenize(syntaxName, tokens, invalidCharacters, false, false);
+            syntaxName.clear();
+            AZ::StringFunc::Join(syntaxName, tokens.begin(), tokens.end(), "_");
+            return syntaxName;
+        }
+    }
+
     PythonProxyObject::PythonProxyObject(const AZ::TypeId& typeId)
     {
         const AZ::BehaviorClass* behaviorClass = AZ::BehaviorContextHelper::GetClass(typeId);
@@ -368,6 +434,98 @@ namespace EditorPythonBindings
         }
     }
 
+    pybind11::object PythonProxyObject::GetWrappedObjectRepr()
+    {
+        AZ::Crc32 reprNamedKey;
+        reprNamedKey = { Builtins::s_repr };
+
+        // Attempt to call the object's __repr__ implementation first to get the most accurate representation.
+        AZ::BehaviorMethod* reprMethod = nullptr;
+        auto methodEntry = m_methods.find(reprNamedKey);
+        if (methodEntry != m_methods.end())
+        {
+            reprMethod = methodEntry->second;
+
+            pybind11::object result = Call::ClassMethod(reprMethod, m_wrappedObject, pybind11::args());
+            if (!result.is_none())
+            {
+                return result;
+            }
+            else
+            {
+                AZ_Warning("python", false, "The %s method in type (%s) did not return a valid value.", Builtins::s_repr, m_wrappedObjectTypeName.c_str());
+            }
+        }
+
+        // There's no __repr__ implementation in the object, so use a basic representation and cache it.
+        AZ_Warning("python", false, "The type (%s) does not implement the %s method.", m_wrappedObjectTypeName.c_str(), Builtins::s_repr);
+        if (m_wrappedObjectCachedRepr.empty())
+        {
+            pybind11::module builtinsModule = pybind11::module::import("builtins");
+            auto idFunc = builtinsModule.attr("id");
+            pybind11::object resId = idFunc(this);
+            AZStd::string wrappedObjectId = pybind11::str(resId).operator std::string().c_str();
+            m_wrappedObjectCachedRepr = AZStd::string::format("<%s via PythonProxyObject at %s>", m_wrappedObjectTypeName.c_str(), wrappedObjectId.c_str());
+        }
+
+        return pybind11::str(m_wrappedObjectCachedRepr.c_str());
+    }
+
+    pybind11::object PythonProxyObject::GetWrappedObjectStr()
+    {
+        // Inspect methods with attributes to find the ToString attribute
+        AZ::BehaviorMethod* strMethod = nullptr;
+
+        using namespace AZ::Script;
+        for (auto&& strMethodCandidatePair : m_methods)
+        {
+            const AZ::AttributeArray& attributes = strMethodCandidatePair.second->m_attributes;
+            AZ::Attribute* operatorAttribute = AZ::FindAttribute(Attributes::Operator, attributes);
+            if (!operatorAttribute)
+            {
+                continue;
+            }
+
+            Attributes::OperatorType operatorType;
+            AZ::AttributeReader scopeAttributeReader(nullptr, operatorAttribute);
+            if (!scopeAttributeReader.Read<Attributes::OperatorType>(operatorType))
+            {
+                continue;
+            }
+
+            if (operatorType == Attributes::OperatorType::ToString)
+            {
+                if (strMethod == nullptr)
+                {
+                    strMethod = strMethodCandidatePair.second;
+                }
+                else
+                {
+                    AZ_Warning("python", false, "The type (%s) has more than one method with OperatorType::ToString, using the first found.", m_wrappedObjectTypeName.c_str());
+                    break;
+                }
+            }
+        }
+
+        if (strMethod != nullptr)
+        {
+            pybind11::object result = Call::ClassMethod(strMethod, m_wrappedObject, pybind11::args());
+            if (!result.is_none())
+            {
+                return result;
+            }
+            else
+            {
+                AZ_Warning("python", false, "The %s method in type (%s) did not return a valid value.", Builtins::s_str, m_wrappedObjectTypeName.c_str());
+            }
+        }
+
+        // Fallback to __repr__ because there's no __str__ implementation in the object,
+        // so use a basic representation and cache it.
+        AZ_TracePrintf("python", "The type (%s) does not implement the %s method or did not return a valid value, trying %s.", m_wrappedObjectTypeName.c_str(), Builtins::s_str, Builtins::s_repr);
+        return GetWrappedObjectRepr();
+    }
+
     void PythonProxyObject::ReleaseWrappedObject()
     {
         if (m_wrappedObject.IsValid() && m_ownership == Ownership::Owned)
@@ -378,6 +536,7 @@ namespace EditorPythonBindings
                 behaviorClass->Destroy(m_wrappedObject);
                 m_wrappedObject = {};
                 m_wrappedObjectTypeName.clear();
+                m_wrappedObjectCachedRepr.clear();
                 m_methods.clear();
                 m_properties.clear();
             }
@@ -478,6 +637,18 @@ namespace EditorPythonBindings
             return method.IsMember() || (method.GetNumArguments() > 0 && method.GetArgument(0)->m_typeId == typeId);
         }
 
+        bool IsClassConstant(const AZ::BehaviorProperty* property)
+        {
+            bool value = false;
+            AZ::Attribute* classConstantAttribute = AZ::FindAttribute(AZ::Script::Attributes::ClassConstantValue, property->m_attributes);
+            if (classConstantAttribute)
+            {
+                AZ::AttributeReader attributeReader(nullptr, classConstantAttribute);
+                attributeReader.Read<bool>(value);
+            }
+            return value;
+        }
+
         pybind11::object CreatePythonProxyObject(const AZ::TypeId& typeId, void* data)
         {
             PythonProxyObject* instance = nullptr;
@@ -561,7 +732,7 @@ namespace EditorPythonBindings
                 bool hasMemberMethods = behaviorClass->m_constructors.empty() == false;
                 bool hasMemberProperties = behaviorClass->m_properties.empty() == false;
 
-                // does this class define methods that may be reflected in a Python  module?
+                // does this class define methods that may be reflected in a Python module?
                 if (!behaviorClass->m_methods.empty())
                 {
                     // add the non-member methods as Python 'free' function
@@ -600,6 +771,26 @@ namespace EditorPythonBindings
                     }
                 }
 
+                // expose all the constant class properties for Python to use
+                for (const auto& propertyEntry : behaviorClass->m_properties)
+                {
+                    const AZStd::string& propertyEntryName = propertyEntry.first;
+                    AZ::BehaviorProperty* behaviorProperty = propertyEntry.second;
+
+                    if (IsClassConstant(behaviorProperty))
+                    {
+                        // the name of the property will be "azlmbr.<Module>.<Behavior Class>_<Behavior Property>"
+                        AZStd::string constantPropertyName =
+                            AZStd::string::format("%s_%s", behaviorClass->m_name.c_str(), propertyEntryName.c_str());
+
+                        pybind11::object constantValue = Call::StaticMethod(behaviorProperty->m_getter, {});
+                        pybind11::setattr(subModule, constantPropertyName.c_str(), constantValue);
+
+                        AZStd::string subModuleName = pybind11::cast<AZStd::string>(subModule.attr("__name__"));
+                        PythonSymbolEventBus::Broadcast(&PythonSymbolEventBus::Events::LogGlobalProperty, subModuleName, constantPropertyName, behaviorProperty);
+                    }
+                }
+
                 // if the Behavior Class has any properties, methods, or constructors then export it
                 const bool exportBehaviorClass = (hasMemberMethods || hasMemberProperties);
 
@@ -613,7 +804,22 @@ namespace EditorPythonBindings
                     });
 
                     AZStd::string subModuleName = pybind11::cast<AZStd::string>(subModule.attr("__name__"));
-                    PythonSymbolEventBus::Broadcast(&PythonSymbolEventBus::Events::LogClass, subModuleName, behaviorClass);
+
+                    // register an alternative class name that passes the Python syntax
+                    auto syntaxName = Naming::GetPythonSyntax(*behaviorClass);
+                    if (syntaxName)
+                    {
+                        const char* properSyntax = syntaxName.value().c_str();
+                        subModule.attr(properSyntax) = pybind11::cpp_function([behaviorClassName](pybind11::args pythonArgs)
+                        {
+                            return ConstructPythonProxyObjectByTypename(behaviorClassName, pythonArgs);
+                        });
+                        PythonSymbolEventBus::Broadcast(&PythonSymbolEventBus::Events::LogClassWithName, subModuleName, behaviorClass, properSyntax);
+                    }
+                    else
+                    {
+                        PythonSymbolEventBus::Broadcast(&PythonSymbolEventBus::Events::LogClass, subModuleName, behaviorClass);
+                    }
                 }
             }
         }
@@ -737,6 +943,14 @@ namespace EditorPythonBindings
                 })
                 .def("__setattr__", &PythonProxyObject::SetPropertyValue)
                 .def("__getattr__", &PythonProxyObject::GetPropertyValue)
+                .def(Builtins::s_repr, [](PythonProxyObject& self)
+                {
+                    return self.GetWrappedObjectRepr();
+                })
+                .def(Builtins::s_str, [](PythonProxyObject& self)
+                {
+                    return self.GetWrappedObjectStr();
+                })
                 ;
         }
     }

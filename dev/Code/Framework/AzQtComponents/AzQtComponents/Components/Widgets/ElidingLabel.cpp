@@ -98,7 +98,7 @@ namespace AzQtComponents
         {
             if (frameWidth())
             {
-                int textMargin = fontMetrics().width('x') / 2;
+                int textMargin = fontMetrics().horizontalAdvance('x') / 2;
                 textRect.adjust(textMargin, 0, -textMargin, 0);
             }
         }
@@ -161,9 +161,9 @@ namespace AzQtComponents
         while ((regexIndex = text().indexOf(m_filterRegex, regexIndex + 1)) >= 0)
         {
             QString preSelectedText = text().left(regexIndex);
-            int preSelectedTextLength = fontMetrics().width(preSelectedText);
+            int preSelectedTextLength = fontMetrics().horizontalAdvance(preSelectedText);
             QString selectedText = text().mid(regexIndex, m_filterString.length());
-            int selectedTextLength = fontMetrics().width(selectedText);
+            int selectedTextLength = fontMetrics().horizontalAdvance(selectedText);
 
             int leftSpot = textRect.left() + preSelectedTextLength;
 

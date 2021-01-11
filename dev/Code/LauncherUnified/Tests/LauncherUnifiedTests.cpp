@@ -11,20 +11,24 @@
 */
 
 #include "Launcher_precompiled.h"
-
+#include <IGameStartup.h>
 #include <AzTest/AzTest.h>
-
+#include <AzCore/Component/EntityBus.h>
 #include "../Launcher.h"
+#include "../../CryEngine/CryCommon/IEditorGame.h"
 
 class UnifiedLauncherTestFixture
     : public ::testing::Test
 {
+public:
+    static bool m_appStartCalled;
+
 protected:
     void SetUp() override {}
     void TearDown() override {}
 };
 
-
+bool UnifiedLauncherTestFixture::m_appStartCalled = false;
 
 TEST_F(UnifiedLauncherTestFixture, PlatformMainInfoAddArgument_NoCommandLineFunctions_Success)
 {
@@ -75,4 +79,165 @@ TEST_F(UnifiedLauncherTestFixture, PlatformMainInfoCopyCommandLineArgCArgV_Valid
     EXPECT_STREQ(test.m_argV[5], "value one");
 }
 
+struct EntitySystemListener;
 
+struct TestAccessEntity : public AZ::Entity
+{
+    friend struct EntitySystemListener;
+};
+
+struct GameMock : IGame
+{
+    bool Init(IGameFramework* pFramework) override;
+    void Shutdown() override;
+    void PlayerIdSet(EntityId playerId) override;
+    void LoadActionMaps(const char* filename) override;
+    EntityId GetClientActorId() const override;
+    IGameFramework* GetIGameFramework() override;
+};
+
+bool GameMock::Init(IGameFramework* /*pFramework*/)
+{
+    return true;
+}
+
+void GameMock::Shutdown()
+{
+}
+
+void GameMock::PlayerIdSet(EntityId /*playerId*/)
+{
+}
+
+void GameMock::LoadActionMaps(const char* /*filename*/)
+{
+}
+
+EntityId GameMock::GetClientActorId() const
+{
+    return {};
+}
+
+IGameFramework* GameMock::GetIGameFramework()
+{
+    return {};
+}
+
+struct GameStartupMock : IGameStartup
+{
+    IGameRef Init(SSystemInitParams& /*startupParams*/) override
+    {
+        return IGameRef(&m_gamePtr);
+    }
+
+    void Shutdown() override
+    {
+    }
+
+    GameMock m_game;
+    IGame* m_gamePtr = &m_game;
+};
+
+struct EditorGameMock : EditorGameRequestBus::Handler
+{
+    ~EditorGameMock()
+    {
+        BusDisconnect();
+    }
+
+    IGameStartup* CreateGameStartup() override
+    {
+        return &m_startupMock;
+    }
+
+    IEditorGame* CreateEditorGame() override
+    {
+        return nullptr;
+    }
+
+    GameStartupMock m_startupMock;
+};
+
+struct EntitySystemListener : AZ::EntitySystemBus::Handler
+{
+    EntitySystemListener()
+    {
+        BusConnect();
+    }
+
+    ~EntitySystemListener()
+    {
+        BusDisconnect();
+    }
+
+    void OnEntityActivated(const AZ::EntityId& id) override
+    {
+        if(id == AZ::SystemEntityId)
+        {
+            TestAccessEntity::DeactivateComponent(*m_component);
+            m_editorGameMock.BusConnect();
+        }
+    }
+
+    void OnEntityInitialized(const AZ::EntityId& id) override
+    {
+        const auto LegacyGameInterfaceSystemComponentGuid = AZ::Uuid("{6F11A7F2-4091-46EA-A77A-D1E918D8EDFE}");
+
+        AZ::Entity* entity{};
+        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, id);
+
+        if (entity)
+        {
+            // LegacyGameInterfaceSystemComponent
+            auto component = entity->FindComponent(LegacyGameInterfaceSystemComponentGuid);
+
+            if (component)
+            {
+                m_component = component;
+            }
+        }
+    }
+
+    AZ::Entity* m_systemEntity;
+    AZ::Component* m_component;
+    EditorGameMock m_editorGameMock;
+};
+
+TEST_F(UnifiedLauncherTestFixture, StarterLauncher_AliasesAreConfigured)
+{
+    UnifiedLauncherTestFixture::m_appStartCalled = false;
+
+    EntitySystemListener entitySystemListener;
+    
+    LumberyardLauncher::PlatformMainInfo mainInfo;
+    mainInfo.AddArgument("test");
+    mainInfo.m_onPostAppStart = []()
+    {
+        auto io = AZ::IO::FileIOBase::GetInstance();
+
+        ASSERT_TRUE(io);
+
+        const char* rootAlias = io->GetAlias("@root@");
+        const char* assetsAlias = io->GetAlias("@assets@");
+        const char* userAlias = io->GetAlias("@user@");
+        const char* logAlias = io->GetAlias("@log@");
+        const char* cacheAlias = io->GetAlias("@cache@");
+
+        ASSERT_NE(rootAlias, nullptr);
+        ASSERT_NE(assetsAlias, nullptr);
+        ASSERT_NE(userAlias, nullptr);
+        ASSERT_NE(logAlias, nullptr);
+        ASSERT_NE(cacheAlias, nullptr);
+
+        ASSERT_GT(strlen(rootAlias), 0);
+        ASSERT_GT(strlen(assetsAlias), 0);
+        ASSERT_GT(strlen(userAlias), 0);
+        ASSERT_GT(strlen(logAlias), 0);
+        ASSERT_GT(strlen(cacheAlias), 0);
+
+        UnifiedLauncherTestFixture::m_appStartCalled = true;
+    };
+    LumberyardLauncher::Run(mainInfo);
+
+    ASSERT_TRUE(UnifiedLauncherTestFixture::m_appStartCalled);
+}

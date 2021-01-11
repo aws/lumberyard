@@ -183,7 +183,8 @@ class GemContext(object):
         }
         
         if not no_sln_change:
-            self.__copy_project_to_solution(content_substitutions, src_content_path, os.path.join(self.__context.config.gem_directory_path, "CloudGemFramework", "v1", "Website", "CloudGemPortal.sln"), '..\..\..{0}\AWS\cgp-resource-code\src'.format(relative_path), '.njsproj')        
+            self.__copy_project_to_solution(content_substitutions, src_content_path, os.path.join(self.__context.config.gem_directory_path, "CloudGemFramework",
+                                                                                                  "v1", "Website", "CloudGemPortal.sln"), '..\..\..{0}\AWS\cgp-resource-code\src'.format(relative_path), '.njsproj')
 
         file_util.copy_directory_content(
             self.__context, 
@@ -307,30 +308,31 @@ class GemContext(object):
 
     def disable_gem(self, gem_name, lmbr_exe_path_override=None):
         # verify files are writable
-
         if not util.validate_writable_list(self.__context, [self.get_gems_file_path()]):
             return False
 
         # call lmbr.exe to disable the gem
         lmbr_exe_path = self.__get_lmbr_exe_path(lmbr_exe_path_override)
 
-        args = [self.__lmbr_exe_path, 'gems', 'disable', self.__context.config.game_directory_name, gem_name]
+        args = [lmbr_exe_path, 'gems', 'disable', self.__context.config.game_directory_name, gem_name]
         try:
             self.__execute(args)
         except Exception as e:
-            raise HandledError('Gem {} disable failed.'.format(gem_name))
+            raise HandledError('Gem {} disable failed with {}.'.format(gem_name, e))
 
         # remove from gem list and resource group list, if needed
-
         gem = self.get_by_name(gem_name)
         if gem in self.__enabled_gems:
             self.__enabled_gems.remove(gem)
 
-        self.__context.resource_groups.remove_resource_group(gem)
+        if gem is not None:
+            self.__context.resource_groups.remove_resource_group(gem)
+        else:
+            print(f"Gem {gem_name} not enabled in project. Nothing todo")
 
         # all done
-
         self.__context.view.gem_disabled(gem_name)
+        return True
 
     def __add_gem_to_resource_groups(self, gem):        
         if gem and gem.has_aws_file(constant.RESOURCE_GROUP_TEMPLATE_FILENAME):                 
@@ -491,9 +493,9 @@ class GemContext(object):
         if newest_path is None:
             raise HandledError('Could not find {} in any of the following subdirectories of {}: {}. '
                                'Please use lmbr_waf to build {}.'.format(GemContext.lmbr_exe_name(),
-                                                                          root_path,
-                                                                          ', '.join(directory_names),
-                                                                          GemContext.lmbr_exe_name()))
+                                                                         root_path,
+                                                                         ', '.join(directory_names),
+                                                                         GemContext.lmbr_exe_name()))
 
         return newest_path
 

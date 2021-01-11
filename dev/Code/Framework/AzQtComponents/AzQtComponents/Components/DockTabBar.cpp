@@ -124,7 +124,7 @@ namespace AzQtComponents
         // semi-transparent underlay that will be positioned below them so that
         // it looks better
         QPalette underlayPalette;
-        underlayPalette.setColor(QPalette::Background, g_tabIndicatorUnderlayColor);
+        underlayPalette.setColor(QPalette::Window, g_tabIndicatorUnderlayColor);
         m_tabIndicatorUnderlay->setAutoFillBackground(true);
         m_tabIndicatorUnderlay->setPalette(underlayPalette);
         QGraphicsOpacityEffect* effect = new QGraphicsOpacityEffect(m_tabIndicatorUnderlay);

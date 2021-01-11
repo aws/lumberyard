@@ -75,6 +75,7 @@ namespace AudioAnimationEvents
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Audio")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"))
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioAnimationEventsProxy.svg")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
                     ->DataElement(0, &AudioAnimationEventsProxyComponent::m_tracksEntityPosition, "Tracks Entity Position", "Should the audio source position update as the entity moves.")
                     ->DataElement(0, &AudioAnimationEventsProxyComponent::m_audioEventName, "Audio Event Name", "Defaults to audio_trigger")

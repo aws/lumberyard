@@ -51,6 +51,12 @@ namespace SurfaceData
             m_surfaceTagCrc = AZ::Crc32(value.data());
         }
 
+        void FromCRC(const AZ::Crc32& value)
+        {
+            m_surfaceTagCrc = value;
+        }
+
+
         static AZStd::vector<AZStd::pair<AZ::u32, AZStd::string>> GetRegisteredTags();
 
     private:
@@ -59,6 +65,8 @@ namespace SurfaceData
         AZStd::vector<AZStd::pair<AZ::u32, AZStd::string>> BuildSelectableTagList() const;
 
         AZStd::string GetDisplayName() const;
+
+        AZStd::string ToString() const;
 
         AZ::u32 m_surfaceTagCrc;
     };

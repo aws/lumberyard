@@ -869,7 +869,7 @@ void CVLogTextView::paintEvent(QPaintEvent* event)
         pen.setColor(QColor(140, 140, 255));
         p.setPen(pen);
 
-        strTime.sprintf("Time: [%8.3f]", refFTX.fFrameTime);
+        strTime.asprintf("Time: [%8.3f]", refFTX.fFrameTime);
         p.drawText(rc3, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine | Qt::TextDontClip, strTime);
 
         // Draw frame data

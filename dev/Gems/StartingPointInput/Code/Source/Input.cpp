@@ -220,7 +220,7 @@ namespace Input
         const AZ::Crc32 channelNameFilter(m_inputName.c_str());
         const AZ::Crc32 deviceNameFilter(m_inputDeviceType.c_str());
         const AzFramework::LocalUserId localUserIdFilter(eventNotificationId.m_localUserId);
-        AZStd::shared_ptr<InputChannelEventFilterWhitelist> filter = AZStd::make_shared<InputChannelEventFilterWhitelist>(channelNameFilter, deviceNameFilter, localUserIdFilter);
+        AZStd::shared_ptr<InputChannelEventFilterInclusionList> filter = AZStd::make_shared<InputChannelEventFilterInclusionList>(channelNameFilter, deviceNameFilter, localUserIdFilter);
         InputChannelEventListener::SetFilter(filter);
         InputChannelEventListener::Connect();
         m_wasPressed = false;

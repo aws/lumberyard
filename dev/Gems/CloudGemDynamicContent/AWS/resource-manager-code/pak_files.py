@@ -22,6 +22,7 @@ import stat
 import sys
 import zipfile
 from path_utils import ensure_posix_path
+import hashlib
 
 # For Debugging, flip this on to get verbose output
 vprint = lambda *a: None
@@ -117,6 +118,29 @@ class PakFileArchiver:
         # delete the temporary files and folder
         shutil.rmtree(temp_dir)
 
+def extract_from_pak_object(pak_object, file_path, output):
+     with zipfile.ZipFile(pak_object) as manifest_pak:                
+        file_to_extract = manifest_pak.open(file_path)
+        with open(output, 'wb') as outfile:
+            shutil.copyfileobj(file_to_extract, outfile)
+
+def calculate_pak_content_hash(pak_path: str) -> str:
+    """ Caculate hash of all of the individual file hash inside the pak 
+    
+    Arguments
+        pak_path -- path to the pak file
+    """
+    content_hash = hashlib.md5()
+    with zipfile.ZipFile(pak_path, 'r') as myzip:
+        # get a list of archive files in the pak
+        archive_file_list = [member for member in myzip.namelist() if not member.endswith('/')]
+        for archive_file in archive_file_list:
+            # update the pak content hash using the hash of each archive file
+            with myzip.open(archive_file) as myfile:
+                file_hash = hashlib.md5(myfile.read()).hexdigest()
+                content_hash.update(file_hash.encode())
+
+    return content_hash.hexdigest()
 
 def main():
     """This code is here to make it easy to archive without needing to run the lmbr_aws utility"""

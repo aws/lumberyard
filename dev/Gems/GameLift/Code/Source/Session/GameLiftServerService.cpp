@@ -62,7 +62,6 @@ namespace GridMate
 
         if (m_serverStatus == GameLift_Ready || m_serverStatus == GameLift_Terminated)
         {
-            GetGameLiftServerSDKWrapper().lock()->ProcessEnding();
             GetGameLiftServerSDKWrapper().lock()->Destroy();
             m_serverStatus = GameLift_NotInited;
         }
@@ -119,8 +118,8 @@ namespace GridMate
                     * onHealthCheck
                     * Invoked every minute to check on health. This callback must return a boolean. 
                     */
-                    []() {
-                        return true;
+                    [this]() {
+                        return m_serverStatus != GameLiftStatus::GameLift_ProcessEndFailed;
                     },
 
                     /*
@@ -173,6 +172,11 @@ namespace GridMate
         Internal::GameLiftServerSystemEventsBus::ClearQueuedEvents(); // already terminating, don't need any other events
         m_serverStatus = GameLift_Terminated;
         EBUS_EVENT_ID(m_gridMate, GameLiftServerServiceEventsBus, OnGameLiftServerWillTerminate, this);
+    }
+
+    void GameLiftServerService::OnProcessEndFailed()
+    {
+        m_serverStatus = GameLiftStatus::GameLift_ProcessEndFailed;
     }
 
     void GameLiftServerService::Update()

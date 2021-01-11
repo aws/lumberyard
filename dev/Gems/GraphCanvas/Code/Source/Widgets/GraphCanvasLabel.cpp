@@ -41,6 +41,7 @@ namespace GraphCanvas
         , m_maximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX)
         , m_minimumSize(0,0)
         , m_wrapMode(WrapMode::MaximumWidth)
+        , m_roundedCornersMode(RoundedCornersMode::AllCorners)
         , m_hasBorderOverride(false)
     {
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
@@ -130,6 +131,15 @@ namespace GraphCanvas
             UpdateDesiredBounds();
             UpdateDisplayText();
             RefreshDisplay();
+        }
+    }
+
+    void GraphCanvasLabel::SetRoundedCornersMode(RoundedCornersMode roundedCornersMode)
+    {
+        if (m_roundedCornersMode != roundedCornersMode)
+        {
+            m_roundedCornersMode = roundedCornersMode;
+            update();
         }
     }
 
@@ -309,52 +319,74 @@ namespace GraphCanvas
 
         // Background
         {
-            qreal borderRadius = m_styleHelper.GetAttribute(Styling::Attribute::BorderRadius, 0);
-
             m_displayedSize = boundingRect();
 
+            QPainterPath path;
+
+            qreal borderRadius = m_styleHelper.GetAttribute(Styling::Attribute::BorderRadius, 0);
             if (borderRadius == 0)
             {
-                painter->fillRect(m_displayedSize, m_styleHelper.GetBrush(Styling::Attribute::BackgroundColor));
-
-                if (m_styleHelper.HasAttribute(Styling::Attribute::BorderWidth) || m_hasBorderOverride)
-                {
-                    QPen restorePen = painter->pen();
-
-                    QPen borderPen = m_styleHelper.GetBorder();
-
-                    if (m_hasBorderOverride)
-                    {
-                        borderPen.setBrush(m_borderColorOverride);
-                    }
-
-                    painter->setPen(borderPen);
-
-                    painter->drawRect(m_displayedSize);
-                    painter->setPen(restorePen);
-                }
+                path.addRect(m_displayedSize);
             }
             else
             {
-                QPainterPath path;
-                path.addRoundedRect(m_displayedSize, borderRadius, borderRadius);
-                painter->fillPath(path, m_styleHelper.GetBrush(Styling::Attribute::BackgroundColor));
-
-                if (m_styleHelper.HasAttribute(Styling::Attribute::BorderWidth) || m_hasBorderOverride)
+                switch (m_roundedCornersMode)
                 {
-                    QPen restorePen = painter->pen();
-
-                    QPen borderPen = m_styleHelper.GetBorder();
-
-                    if (m_hasBorderOverride)
+                    case RoundedCornersMode::AllCorners:
                     {
-                        borderPen.setBrush(m_borderColorOverride);
+                        path.addRoundedRect(m_displayedSize, borderRadius, borderRadius);
                     }
+                    break;
 
-                    painter->setPen(borderPen);
-                    painter->drawPath(path);
-                    painter->setPen(restorePen);
+                    case RoundedCornersMode::LeftCorners:
+                    {
+                        painter->setClipRect(m_displayedSize);
+                        path.addRoundedRect(m_displayedSize.x(),
+                            m_displayedSize.y(),
+                            m_displayedSize.width() + borderRadius * 2,
+                            m_displayedSize.height(),
+                            borderRadius,
+                            borderRadius);
+                    }
+                    break;
+
+                    case RoundedCornersMode::RightCorners:
+                    {
+                        painter->setClipRect(m_displayedSize);
+                        path.addRoundedRect(m_displayedSize.x() - borderRadius * 2,
+                            m_displayedSize.y(),
+                            m_displayedSize.width() + borderRadius * 2,
+                            m_displayedSize.height(),
+                            borderRadius,
+                            borderRadius);
+                    }
+                    break;
+
+                    default:
+                    {
+                        AZ_Warning("GraphCanvasLabel", 0, "GraphCanvasLabel has an unsupported rounded corner mode.");
+                        path.addRoundedRect(m_displayedSize, borderRadius, borderRadius);
+                    }
+                    break;
                 }
+            }
+
+            painter->fillPath(path, m_styleHelper.GetBrush(Styling::Attribute::BackgroundColor));
+
+            if (m_styleHelper.HasAttribute(Styling::Attribute::BorderWidth) || m_hasBorderOverride)
+            {
+                QPen restorePen = painter->pen();
+
+                QPen borderPen = m_styleHelper.GetBorder();
+
+                if (m_hasBorderOverride)
+                {
+                    borderPen.setBrush(m_borderColorOverride);
+                }
+
+                painter->setPen(borderPen);
+                painter->drawPath(path);
+                painter->setPen(restorePen);
             }
         }
 

@@ -154,6 +154,7 @@ namespace AZ
             }
             else
             {
+                // check the asset temp cache folder for the dccmtl file
                 materialPath = SceneAPI::Utilities::FileUtilities::CreateOutputFileName(
                     context.m_scene.GetName(), context.m_outputDirectory, GFxFramework::MaterialExport::g_dccMaterialExtension);
                 AZ_TraceContext("Material cache file path", materialPath);
@@ -161,6 +162,34 @@ namespace AZ
                 {
                     AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Using cached material file for linking to meshes.");
                     fileRead = m_materialGroup->ReadMtlFile(materialPath.c_str());
+                }
+
+                // an alternative location for the foo.generated.dccmtl file is in the asset product cache
+                const char* assetCacheRoot = AZ::IO::FileIOBase::GetInstance()->GetAlias("@root@");
+                if (assetCacheRoot)
+                {
+                    using namespace AzFramework;
+
+                    AZStd::string generatedMaterialExtension(GFxFramework::MaterialExport::g_dccMaterialExtension);
+                    generatedMaterialExtension += AZStd::string(".generated");
+
+                    materialPath = context.m_scene.GetSourceFilename();
+                    StringFunc::Path::GetFullFileName(materialPath.c_str(), materialPath);
+                    StringFunc::Path::ReplaceExtension(materialPath, generatedMaterialExtension.c_str());
+
+                    AZStd::string altPath = context.m_scene.GetSourceFilename();
+                    ApplicationRequests::Bus::Broadcast(&ApplicationRequests::Bus::Events::MakePathRootRelative, altPath);
+                    AZ::StringFunc::Path::GetFolderPath(altPath.c_str(), altPath);
+
+                    AZStd::string productMaterialFilename;
+                    AZ::StringFunc::Path::Join(assetCacheRoot, altPath.c_str(), productMaterialFilename);
+                    AZ::StringFunc::Path::ConstructFull(productMaterialFilename.c_str(), materialPath.c_str(), productMaterialFilename);
+                    AZ_TraceContext("Material product cache file path", productMaterialFilename);
+                    if (AZ::IO::SystemFile::Exists(productMaterialFilename.c_str()))
+                    {
+                        AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Using cached material file for linking to meshes.");
+                        fileRead = m_materialGroup->ReadMtlFile(productMaterialFilename.c_str());
+                    }
                 }
             }
 

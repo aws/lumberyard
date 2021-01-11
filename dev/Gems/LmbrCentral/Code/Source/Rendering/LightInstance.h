@@ -17,6 +17,7 @@
 struct ILightSource;
 struct IRenderNode;
 class CDLight;
+struct IClipVolume;
 
 namespace LmbrCentral
 {
@@ -52,6 +53,9 @@ namespace LmbrCentral
 
         bool TurnOn();
         bool TurnOff();
+
+        void SetClipVolume(IClipVolume* clipVolume);
+        void ClearClipVolume(IClipVolume* clipVolume);
 
         //////////////////////////////////////////////////////////////////////////
         // AZ::TransformNotificationBus::Handler interface implementation

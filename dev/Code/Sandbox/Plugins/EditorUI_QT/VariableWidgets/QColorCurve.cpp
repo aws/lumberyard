@@ -239,7 +239,7 @@ void QColorCurve::buildMenu(bool RandomGradient)
             //m_parent->getAttributeView()->UpdateGradientEditor(m_swatch1->GetCurve(), m_swatch1->GetStops());
         });
 
-    m_tooltip = new QToolTipWidget(this);
+    m_tooltip = new QToolTipWrapper(this);
 }
 
 
@@ -272,7 +272,7 @@ void QColorCurve::setVar(IVariable* var)
         SetAlphaForSwatch(var, m_swatch);
     }
     else if (var == alphaVar1)
-	{
+    {
         SetAlphaForSwatch(var, m_swatch1);
     }
     update();

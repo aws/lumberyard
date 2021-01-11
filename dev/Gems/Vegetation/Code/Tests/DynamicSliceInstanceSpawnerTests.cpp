@@ -275,7 +275,9 @@ namespace UnitTest
         EXPECT_TRUE(!(instanceSpawner1 == instanceSpawner2));
     }
 
-    TEST_F(DynamicSliceInstanceSpawnerTests, LoadAndUnloadAssets)
+    // [LY-118267] This test intermittently fails on automated builds, so disabling temporarily until the root cause
+    // can be identified
+    TEST_F(DynamicSliceInstanceSpawnerTests, DISABLED_LoadAndUnloadAssets)
     {
         // The spawner should successfully load/unload assets without errors.
 
@@ -295,7 +297,8 @@ namespace UnitTest
         Vegetation::DescriptorNotificationBus::Handler::BusDisconnect();
     }
 
-    TEST_F(DynamicSliceInstanceSpawnerTests, CreateAndDestroyInstance)
+    // [LY-118267] Any test using CreateAndSetMockAsset can intermittently fail, so disabling them for now.
+    TEST_F(DynamicSliceInstanceSpawnerTests, DISABLED_CreateAndDestroyInstance)
     {
         // The spawner should successfully create and destroy an instance without errors.
 

@@ -18,12 +18,16 @@
 #include "QCustomGradientWidget.h"
 #include "QCurveSelectorWidget.h"
 #include "QGradientColorPickerWidget.h"
-#include "QCustomColorDialog.h"
+
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
+
 #include "../ContextMenu.h"
 #include "UIFactory.h"
 #include <QSettings>
 #include <QApplication>
 #include <QDesktopWidget>
+#include <QScreen>
 #include "QAmazonLineEdit.h"
 #include "IEditorParticleUtils.h"
 
@@ -140,7 +144,10 @@ QGradientColorDialog::QGradientColorDialog(QWidget* parent,
 
     colorPickerButton = new QPushButton(this);
     colorPickerButton->setMaximumWidth(30);
-    colorPickerButton->setStyleSheet(QString().sprintf("QPushButton{background: rgba(%d,%d,%d);}", selectedColor.red(), selectedColor.green(), selectedColor.blue()));
+    colorPickerButton->setStyleSheet(QString().asprintf("background: rgba(%d,%d,%d);", selectedColor.red(), selectedColor.green(), selectedColor.blue()));
+    colorPickerButton->setAutoFillBackground(true);
+    colorPickerButton->setIconSize(QSize(0, 0));
+    colorPickerButton->setFlat(true);
     colorPickerButton->setMaximumSize(30, QGRADIENTCOLORDIALOG_HEADER_HEIGHT);
     colorPickerButton->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Maximum);
     colorPickerButton->installEventFilter(this);
@@ -187,16 +194,10 @@ QGradientColorDialog::QGradientColorDialog(QWidget* parent,
 
     connect(colorPickerButton, &QPushButton::clicked, this, [=]()
         {
-            QCustomColorDialog* dlg = UIFactory::GetColorPicker(selectedColor, false);
-            if (dlg->exec())
-            {
-                selectedColor = dlg->GetColor();
-                QString colStr;
-                int r, g, b;
-                selectedColor.getRgb(&r, &g, &b);
-                colStr = colStr.sprintf("QPushButton{background: rgba(%d,%d,%d, 255);}", r, g, b);
-                colorPickerButton->setStyleSheet(colStr);
-            }
+            const AZ::Color color = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGB, AzQtComponents::fromQColor(selectedColor), tr("Select Color"));
+            selectedColor = AzQtComponents::ToQColor(color);
+            QString colStr = colStr.asprintf("background: rgba(%d,%d,%d, 255);", color.GetR8(), color.GetG8(), color.GetB8());
+            colorPickerButton->setStyleSheet(colStr);
         });
     connect(colorSetLocation, &QAmazonLineEdit::editingFinished, this, [=]()
         {
@@ -453,7 +454,7 @@ void QGradientColorDialog::LoadSessionState()
     QSettings settings("Amazon", "Lumberyard");
     QString group = "Gradient Editor/";
     settings.beginGroup(group);
-    QRect desktop = QApplication::desktop()->availableGeometry();
+    QRect desktop = QApplication::primaryScreen()->availableGeometry();
 
     if (QWidget* topLevel = window())
     {

@@ -101,7 +101,7 @@ namespace AzToolsFramework
                 {
                     m_stringFilter->RemoveAllFilters();
 
-                    auto stringList = text.split(' ', QString::SkipEmptyParts);
+                    auto stringList = text.split(' ', Qt::SkipEmptyParts);
                     for (auto& str : stringList)
                     {
                         auto stringFilter = new StringFilter();

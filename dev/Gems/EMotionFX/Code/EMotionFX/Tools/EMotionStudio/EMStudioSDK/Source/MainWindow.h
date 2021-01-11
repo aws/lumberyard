@@ -87,7 +87,7 @@ namespace EMStudio
         MCORE_MEMORYOBJECTCATEGORY(MainWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
 
     public:
-        MainWindow(QWidget* parent = nullptr, Qt::WindowFlags flags = nullptr);
+        MainWindow(QWidget* parent = nullptr, Qt::WindowFlags flags = Qt::WindowFlags());
         ~MainWindow();
 
         void UpdateCreateWindowMenu();
@@ -312,6 +312,7 @@ namespace EMStudio
         void OnOpenSettingsFolder();
         void OnPreferences();
         void OnSaveAll();
+        void ApplicationModeChanged(int index);
         void ApplicationModeChanged(const QString& text);
         void OnUpdateRenderPlugins();
         void OnRemoveLayoutButtonClicked(QAbstractButton* button);

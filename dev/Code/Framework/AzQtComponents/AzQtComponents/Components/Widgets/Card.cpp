@@ -189,8 +189,14 @@ namespace AzQtComponents
 
     void Card::setExpanded(bool expand)
     {
+        // expandStateChanged triggers an expensive style repolish, make sure we short circuit if this is a no-op
+        if (expand == m_expanded)
+        {
+            return;
+        }
         setUpdatesEnabled(false);
 
+        m_expanded = expand;
         m_header->setExpanded(expand);
         m_contentContainer->setVisible(expand);
         updateSecondaryContentVisibility();
@@ -203,7 +209,7 @@ namespace AzQtComponents
 
     bool Card::isExpanded() const
     {
-        return m_header->isExpanded();
+        return m_expanded;
     }
 
     void Card::setSelected(bool selected)

@@ -102,11 +102,6 @@ namespace AzToolsFramework
         const AZ::Vector3& GetAxis2() const { return m_fixed.m_axis2; }
         AZ::Vector3 GetPosition() const { return m_localTransform.GetTranslation(); }
 
-        // LUMBERYARD_DEPRECATED(LY-106737)
-        AZ_DEPRECATED(
-            void SetView(AZStd::unique_ptr<ManipulatorView>&& view);,
-            "SetView is now deprecated, please use SetViews instead.")
-
         template<typename Views>
         void SetViews(Views&& views)
         {

@@ -756,7 +756,7 @@ public:
 private:
 
     // Release all resources.
-    void    ShutDown();
+    void ShutDown();
 
     void SleepIfInactive();
 
@@ -795,6 +795,10 @@ private:
     bool ConnectToAssetProcessor(const SSystemInitParams& initParams, bool waitTillConnect = false);
     void ConnectFromAssetProcessor(const SSystemInitParams& initParams, bool waitTillConnect = false);
     void WaitForAssetProcessorToBeReady();
+    void RetrieveAssetProcessorPath();
+
+    char m_assetProcessorExe[AZ_MAX_PATH_LEN] = { 0 };
+    char m_workingDir[AZ_MAX_PATH_LEN] = { 0 };
 #endif
 
     bool OpenRenderLibrary(const char* t_rend, const SSystemInitParams& initParams);

@@ -28,7 +28,7 @@ namespace LyShine
     {
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serialize->Class<LyShineLoadScreenComponent, AZ::Component>()
+            serialize->Class<LyShineLoadScreenComponent>()
                 ->Version(0)
                 ;
         }

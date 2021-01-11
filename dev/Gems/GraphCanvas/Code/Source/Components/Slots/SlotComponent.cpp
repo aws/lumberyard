@@ -136,17 +136,6 @@ namespace GraphCanvas
         return sceneId;
     }
 
-    bool SlotComponent::LockForExternalMovement(const AZ::EntityId&)
-    {
-        AZ_Error("Graph Canvas", false, "The slot should not be controlled directly, as the node it belongs to already controls it's postioning (slot: %s)", GetEntityId().ToString().data());
-        return false;
-    }
-
-    void SlotComponent::UnlockForExternalMovement(const AZ::EntityId&)
-    {
-        AZ_Error("Graph Canvas", false, "The slot should not be controlled directly, as the node it belongs to already controls it's postioning (slot: %s)", GetEntityId().ToString().data());
-    }
-
     void SlotComponent::OnSceneSet(const AZ::EntityId& sceneId)
     {
         SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnSceneSet, sceneId);

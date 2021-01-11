@@ -41,6 +41,7 @@ namespace Snow
         , private AZ::TransformNotificationBus::Handler
         , public AzFramework::EntityDebugDisplayEventBus::Handler
         , private AZ::TickBus::Handler
+        , private Snow::SnowComponentRequestBus::Handler
     {
     public:
         friend class SnowConverter;
@@ -84,11 +85,70 @@ namespace Snow
             required.push_back(AZ_CRC("TransformService"));
         }
 
-    private:
-        void UpdateSnow();
+        // SnowComponentRequestBus::Handler
+        void Enable() override;
+        void Disable() override;
+        void Toggle() override;
 
+        bool IsEnabled() override;
+        void SetEnabled(bool enabled) override;
+
+        /*
+            Note: If a user needs to call many setters it's best to not use the
+            individual setters. Instead call GetSnowOptions, modify the object
+            and then call SetSnowOptions. That way you're not calling UpdateSnow
+            more than once.
+        */
+
+        float GetRadius();
+        void SetRadius(float disableOcclusion) override;
+
+        float GetSnowAmount();
+        void SetSnowAmount(float snowAmount) override;
+
+        float GetFrostAmount();
+        void SetFrostAmount(float frostAmount) override;
+
+        float GetSurfaceFreezing();
+        void SetSurfaceFreezing(float surfaceFreezing) override;
+
+        AZ::u32 GetSnowFlakeCount();
+        void SetSnowFlakeCount(AZ::u32 snowFlakeCount) override;
+
+        float GetSnowFlakeSize() override;
+        void SetSnowFlakeSize(float snowFlakeSize) override;
+
+        float GetSnowFallBrightness() override;
+        void SetSnowFallBrightness(float snowFallBrightness) override;
+
+        float GetSnowFallGravityScale() override;
+        void SetSnowFallGravityScale(float snowFallGravityScale) override;
+
+        float GetSnowFallWindScale() override;
+        void SetSnowFallWindScale(float snowFallWindScale) override;
+
+        float GetSnowFallTurbulence() override;
+        void SetSnowFallTurbulence(float snowFallTurbulence) override;
+
+        float GetSnowFallTurbulenceFreq() override;
+        void SetSnowFallTurbulenceFreq(float snowFallTurbulenceFreq) override;
+
+        SnowOptions GetSnowOptions() override;
+        void SetSnowOptions(SnowOptions snowOptions) override;
+
+        /**
+         * Sends this component's snow parameters to the engine
+         *
+         * If the component is disabled or the "amount" of this snow object is 0
+         * the engine will attempt to disable snow. Snow can be re-enabled if another
+         * snow component updates and overrides that setting.
+         */
+        void UpdateSnow() override;
+
+    private:
         //Reflected members
         bool m_enabled;
+        bool m_renderInEditMode = false;
         SnowOptions m_snowOptions;
 
         //Unreflected members

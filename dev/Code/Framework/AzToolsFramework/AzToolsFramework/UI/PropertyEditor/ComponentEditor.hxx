@@ -102,7 +102,11 @@ namespace AzToolsFramework
         void OnDisplayComponentEditorMenu(const QPoint& position);
         void OnRequestRemoveComponents(const AZStd::vector<AZ::Component*>& components);
         void OnRequestDisableComponents(const AZStd::vector<AZ::Component*>& components);
-        void OnRequestRequiredComponents(const QPoint& position, const QSize& size, const AZStd::vector<AZ::ComponentServiceType>& services);
+        void OnRequestRequiredComponents(
+            const QPoint& position,
+            const QSize& size,
+            const AZStd::vector<AZ::ComponentServiceType>& services,
+            const AZStd::vector<AZ::ComponentServiceType>& incompatibleServices);
         void OnRequestSelectionChange(const QPoint& position);
 
     private:
@@ -120,7 +124,10 @@ namespace AzToolsFramework
 
         AzQtComponents::CardNotification* CreateNotification(const QString& message);
         AzQtComponents::CardNotification* CreateNotificationForConflictingComponents(const QString& message, const AZ::Entity::ComponentArrayType& conflictingComponents);
-        AzQtComponents::CardNotification* CreateNotificationForMissingComponents(const QString& message, const AZStd::vector<AZ::ComponentServiceType>& services);
+        AzQtComponents::CardNotification* CreateNotificationForMissingComponents(
+            const QString& message,
+            const AZStd::vector<AZ::ComponentServiceType>& services,
+            const AZStd::vector<AZ::ComponentServiceType>& incompatibleServices);
 
         bool AreAnyComponentsDisabled() const;
         AzToolsFramework::EntityCompositionRequests::PendingComponentInfo GetPendingComponentInfoForAllComponents() const;

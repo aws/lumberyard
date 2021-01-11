@@ -623,7 +623,7 @@ void LodWidget::OnLevelDistanceChanged()
 }
 
 DockableLODPanel::DockableLODPanel(QWidget* parent)
-    : FloatableDockPanel("", parent)
+    : FloatableDockPanel("", parent, Qt::WindowFlags(), false)
     , m_titleBar(nullptr)
     , m_titleBarMenu(nullptr)
     , m_IgnoreAttributeRefresh(false)

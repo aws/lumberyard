@@ -481,7 +481,7 @@ namespace ScriptCanvas
 
         AZStd::vector<SlotId> GetSlotIds(AZStd::string_view slotName) const override;
         const ScriptCanvasId& GetOwningScriptCanvasId() const override { return m_scriptCanvasId; }
-        bool SlotAcceptsType(const SlotId&, const Data::Type&) const override;
+        AZ::Outcome<void, AZStd::string> SlotAcceptsType(const SlotId&, const Data::Type&) const override;
         Data::Type GetSlotDataType(const SlotId& slotId) const override;
 
         VariableId GetSlotVariableId(const SlotId& slotId) const override;

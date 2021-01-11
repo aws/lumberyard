@@ -158,7 +158,7 @@ void CIndexedFiles::GetFilesWithTags(IFileUtil::FileArray& files, const QStringL
 
 void CIndexedFiles::GetTags(QStringList& tags, const QString& path) const
 {
-    tags = path.split(QRegularExpression(QStringLiteral(R"([\\/.])")), QString::SkipEmptyParts);
+    tags = path.split(QRegularExpression(QStringLiteral(R"([\\/.])")), Qt::SkipEmptyParts);
 }
 
 void CIndexedFiles::GetTagsOfPrefix(QStringList& tags, const QString& prefix) const

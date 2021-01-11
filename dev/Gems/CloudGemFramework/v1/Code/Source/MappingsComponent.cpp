@@ -251,7 +251,7 @@ namespace CloudGemFramework
         Aws::Utils::Json::JsonView logicalMappingsObject = mappingsJsonData.View().GetObject(kLogicalMappingsName);
         Aws::Map<Aws::String, Aws::Utils::Json::JsonView> mappingObjects = logicalMappingsObject.GetAllObjects();
 
-        for (const std::pair<Aws::String, Aws::Utils::Json::JsonView>& mapping : mappingObjects)
+        for (auto&& mapping : mappingObjects)
         {
             const Aws::String& logicalName = mapping.first;
 
@@ -272,7 +272,7 @@ namespace CloudGemFramework
         {
             Aws::Utils::Json::JsonView clientAppsObject = mapping.second.GetObject(kUserPoolClientCollectionName);
             Aws::Map<Aws::String, Aws::Utils::Json::JsonView> clientApps = clientAppsObject.GetAllObjects();
-            for (const std::pair<Aws::String, Aws::Utils::Json::JsonView>& currApp : clientApps)
+            for (auto&& currApp : clientApps)
             {
                 const Aws::String& clientName = currApp.first;
                 const Aws::String& clientId = currApp.second.GetString(kUserPoolClientIdFieldName);

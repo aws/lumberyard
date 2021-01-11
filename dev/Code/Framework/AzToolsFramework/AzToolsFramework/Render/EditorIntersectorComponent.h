@@ -9,6 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#pragma once
+
 #include <AzCore/Component/Component.h>
 #include <AzFramework/Render/IntersectorInterface.h>
 
@@ -16,10 +18,8 @@ namespace AzToolsFramework
 {
     namespace Components
     {
-        /**
-         * System component for calculating render geometry intersections against entities.
-         * Contains an implementation of AzFramework::IntersectorInterface.
-         */
+        //! System component for calculating render geometry intersections against entities.
+        //! Contains an implementation of AzFramework::IntersectorInterface.
         class EditorIntersectorComponent
             : public AZ::Component
         {
@@ -29,7 +29,6 @@ namespace AzToolsFramework
 
             //////////////////////////////////////////////////////////////////////////
             // Component overrides
-            void Init() override;
             void Activate() override;
             void Deactivate() override;
 
@@ -43,5 +42,5 @@ namespace AzToolsFramework
         private:
             AZStd::unique_ptr<AzFramework::RenderGeometry::IntersectorInterface> m_intersector;
         };
-    }
-}
+    } // namespace Components
+} // namespace AzToolsFramework

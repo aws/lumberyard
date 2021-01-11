@@ -632,6 +632,9 @@ private:
     // Used to prevent circular set camera events
     bool m_ignoreSetViewFromEntityPerspective = false;
     bool m_windowResizedEvent = false;
+
+    // Cache hwnd value for teardown to avoid infinite loops in retrieving it from destroyed widgets.
+    HWND m_hwnd;
 };
 
 #endif // CRYINCLUDE_EDITOR_RENDERVIEWPORT_H

@@ -213,7 +213,7 @@ namespace CharacterTool
                             if (value != 0)
                             {
                                 QString result;
-                                result.sprintf("%i KB", value / 1024);
+                                result.asprintf("%i KB", value / 1024);
                                 return result;
                             }
                             else

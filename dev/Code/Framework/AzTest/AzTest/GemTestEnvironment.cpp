@@ -132,8 +132,12 @@ namespace AZ
             delete m_parameters;
             m_parameters = nullptr;
 
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+            TeardownAllocatorAndTraceBus();
+        }
 
+        void GemTestEnvironment::TeardownAllocatorAndTraceBus()
+        {
+            AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
             UnitTest::TraceBusHook::TeardownEnvironment();
         }
     } // namespace Test

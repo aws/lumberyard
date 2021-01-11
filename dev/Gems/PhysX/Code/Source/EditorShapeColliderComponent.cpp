@@ -272,7 +272,7 @@ namespace PhysX
         return AZ::Edit::PropertyRefreshLevels::None;
     }
 
-    void EditorShapeColliderComponent::UpdateShapeConfigs(bool refreshPropertyTree)
+    void EditorShapeColliderComponent::UpdateShapeConfigs()
     {
         m_geometryCache.m_cachedSamplePointsDirty = true;
 
@@ -315,12 +315,6 @@ namespace PhysX
                 "entity \"%s\". The following shapes are currently supported - box, capsule, sphere, polygon prism.",
                 GetEntity()->GetName().c_str());
             m_shapeTypeWarningIssued = true;
-        }
-
-        if (refreshPropertyTree)
-        {
-            AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
-                &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree);
         }
     }
 
@@ -495,6 +489,9 @@ namespace PhysX
 
             m_mesh.Clear();
             m_shapeConfigs.clear();
+
+            RefreshUiProperties();
+
             return;
         }
 
@@ -552,6 +549,7 @@ namespace PhysX
         m_geometryCache.m_height = uniformScale.GetX() * unscaledPrismHeight;
 
         int shapeConfigsCount = 0;
+        bool refreshPropertyTree = false;
 
         for (int faceIndex = 0; faceIndex < numFacesTotal; faceIndex++)
         {
@@ -578,6 +576,7 @@ namespace PhysX
                 if (shapeConfigsCount >= m_shapeConfigs.size())
                 {
                     m_shapeConfigs.push_back(AZStd::make_shared<Physics::CookedMeshShapeConfiguration>(shapeConfig.value()));
+                    refreshPropertyTree = true;
                 }
                 else
                 {
@@ -590,7 +589,27 @@ namespace PhysX
             }
         }
 
-        m_shapeConfigs.resize(shapeConfigsCount);
+        if (m_shapeConfigs.size() != shapeConfigsCount)
+        {
+            refreshPropertyTree = true;
+            m_shapeConfigs.resize(shapeConfigsCount);
+        }
+
+        if (refreshPropertyTree)
+        {
+            RefreshUiProperties();
+        }
+    }
+
+    void EditorShapeColliderComponent::RefreshUiProperties()
+    {
+        // Note: This is a workaround for a crash in InstanceDataHierarchy when a polygon prism shape collider is stored in a slice.
+        // m_shapeConfigs vector is reflected in the component and resizing it without invalidating property tree leads to dangling pointers
+        // in the hierarchy comparison system.
+
+        AzToolsFramework::ToolsApplicationNotificationBus::Broadcast(
+            &AzToolsFramework::ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay,
+            AzToolsFramework::Refresh_EntireTree);
     }
 
     // AZ::Component
@@ -602,13 +621,11 @@ namespace PhysX
         LmbrCentral::ShapeComponentNotificationsBus::Handler::BusConnect(GetEntityId());
         PhysX::ColliderShapeRequestBus::Handler::BusConnect(GetEntityId());
 
-        bool refreshPropertyTree = true;
-        UpdateShapeConfigs(refreshPropertyTree);
+        UpdateShapeConfigs();
 
         // Debug drawing
         m_colliderDebugDraw.Connect(GetEntityId());
         m_colliderDebugDraw.SetDisplayCallback(this);
-
         CreateStaticEditorCollider();
 
         Physics::ColliderComponentEventBus::Event(GetEntityId(), &Physics::ColliderComponentEvents::OnColliderChanged);
@@ -644,8 +661,7 @@ namespace PhysX
     // TransformBus
     void EditorShapeColliderComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
     {
-        bool refreshPropertyTree = false;
-        UpdateShapeConfigs(refreshPropertyTree);
+        UpdateShapeConfigs();
 
         CreateStaticEditorCollider();
         m_geometryCache.m_cachedSamplePointsDirty = true;
@@ -712,8 +728,7 @@ namespace PhysX
     {
         if (changeReason == LmbrCentral::ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged)
         {
-            bool refreshPropertyTree = true;
-            UpdateShapeConfigs(refreshPropertyTree);
+            UpdateShapeConfigs();
 
             CreateStaticEditorCollider();
             Physics::ColliderComponentEventBus::Event(GetEntityId(), &Physics::ColliderComponentEvents::OnColliderChanged);

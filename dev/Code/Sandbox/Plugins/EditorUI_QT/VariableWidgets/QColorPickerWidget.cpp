@@ -161,7 +161,7 @@ QColorPickerWidget::QColorPickerWidget(QWidget* parent)
     hueEditRed->installEventFilter(this);
     hueEditBlue->installEventFilter(this);
     hueEditGreen->installEventFilter(this);
-    m_tooltip = new QToolTipWidget(this);
+    m_tooltip = new QToolTipWrapper(this);
     connect(colorMenuEdit, &QAmazonLineEdit::textChanged, this, [=](){m_tooltip->hide(); });
 
     // disable tooltip while typing

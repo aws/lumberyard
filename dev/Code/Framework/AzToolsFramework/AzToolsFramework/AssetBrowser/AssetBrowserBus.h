@@ -35,6 +35,11 @@ namespace AZ
     struct Uuid;
 }
 
+namespace AzQtComponents
+{
+    class StyledBusyLabel;
+}
+
 namespace AzToolsFramework
 {
     namespace AssetBrowser
@@ -76,6 +81,8 @@ namespace AzToolsFramework
             //! @param selection Selection filter model for asset picker window
             //! @param parent Parent widget that previewer will be attached to
             virtual void PickAssets(AssetSelectionModel& selection, QWidget* parent) = 0;
+
+            virtual AzQtComponents::StyledBusyLabel* GetStyledBusyLabel() = 0;
         };
 
         using AssetBrowserComponentRequestBus = AZ::EBus<AssetBrowserComponentRequests>;
@@ -276,6 +283,8 @@ namespace AzToolsFramework
             */
             virtual void SelectFileAtPath(const AZStd::string& assetPath) = 0;
             virtual void ClearFilter() = 0;
+
+            virtual void Update() = 0;
         };
         using AssetBrowserViewRequestBus = AZ::EBus<AssetBrowserViewRequests>;
 

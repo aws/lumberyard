@@ -118,4 +118,51 @@ namespace UnitTest
                 ProductPathDependency("somefile/in/a/folder.cfg", AssetBuilderSDK::ProductPathDependencyType::ProductFile))
         );
     }
+
+    void VerifyNoDependenciesGenerated(const AZStd::string& testFileUnresolvedPath)
+    {
+        LuaBuilderWorker worker;
+
+        AssetBuilderSDK::ProductPathDependencySet pathDependencies;
+
+        char resolvedPath[AZ_MAX_PATH_LEN];
+        AZ::IO::FileIOBase::GetInstance()->ResolvePath(testFileUnresolvedPath.c_str(), resolvedPath, AZ_MAX_PATH_LEN);
+
+        worker.ParseDependencies(AZStd::string(resolvedPath), pathDependencies);
+
+        EXPECT_TRUE(pathDependencies.empty());
+    }
+
+    TEST_F(LuaBuilderTests, ParseLuaScript_CommentedOutDependency_EntireLine_ShouldFindNoDependencies)
+    {
+        VerifyNoDependenciesGenerated("@root@/../Gems/LmbrCentral/Code/Tests/Lua/test5_whole_line_comment.lua");
+    }
+
+    TEST_F(LuaBuilderTests, ParseLuaScript_CommentedOutDependency_PartialLine_ShouldFindNoDependencies)
+    {
+        VerifyNoDependenciesGenerated("@root@/../Gems/LmbrCentral/Code/Tests/Lua/test6_partial_line_comment.lua");
+    }
+
+    TEST_F(LuaBuilderTests, ParseLuaScript_CommentedOutDependency_BlockComment_ShouldFindNoDependencies)
+    {
+        VerifyNoDependenciesGenerated("@root@/../Gems/LmbrCentral/Code/Tests/Lua/test7_block_comment.lua");
+    }
+
+    TEST_F(LuaBuilderTests, ParseLuaScript_CommentedOutDependency_NegatedBlockComment_ShouldFindDependencies)
+    {
+        LuaBuilderWorker worker;
+
+        AssetBuilderSDK::ProductPathDependencySet pathDependencies;
+
+        char resolvedPath[AZ_MAX_PATH_LEN];
+        AZ::IO::FileIOBase::GetInstance()->ResolvePath("@root@/../Gems/LmbrCentral/Code/Tests/Lua/test8_negated_block_comment.lua", resolvedPath, AZ_MAX_PATH_LEN);
+
+        worker.ParseDependencies(AZStd::string(resolvedPath), pathDependencies);
+
+        ASSERT_THAT(pathDependencies,
+            testing::UnorderedElementsAre(
+                ProductPathDependency("somefile.cfg", AssetBuilderSDK::ProductPathDependencyType::ProductFile),
+                ProductPathDependency("somefile/in/a/folder.cfg", AssetBuilderSDK::ProductPathDependencyType::ProductFile))
+        );
+    }
 }

@@ -46,6 +46,7 @@ namespace AzToolsFramework
         // AzFramework::Application
         void Start(const Descriptor& descriptor, const StartupParameters& startupParameters = StartupParameters()) override;
         void Start(const char* applicationDescriptorFile, const StartupParameters& startupParameters = StartupParameters())  override;
+        void CalculateAppRoot(const char* appRootOverride = nullptr) override;
 
     protected:
 
@@ -179,6 +180,7 @@ namespace AzToolsFramework
         bool                                m_isDuringUndoRedo;
         bool                                m_isInIsolationMode;
         EntityIdSet                         m_isolatedEntityIdSet;
+        bool                                m_engineConfigInitialized{ false };
 
         class EngineConfigImpl;
         AZStd::unique_ptr<EngineConfigImpl> m_engineConfigImpl;

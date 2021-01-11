@@ -194,7 +194,6 @@ namespace AzQtComponents
     {
         if (!s_instance)
         {
-            AZ_Warning("StyleManager", false, "StyleManager::isUi10 called before instance was created");
             return false;
         }
 

@@ -16,7 +16,6 @@
 
 #include <AzCore/base.h>
 #include <AzCore/std/containers/unordered_map.h>
-
 #include <QLabel>
 
 // Forward Declaration
@@ -29,7 +28,7 @@ namespace ProjectSettingsTool
 
     // Used to select a png image from a file dialog then display it
     class PropertyImagePreviewCtrl
-        : public PropertyFileSelectCtrl
+        : public PropertyFuncValBrowseEditCtrl
     {
         Q_OBJECT
 

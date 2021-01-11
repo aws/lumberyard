@@ -14,12 +14,16 @@
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
 
+#include <QApplication>
 #include <QMenu>
 #include <QPainter>
 #include <QSettings>
 #include <QStyleOption>
 #include <QWindow>
 #include <QSurfaceFormat>
+#include <QTimer>
+#include <QWindow>
+
 #include <qdrawutil.h>
 
 #include <limits>
@@ -97,7 +101,7 @@ namespace AzQtComponents
         }
 
         // Set the widget attributes we need to enable window transparency. Do this before calling
-        // QWidget::setWindowFlags as the QWindow is created here if it does not exist.
+        // QWidget::setWindowFlags as the QWindow is created there if it does not exist.
         menu->setAttribute(Qt::WA_TranslucentBackground, true);
         menu->setAttribute(Qt::WA_OpaquePaintEvent, true);
         menu->setWindowFlags(menu->windowFlags() | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);

@@ -91,6 +91,7 @@ namespace LmbrCentral
         const static float MaxSizeScale;
         const static float MaxLifttimeStrength;
         const static float MinLifttimeStrength;
+        const static float MaxRandSizeScale;
         
     private:
 
@@ -124,10 +125,15 @@ namespace LmbrCentral
         // Enable/disable current emitter.
         virtual void Enable(bool enable) = 0;
 
-        // Get whehther current emitter is enabled.
+        // Get whether current emitter is enabled.
         virtual bool GetEnable() = 0;
 
+        // Set Target entity
+        virtual AZ::EntityId GetTargetEntityId() = 0;
+        virtual void SetTargetEntityId(AZ::EntityId entityId) = 0;
+
         // Set pre-roll
+        virtual bool GetEnablePreRoll() = 0;
         virtual void EnablePreRoll(bool enable) = 0;
         
         // Set color tint
@@ -164,11 +170,13 @@ namespace LmbrCentral
         virtual void SetParticleSizeScaleX(float scale) = 0;
         virtual void SetParticleSizeScaleY(float scale) = 0;
         virtual void SetParticleSizeScaleZ(float scale) = 0;
+        virtual void SetParticleSizeScaleRandom(float scale) = 0;
 
         // Get particle size scale
         virtual float GetParticleSizeScaleX() = 0;
         virtual float GetParticleSizeScaleY() = 0;
         virtual float GetParticleSizeScaleZ() = 0;
+        virtual float GetParticleSizeScaleRandom() = 0;
         
         // Set pulse period
         virtual void SetPulsePeriod(float pulse) = 0;
@@ -176,19 +184,42 @@ namespace LmbrCentral
         // Get pulse period
         virtual float GetPulsePeriod() = 0;
 
+        // Get the lifetime strength
+        virtual float GetLifetimeStrength() = 0;
+
         // Set lifetime strength
         virtual void SetLifetimeStrength(float strenth) = 0;
 
+        // If true, ignore the entity rotation
+        virtual bool GetIgnoreRotation() = 0;
+        virtual void SetIgnoreRotation(bool ignore) = 0;
+
+        // If true, ignore the entity position
+        virtual bool GetNotAttached() = 0;
+        virtual void SetNotAttached(bool doNotFollow) = 0;
+
+        // Use the BoundingBox instead of Position to Register in VisArea
+        virtual bool GetUseBoundingBox() = 0;
+        virtual void SetUseBoundingBox(bool useBoundingBox) = 0;
+
+        // if true, Activates LOD if they exist on emitter
+        virtual bool GetUseLOD() = 0;
+        virtual void SetUseLOD(bool activate) = 0;
+
         // Enable audio
+        virtual bool IsAudioEnabled() = 0;
         virtual void EnableAudio(bool enable) = 0;
 
         // Set audio RTPC
+        virtual const AZStd::string& GetRTPC() = 0;
         virtual void SetRTPC(const AZStd::string& rtpc) = 0;
 
         // Set view distance multiplier
+        virtual float GetViewDistMultiplier() = 0;
         virtual void SetViewDistMultiplier(float multiplier) = 0;
 
         // Set using VisArea
+        virtual bool GetUseVisArea() = 0;
         virtual void SetUseVisArea(bool enable) = 0;
         
         // get emitter setting
@@ -226,6 +257,12 @@ namespace LmbrCentral
     public:
         virtual ~EditorParticleComponentRequests() {}
 
+        // Shows the particle component.
+        virtual void Show() = 0;
+
+        // Hides the particle component.
+        virtual void Hide() = 0;
+
         // Specifies the visibility of the particle component.
         virtual void SetVisibility(bool visible) = 0;
 
@@ -237,6 +274,14 @@ namespace LmbrCentral
 
         // Get whether current emitter is enabled.
         virtual bool GetEnable() = 0;
+
+        // Set Target entity
+        virtual AZ::EntityId GetTargetEntityId() = 0;
+        virtual void SetTargetEntityId(AZ::EntityId entityId) = 0;
+
+        // Set pre-roll
+        virtual bool GetEnablePreRoll() = 0;
+        virtual void EnablePreRoll(bool enable) = 0;
 
         // Set color tint
         virtual void SetColorTint(const AZ::Color& tint) = 0;
@@ -272,11 +317,61 @@ namespace LmbrCentral
         virtual void SetParticleSizeScaleX(float scale) = 0;
         virtual void SetParticleSizeScaleY(float scale) = 0;
         virtual void SetParticleSizeScaleZ(float scale) = 0;
+        virtual void SetParticleSizeScaleRandom(float scale) = 0;
 
         // Get particle size scale
         virtual float GetParticleSizeScaleX() = 0;
         virtual float GetParticleSizeScaleY() = 0;
         virtual float GetParticleSizeScaleZ() = 0;
+        virtual float GetParticleSizeScaleRandom() = 0;
+
+        // Set pulse period
+        virtual void SetPulsePeriod(float pulse) = 0;
+
+        // Get pulse period
+        virtual float GetPulsePeriod() = 0;
+
+        // Get the lifetime strength
+        virtual float GetLifetimeStrength() = 0;
+
+        // Set lifetime strength
+        virtual void SetLifetimeStrength(float strenth) = 0;
+
+        // If true, ignore the entity rotation
+        virtual bool GetIgnoreRotation() = 0;
+        virtual void SetIgnoreRotation(bool ignore) = 0;
+
+        // If true, ignore the entity position
+        virtual bool GetNotAttached() = 0;
+        virtual void SetNotAttached(bool doNotFollow) = 0;
+
+        // Use the BoundingBox instead of Position to Register in VisArea
+        virtual bool GetUseBoundingBox() = 0;
+        virtual void SetUseBoundingBox(bool useBoundingBox) = 0;
+
+        // if true, Activates LOD if they exist on emitter
+        virtual bool GetUseLOD() = 0;
+        virtual void SetUseLOD(bool activate) = 0;
+
+        // Enable audio
+        virtual bool IsAudioEnabled() = 0;
+        virtual void EnableAudio(bool enable) = 0;
+
+        // Set audio RTPC
+        virtual const AZStd::string& GetRTPC() = 0;
+        virtual void SetRTPC(const AZStd::string& rtpc) = 0;
+
+        // Set view distance multiplier
+        virtual float GetViewDistMultiplier() = 0;
+        virtual void SetViewDistMultiplier(float multiplier) = 0;
+
+        // Set using VisArea
+        virtual bool GetUseVisArea() = 0;
+        virtual void SetUseVisArea(bool enable) = 0;
+
+        // get emitter setting
+        virtual ParticleEmitterSettings GetEmitterSettings() = 0;
+
 
         // Sets up an effect emitter by name
         virtual void SetEmitter(const AZStd::string& emitterName, const AZStd::string& libPath) = 0;

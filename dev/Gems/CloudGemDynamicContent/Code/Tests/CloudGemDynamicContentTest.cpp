@@ -102,19 +102,20 @@ public:
         CloudCanvas::PresignedURLRequestBus::Handler::BusDisconnect();
     }
 
-    bool UpdateFileStatusList(const AZStd::vector<AZStd::string>& requestList, bool autoDownload = false) override
+    bool UpdateVersionedFileStatusList(const AZStd::unordered_map<AZStd::string, AZStd::string>& requestMap, bool autoDownload = false) override
     {
         using namespace CloudCanvas::DynamicContent;
 
-        for (const auto& thisFile : requestList)
+        for (const auto& thisFile : requestMap)
         {
+            AZStd::string fileName = thisFile.first;
             AZStd::shared_ptr<DynamicContentFileInfo> contentFileInfoPtr =
-                AZStd::make_shared<DynamicContentFileInfo>(thisFile, "test/" + thisFile);
-            contentFileInfoPtr->SetRequestURL("https://s3.amazonaws.com/dynamic-content-test/" + thisFile);
+                AZStd::make_shared<DynamicContentFileInfo>(fileName, AZStd::string::format("test/%s", fileName.c_str()));
+            contentFileInfoPtr->SetRequestURL(AZStd::string::format("https://s3.amazonaws.com/dynamic-content-test/%s", fileName.c_str()));
             contentFileInfoPtr->SetUrlCreationTimestamp(AZStd::GetTimeUTCMilliSecond());
             SetFileInfo(contentFileInfoPtr);
 
-            if (autoDownload && !Download(thisFile.c_str(), false))
+            if (autoDownload && !Download(fileName.c_str(), false))
             {
                 return false;
             }

@@ -227,7 +227,7 @@ namespace UnitTest
         void SetUpEditorFixtureImpl() override
         {
             // Create an EntityPropertyEditor initialized to be a Level Inspector
-            m_levelEditor = new EntityPropertyEditor(nullptr, 0, true);
+            m_levelEditor = new EntityPropertyEditor(nullptr, {}, true);
             m_levelEntity = CreateDefaultEditorEntity("LevelEntity");
 
             // Level Inspector expects to have one override entity ID, which would normally be the root slice entity.

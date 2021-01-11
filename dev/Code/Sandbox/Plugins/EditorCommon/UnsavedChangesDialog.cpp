@@ -15,12 +15,13 @@
 #include "UnsavedChangesDialog.h"
 
 #include <QAbstractButton>
+#include <QApplication>
 #include <QBoxLayout>
+#include <QDesktopWidget>
 #include <QDialogButtonBox>
 #include <QLabel>
 #include <QListWidget>
-#include <QDesktopWidget>
-#include <QApplication>
+#include <QScreen>
 
 CUnsavedChangedDialog::CUnsavedChangedDialog(QWidget* parent)
     : QDialog(parent)
@@ -50,7 +51,7 @@ CUnsavedChangedDialog::CUnsavedChangedDialog(QWidget* parent)
     {
         QPoint center = parent->mapToGlobal(parent->geometry().center());
         QDesktopWidget* desktop = QApplication::desktop();
-        const QRect screenDimensions =  desktop->screenGeometry(center);
+        const QRect screenDimensions = QApplication::screenAt(center)->geometry();
         if (screenDimensions.contains(center))
         {
             QPoint dialogPosition = center - QPoint(width() / 2, height() / 2);

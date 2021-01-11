@@ -35,7 +35,7 @@ TreePanel::TreePanel(QWidget* parent)
     m_propertyTree->setTreeStyle(treeStyle);
 
     setWidget(m_propertyTree);
-    setFeatures(( QDockWidget::DockWidgetFeatures )(QDockWidget::AllDockWidgetFeatures & ~(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable)));
+    setFeatures(( QDockWidget::DockWidgetFeatures )(QDockWidget::NoDockWidgetFeatures));
     connect(m_propertyTree, SIGNAL(signalChanged()), this, SLOT(OnPropertyTreeDataChanged()));
 }
 

@@ -71,65 +71,6 @@ namespace PhysX
         /// @return Pointer to the created mesh.
         virtual physx::PxTriangleMesh* CreateTriangleMeshFromCooked(const void* cookedMeshData, AZ::u32 bufferSize) = 0;
 
-        // LUMBERYARD_DEPRECATED(LY-109437)
-        //! @deprecated Deprecated, CookConvexMeshToFile has been moved to Physics::System::CookConvexMeshToFile
-        /// Creates a new convex mesh to a file.
-        /// @param filePath Path to the output file
-        /// @param vertices Pointer to beginning of vertex data.
-        /// @param vertexCount Number of vertices in mesh.
-        /// @return Result of cooking.
-        AZ_DEPRECATED(
-            virtual bool CookConvexMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount) = 0;,
-            "CookConvexMeshToFile is deprecated, CookConvexMeshToFile has been moved to Physics::System::CookConvexMeshToFile")
-
-        // LUMBERYARD_DEPRECATED(LY-109437)
-        //! @deprecated Deprecated, CookConvexMeshToMemory has been moved to Physics::System::CookConvexMeshToMemory
-        /// Cooks a convex mesh to a memory buffer.
-        /// @param vertices Pointer to beginning of vertex data.
-        /// @param vertexCount Number of vertices in mesh.
-        /// @param result The resulting memory buffer.
-        /// @return Result of cooking.
-        AZ_DEPRECATED(
-            virtual bool CookConvexMeshToMemory(const AZ::Vector3* vertices, AZ::u32 vertexCount, AZStd::vector<AZ::u8>& result) = 0;,
-            "CookConvexMeshToMemory is deprecated, CookConvexMeshToMemory has been moved to Physics::System::CookConvexMeshToMemory")
-
-        // LUMBERYARD_DEPRECATED(LY-109437)
-        //! @deprecated Deprecated, CookTriangleMeshToFile has been moved to Physics::System::CookTriangleMeshToFile
-        /// Creates a new triangular to a file.
-        /// @param filePath Path to the output file
-        /// @param vertices Pointer to beginning of vertex data.
-        /// @param vertexCount Number of vertices in mesh.
-        /// @param indices Pointer to beginning of index data.
-        /// @param indexCount Number of indices in mesh.
-        /// @return Result of cooking.
-        AZ_DEPRECATED(virtual bool CookTriangleMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount,
-            const AZ::u32* indices, AZ::u32 indexCount) = 0;,
-            "CookTriangleMeshToFile is deprecated, CookTriangleMeshToFile has been moved to Physics::System::CookTriangleMeshToFile")
-
-        // LUMBERYARD_DEPRECATED(LY-109437)
-        //! @deprecated Deprecated, CookConvexMeshToMemory has been moved to Physics::System::CookConvexMeshToMemory
-        /// Cook a triangular mesh to a memory buffer.
-        /// @param vertices Pointer to beginning of vertex data.
-        /// @param vertexCount Number of vertices in mesh.
-        /// @param indices Pointer to beginning of index data.
-        /// @param indexCount Number of indices in mesh.
-        /// @param result The resulting memory buffer.
-        /// @return Result of cooking.
-        AZ_DEPRECATED(virtual bool CookTriangleMeshToMemory(const AZ::Vector3* vertices, AZ::u32 vertexCount,
-            const AZ::u32* indices, AZ::u32 indexCount, AZStd::vector<AZ::u8>& result) = 0;,
-            "CookTriangleMeshToMemory is deprecated, CookConvexMeshToMemory has been moved to Physics::System::CookConvexMeshToMemory")
-
-        // LUMBERYARD_DEPRECATED(LY-109437)
-        //! @deprecated Deprecated, AddColliderComponentToEntity has been moved to Physics::System::AddColliderComponentToEntity
-        /// Adds an appropriate collider component to the entity based on the provided shape configuration.
-        /// @param entity Entity where the component should be added to.
-        /// @param colliderConfiguration Configuration of the collider.
-        /// @param shapeConfiguration Configuration of the shape of the collider.
-        /// @param addEditorComponents Tells whether to add the Editor version of the collider component or the Game one.
-        AZ_DEPRECATED(virtual void AddColliderComponentToEntity(
-            AZ::Entity* entity, const Physics::ColliderConfiguration& colliderConfiguration, const Physics::ShapeConfiguration& shapeConfiguration, bool addEditorComponents = false) = 0;,
-            "AddColliderComponentToEntity is deprecated, AddColliderComponentToEntity has been moved to Physics::System::AddColliderComponentToEntity");
-
         /// Creates PhysX collision filter data from generic collision filtering settings.
         /// @param layer The collision layer the object belongs to.
         /// @param group The set of collision layers the object will interact with.
@@ -152,6 +93,8 @@ namespace PhysX
         /// Expose the PhysX error callback from this Gem for use by other Gems that need to initialize their own instances of the PhysX SDK.
         virtual physx::PxErrorCallback* GetPhysXErrorCallback() = 0;
 
+        /// Expose PhysX Cpu dispatcher for use by other Gems.
+        virtual physx::PxCpuDispatcher* GetCpuDispatcher() = 0;
 
         /// Gets the cooking object.
         /// It is possible to update the current cooking params with setParams on PxCooking,

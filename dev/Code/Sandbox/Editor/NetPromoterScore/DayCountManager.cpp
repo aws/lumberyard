@@ -140,10 +140,9 @@ bool DayCountManager::CheckTime()
 
     // if users change the date backward, the number of count will
     // be negative, so always set to zero if it's negative
-    if (count < 0)
-    {
-        count = 0;
-    }
+    // We need to prevent users changing the date forward as well
+    // setting the count to a maximum of 1 does that
+    count = AZ::GetClamp(count, 0, 1);
 
     dayCount += count;
 

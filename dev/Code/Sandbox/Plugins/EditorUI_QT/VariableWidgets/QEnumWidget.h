@@ -43,7 +43,7 @@ protected:
     bool m_isShown;
     //Whether the mouse left button was pressed on line edit 
     bool m_lineEditPressed;
-    QToolTipWidget* m_tooltip;
+    QToolTipWrapper* m_tooltip;
 };
 
 #endif // CRYINCLUDE_EDITORUI_QT_VARIABLE_WIDGETS_QENUMWIDGET_H

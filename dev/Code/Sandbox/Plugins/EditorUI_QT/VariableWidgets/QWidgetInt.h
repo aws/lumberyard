@@ -51,7 +51,7 @@ private:
     QSpinBox m_edit;
     AzQtComponents::SliderInt m_slider;
     int m_stepResolution;
-    QToolTipWidget* m_tooltip;
+    QToolTipWrapper* m_tooltip;
     int m_StoredValue;  // Value stored for undo
 };
 

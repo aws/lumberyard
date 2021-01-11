@@ -107,7 +107,7 @@ protected:
     int selectedHue; //seperate variable to keep it from being overwritten
 
     bool colorPickerActive;
-    QToolTipWidget* m_tooltip;
+    QToolTipWrapper* m_tooltip;
 };
 
 #endif // QColorPickerWidget_h__

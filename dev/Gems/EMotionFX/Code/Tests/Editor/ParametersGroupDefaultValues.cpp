@@ -169,8 +169,8 @@ namespace EMotionFX
         QTreeWidget* treeWidget = animGraphPlugin->GetParameterWindow()->findChild<QTreeWidget*>("AnimGraphParamWindow");
         ASSERT_TRUE(treeWidget) << "Expected to find the QTreeWidget inside the AnimGraph plugin's parameter window";
         const QTreeWidgetItem* groupParameterItem = treeWidget->topLevelItem(0);
-        const QTreeWidgetItem* valueParameterItem = groupParameterItem->child(0);
-        treeWidget->setItemSelected(valueParameterItem, true);
+        QTreeWidgetItem* valueParameterItem = groupParameterItem->child(0);
+        valueParameterItem->setSelected(true);
         // Make the current value of the parameter from the current animgraph the parameter's default value
         animGraphPlugin->GetParameterWindow()->OnMakeDefaultValue();
 

@@ -88,6 +88,7 @@ namespace EMStudio
         const char* ConstructHTMLLink(const char* text, const MCore::RGBAColor& color = MCore::RGBAColor(0.95315f, 0.609375f, 0.109375f));
         void SetWidgetAsInvalidInput(QWidget* widget);
 
+        static void MakeTransparentButton(QToolButton* button, const char* iconFileName, const char* toolTipText, uint32 width = 20, uint32 height = 20);
         static void MakeTransparentButton(QPushButton* button, const char* iconFileName, const char* toolTipText, uint32 width = 20, uint32 height = 20);
         static void MakeTransparentMenuButton(QPushButton* button, const char* iconFileName, const char* toolTipText, uint32 width = 30, uint32 height = 20);
         static QLabel* MakeSeperatorLabel(uint32 width, uint32 height);

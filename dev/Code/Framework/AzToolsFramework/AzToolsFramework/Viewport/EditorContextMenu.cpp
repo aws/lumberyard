@@ -59,7 +59,7 @@ namespace AzToolsFramework
                 const int contextMenuFlag = 0;
                 EditorEvents::Bus::BroadcastReverse(
                     &EditorEvents::PopulateEditorGlobalContextMenu,
-                    contextMenu.m_menu.data(), ViewportInteraction::Vector2FromScreenPoint(
+                    contextMenu.m_menu.data(), AzFramework::Vector2FromScreenPoint(
                         mouseInteraction.m_mouseInteraction.m_mousePick.m_screenCoordinates),
                     contextMenuFlag);
 

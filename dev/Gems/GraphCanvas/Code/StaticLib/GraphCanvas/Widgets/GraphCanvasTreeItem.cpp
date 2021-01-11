@@ -137,6 +137,11 @@ namespace GraphCanvas
         }
     }
 
+    QModelIndex GraphCanvasTreeItem::GetIndexFromModel()
+    {
+        return m_abstractItemModel->CreateIndex(this);
+    }
+
     int GraphCanvasTreeItem::FindRowForChild(const GraphCanvasTreeItem* item) const
     {
         int row = -1;
@@ -204,7 +209,7 @@ namespace GraphCanvas
 
         if (m_abstractItemModel && signalAdd)
         {
-            m_abstractItemModel->OnChildAdded();
+            m_abstractItemModel->OnChildAdded(item);
         }
     }
 

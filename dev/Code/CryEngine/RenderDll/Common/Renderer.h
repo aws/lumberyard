@@ -2443,6 +2443,8 @@ public:
     // Specular Antialiasing
     static int CV_r_SpecularAntialiasing;
 
+    static int CV_r_readMeshNormals;
+
     //--------------float cvars----------------------
 
 

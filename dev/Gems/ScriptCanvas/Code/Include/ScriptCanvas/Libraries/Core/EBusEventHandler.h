@@ -172,6 +172,10 @@ namespace ScriptCanvas
                 AZ::BehaviorEBusHandler* m_handler = nullptr;
                 AZ::BehaviorEBus* m_ebus = nullptr;
                 AZStd::recursive_mutex m_mutex; // post-serialization
+
+                // performance timing related events
+                AZ::Event<size_t>* m_latentStartTimerEvent = nullptr;
+                AZ::Event<size_t>* m_latentStopTimerEvent = nullptr;
             };
         } // namespace Core
     } // namespace Nodes

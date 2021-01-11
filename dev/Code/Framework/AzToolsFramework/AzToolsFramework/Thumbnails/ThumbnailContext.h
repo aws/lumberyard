@@ -45,11 +45,14 @@ namespace AzToolsFramework
             explicit ThumbnailContext(int thumbnailSize);
             ~ThumbnailContext() override;
 
+            //! Is the thumbnail currently loading or is about to load.
+            bool IsLoading(SharedThumbnailKey key);
             //! Retrieve thumbnail by key, generate one if needed
             SharedThumbnail GetThumbnail(SharedThumbnailKey key);
             //! Add new thumbnail cache
             void RegisterThumbnailProvider(SharedThumbnailProvider provider);
 
+            void RedrawThumbnail();
         private:
             //! Collection of thumbnail caches provided by this context
             QList<SharedThumbnailProvider> m_providers;

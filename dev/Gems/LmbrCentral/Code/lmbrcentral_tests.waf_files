@@ -21,7 +21,9 @@
             "Tests/ShapeGeometryUtilTest.cpp",
             "Tests/SpawnerComponentTest.cpp",
             "Tests/SplineComponentTests.cpp",
-            "Tests/DiskShapeTest.cpp"
+            "Tests/ParticleComponentTest.cpp",
+            "Tests/DiskShapeTest.cpp",
+            "Tests/AliasComponentTests.cpp"
         ]
     }
 }

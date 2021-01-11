@@ -10,8 +10,6 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
 #include <platform_impl.h> // Needed because of Cry_Vector3.h in ClothComponent. Added here for the whole module to be able to link its content.
 #include <CrySystemBus.h>
 
@@ -19,6 +17,8 @@
 #include <AzCore/Module/Module.h>
 
 #include <System/SystemComponent.h>
+#include <System/FabricCooker.h>
+#include <System/TangentSpaceHelper.h>
 #include <Components/ClothComponent.h>
 
 #ifdef NVCLOTH_EDITOR
@@ -43,6 +43,13 @@ namespace NvCloth
         Module()
             : AZ::Module()
         {
+            SystemComponent::InitializeNvClothLibrary();
+
+            // IFabricCooker and ITangentSpaceHelper interfaces will be available
+            // at both runtime and asset build time.
+            m_fabricCooker = AZStd::make_unique<FabricCooker>();
+            m_tangentSpaceHelper = AZStd::make_unique<TangentSpaceHelper>();
+
             CrySystemEventBus::Handler::BusConnect();
 
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
@@ -61,6 +68,11 @@ namespace NvCloth
         ~Module()
         {
             CrySystemEventBus::Handler::BusDisconnect();
+
+            m_tangentSpaceHelper.reset();
+            m_fabricCooker.reset();
+
+            SystemComponent::TearDownNvClothLibrary();
         }
 
         /**
@@ -75,14 +87,30 @@ namespace NvCloth
 
     protected:
         // CrySystemEventBus ...
+        void OnCrySystemPreInitialize(ISystem& system, const SSystemInitParams& systemInitParams) override;
         void OnCrySystemInitialized(ISystem& system, const SSystemInitParams& systemInitParams) override;
         void OnCrySystemShutdown(ISystem& system) override;
+        void OnCrySystemPostShutdown() override;
 
     private:
+        AZStd::unique_ptr<FabricCooker> m_fabricCooker;
+        AZStd::unique_ptr<TangentSpaceHelper> m_tangentSpaceHelper;
+
 #ifdef NVCLOTH_EDITOR
         AZStd::vector<AzToolsFramework::PropertyHandlerBase*> m_propertyHandlers;
 #endif //NVCLOTH_EDITOR
     };
+
+    void Module::OnCrySystemPreInitialize(
+        [[maybe_unused]] ISystem& system,
+        [[maybe_unused]] const SSystemInitParams& systemInitParams)
+    {
+#if !defined(AZ_MONOLITHIC_BUILD)
+        // When module is linked dynamically, we must set our gEnv pointer.
+        // When module is linked statically, we'll share the application's gEnv pointer.
+        gEnv = system.GetGlobalEnvironment();
+#endif
+    }
 
     void Module::OnCrySystemInitialized(ISystem& system,
         [[maybe_unused]] const SSystemInitParams& systemInitParams)
@@ -97,6 +125,13 @@ namespace NvCloth
 #ifdef NVCLOTH_EDITOR
         NvCloth::Editor::UnregisterPropertyTypes(m_propertyHandlers);
 #endif //NVCLOTH_EDITOR
+    }
+
+    void Module::OnCrySystemPostShutdown()
+    {
+#if !defined(AZ_MONOLITHIC_BUILD)
+        gEnv = nullptr;
+#endif
     }
 } // namespace NvCloth
 

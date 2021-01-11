@@ -809,12 +809,18 @@ void CTerrainDialog::OnSetMaxHeight()
 {
     // Set up dialog box to update Max Height
     float fValue = GetIEditor()->GetHeightmap()->GetMaxHeight();
-    bool ok = false;
-    int fractionalDigitCount = 2;
-    fValue = aznumeric_caster(QInputDialog::getDouble(this, tr("Set Max Terrain Height"), tr("Maximum terrain height"), fValue, 1.0, 65536.0, fractionalDigitCount, &ok));
-
-    if (ok)
+    QInputDialog* dialog = new QInputDialog(this);
+    dialog->setWindowTitle(tr("Set Max Terrain Height"));
+    dialog->setLabelText(tr("Maximum terrain height"));
+    dialog->setDoubleDecimals(2);
+    dialog->setDoubleRange(1.0, 65536.0);
+    dialog->setDoubleValue(fValue);
+    dialog->setDoubleStep(1);
+    dialog->adjustSize();
+    if(dialog->exec() == QDialog::Accepted)
     {
+        fValue = aznumeric_caster(dialog->doubleValue());
+
         // Set the new max height, but don't rescale the terrain.
         GetIEditor()->GetHeightmap()->SetMaxHeight(fValue, false);
 

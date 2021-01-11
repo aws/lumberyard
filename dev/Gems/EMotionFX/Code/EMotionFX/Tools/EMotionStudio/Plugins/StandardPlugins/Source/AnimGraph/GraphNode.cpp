@@ -947,13 +947,12 @@ namespace EMStudio
         for (uint32 i = 0; i < numInputPorts; ++i)
         {
             const NodePort* nodePort = &mInputPorts[i];
-            width = mPortFontMetrics->width(nodePort->GetName());
+            width = mPortFontMetrics->horizontalAdvance(nodePort->GetName());
             maxInputWidth = MCore::Max<uint32>(maxInputWidth, width);
         }
 
         return maxInputWidth;
     }
-
 
     // calculate the max output port width
     uint32 GraphNode::CalcMaxOutputPortWidth() const
@@ -964,13 +963,12 @@ namespace EMStudio
         const uint32 numOutputPorts = mOutputPorts.GetLength();
         for (uint32 i = 0; i < numOutputPorts; ++i)
         {
-            width = mPortFontMetrics->width(mOutputPorts[i].GetName());
+            width = mPortFontMetrics->horizontalAdvance(mOutputPorts[i].GetName());
             maxOutputWidth = MCore::Max<uint32>(maxOutputWidth, width);
         }
 
         return maxOutputWidth;
     }
-
 
     // calculate the width
     int32 GraphNode::CalcRequiredWidth()
@@ -984,11 +982,11 @@ namespace EMStudio
         mMaxInputWidth = CalcMaxInputPortWidth();
         mMaxOutputWidth = CalcMaxOutputPortWidth();
 
-        const uint32 infoWidth = mInfoFontMetrics->width(mElidedNodeInfo);
+        const uint32 infoWidth = mInfoFontMetrics->horizontalAdvance(mElidedNodeInfo);
         const uint32 totalPortWidth = mMaxInputWidth + mMaxOutputWidth + 40 + infoWidth;
 
         // make sure the node is at least 100 units in width
-        uint32 headerWidth = mHeaderFontMetrics->width(mElidedName) + 40;
+        uint32 headerWidth = mHeaderFontMetrics->horizontalAdvance(mElidedName) + 40;
         headerWidth = MCore::Max<uint32>(headerWidth, 100);
 
         mRequiredWidth = MCore::Max<uint32>(headerWidth, totalPortWidth);
@@ -998,7 +996,6 @@ namespace EMStudio
 
         return mRequiredWidth;
     }
-
 
     // get the rect for a given input port
     QRect GraphNode::CalcInputPortRect(uint32 portNr)
@@ -1228,7 +1225,7 @@ namespace EMStudio
         painter.setPen(Qt::NoPen);
         painter.setBrush(textColor);
 
-        const float textWidth       = aznumeric_cast<float>(fontMetrics.width(text));
+        const float textWidth       = aznumeric_cast<float>(fontMetrics.horizontalAdvance(text));
         const float halfTextWidth   = aznumeric_cast<float>(textWidth * 0.5 + 0.5);
         const float halfTextHeight  = aznumeric_cast<float>(fontMetrics.height() * 0.5 + 0.5);
         const QPoint rectCenter     = rect.center();

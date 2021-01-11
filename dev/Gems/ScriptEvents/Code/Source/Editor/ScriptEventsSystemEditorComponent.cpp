@@ -178,7 +178,7 @@ namespace ScriptEventsEditor
     {
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serialize->Class<ScriptEventEditorSystemComponent, AZ::Component>()
+            serialize->Class<ScriptEventEditorSystemComponent>()
                 ->Version(3)
                 ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AZ_CRC("AssetBuilder", 0xc739c7d7) }));
             ;

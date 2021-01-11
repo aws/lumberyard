@@ -23,7 +23,7 @@ class CParticleItem;
 class CBaseObject;
 class CBaseLibraryItem;
 class CViewport;
-class QToolTipWidget;
+class IQToolTip;
 
 struct DefaultEmitter
 {
@@ -160,7 +160,7 @@ struct IEditorParticleUtils
     //! \param option        Name of a sub-option of the variable specified by "path". (ex: "Emitter_Strength" will look up the tooltip data for "Rotation.Rotation_Rate_X.Emitter_Strength")
     //! \param optionalData  The argument to be used with "special_content" feature. See ToolTip_GetSpecialContentType() and QToolTipWidget::AddSpecialContent().
     //! \param isEnabled     If false, the tooltip will indicate the reason why the widget is disabled.
-    virtual void ToolTip_BuildFromConfig(QToolTipWidget* tooltip, QString path, QString option, QString optionalData = "", bool isEnabled = true) = 0;
+    virtual void ToolTip_BuildFromConfig(IQToolTip* tooltip, QString path, QString option, QString optionalData = "", bool isEnabled = true) = 0;
     
     virtual QString ToolTip_GetTitle(QString path, QString option = "") = 0;
     virtual QString ToolTip_GetContent(QString path, QString option = "") = 0;

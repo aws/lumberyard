@@ -142,6 +142,15 @@ namespace LmbrCentral
                 ->Event("GetProbeFade", &LightComponentRequestBus::Events::GetProbeFade)
                 ->Event("SetProbeFade", &LightComponentRequestBus::Events::SetProbeFade, { { { "Fade", "Multiplier for fading out a probe [0-1]", probeFadeDefaultValue } } })
                 ->VirtualProperty("ProbeFade", "GetProbeFade", "SetProbeFade")
+                ->Event("GetAnimIndex", &LightComponentRequestBus::Events::GetAnimIndex)
+                ->Event("SetAnimIndex", &LightComponentRequestBus::Events::SetAnimIndex)
+                ->VirtualProperty("AnimIndex", "GetAnimIndex", "SetAnimIndex")
+                ->Event("GetAnimSpeed", &LightComponentRequestBus::Events::GetAnimSpeed)
+                ->Event("SetAnimSpeed", &LightComponentRequestBus::Events::SetAnimSpeed)
+                ->VirtualProperty("AnimSpeed", "GetAnimSpeed", "SetAnimSpeed")
+                ->Event("GetAnimPhase", &LightComponentRequestBus::Events::GetAnimPhase)
+                ->Event("SetAnimPhase", &LightComponentRequestBus::Events::SetAnimPhase)
+                ->VirtualProperty("AnimPhase", "GetAnimPhase", "SetAnimPhase")
                 ;
 
             behaviorContext->EBus<LightComponentNotificationBus>("LightNotification", "LightComponentNotificationBus", "Notifications for the Light Components")
@@ -205,7 +214,8 @@ namespace LmbrCentral
                 ->Field("AnimIndex", &LightConfiguration::m_animIndex)
                 ->Field("AnimSpeed", &LightConfiguration::m_animSpeed)
                 ->Field("AnimPhase", &LightConfiguration::m_animPhase)
-                ->Field("CubemapId", &LightConfiguration::m_cubemapId);
+                ->Field("CubemapId", &LightConfiguration::m_cubemapId)
+                ->Field("ClipVolumeEntity", &LightConfiguration::m_clipVolumeEntity);
         }
     }
 
@@ -741,6 +751,47 @@ namespace LmbrCentral
         return m_configuration.m_probeFade;
     }
 
+    // Animation parameters
+    void LightComponent::SetAnimIndex(AZ::u32 animIndex)
+    {
+        if (m_configuration.m_animIndex != animIndex)
+        {
+            m_configuration.m_animIndex = animIndex;
+            m_light.UpdateRenderLight(m_configuration);
+        }
+    }
+    AZ::u32 LightComponent::GetAnimIndex()
+    {
+        return m_configuration.m_animIndex;
+    }
+
+    void LightComponent::SetAnimSpeed(float animSpeed)
+    {
+        if (m_configuration.m_animSpeed != animSpeed)
+        {
+            m_configuration.m_animSpeed = animSpeed;
+            m_light.UpdateRenderLight(m_configuration);
+        }
+    }
+    float LightComponent::GetAnimSpeed()
+    {
+        return m_configuration.m_animSpeed;
+    }
+
+    void LightComponent::SetAnimPhase(float animPhase)
+    {
+        if (m_configuration.m_animPhase != animPhase)
+        {
+            m_configuration.m_animPhase = animPhase;
+            m_light.UpdateRenderLight(m_configuration);
+        }
+    }
+    float LightComponent::GetAnimPhase()
+    {
+        return m_configuration.m_animPhase;
+    }
+
+
     ///////////////////////////////////////////////////////////
     void LightComponent::ToggleLight()
     {
@@ -752,6 +803,16 @@ namespace LmbrCentral
         {
             TurnOnLight();
         }
+    }
+
+    void LightComponent::OnClipVolumeCreated(IClipVolume* clipVolume)
+    {
+        m_light.SetClipVolume(clipVolume);
+    }
+
+    void LightComponent::OnClipVolumeDestroyed(IClipVolume* clipVolume)
+    {
+        m_light.ClearClipVolume(clipVolume);
     }
 
     void LightComponent::SetLightState(State state)
@@ -805,6 +866,7 @@ namespace LmbrCentral
 
         LightComponentRequestBus::Handler::BusConnect(entityId);
         RenderNodeRequestBus::Handler::BusConnect(entityId);
+        ClipVolumeComponentNotificationBus::Handler::BusConnect(m_configuration.m_clipVolumeEntity);
 
         if (m_configuration.m_onInitially)
         {
@@ -820,6 +882,8 @@ namespace LmbrCentral
     {
         LightComponentRequestBus::Handler::BusDisconnect();
         RenderNodeRequestBus::Handler::BusDisconnect();
+        ClipVolumeComponentNotificationBus::Handler::BusDisconnect();
+
         m_light.DestroyRenderLight();
         m_light.SetEntity(AZ::EntityId());
     }

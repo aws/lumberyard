@@ -211,6 +211,66 @@ namespace UnitTest
         EXPECT_EQ(4, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::ContainerTypes_Output)]);
     }
 
+    TEST_F(PythonReflectionDictionaryTests, MapTypes_Mismatch_Detected)
+    {
+        enum class LogTypes
+        {
+            Skip = 0,
+            Detection,
+        };
+
+        m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
+        {
+            constexpr AZStd::string_view warningTypeMismatch =
+                "Could not convert to pair element type value2 for the pair<>; failed to marshal Python input <class 'int'>";
+            constexpr AZStd::string_view warningSizeMismatch =
+                "Python Dict size:2 does not match the size of the unordered_map:0";
+
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                if (AzFramework::StringFunc::StartsWith(message, warningTypeMismatch))
+                {
+                    return aznumeric_cast<int>(LogTypes::Detection);
+                }
+                else if (AzFramework::StringFunc::StartsWith(message, warningSizeMismatch))
+                {
+                    return aznumeric_cast<int>(LogTypes::Detection);
+                }
+            }
+            return aznumeric_cast<int>(LogTypes::Skip);
+        };
+
+        PythonReflectionDictionaryTypes pythonReflectionDictionaryTypes;
+        pythonReflectionDictionaryTypes.Reflect(m_app.GetSerializeContext());
+        pythonReflectionDictionaryTypes.Reflect(m_app.GetBehaviorContext());
+
+        AZ::Entity e;
+        Activate(e);
+
+        SimulateEditorBecomingInitialized();
+
+        try
+        {
+            pybind11::exec(R"(
+                import azlmbr.test.dictionary
+                import azlmbr.object
+
+                test = azlmbr.object.create('PythonReflectionDictionaryTypes')
+
+                mismatchMap = {'one': 1, 'two': 2}      
+                test.accept_dict_of_stringToString(mismatchMap)
+            )");
+        }
+        catch (const std::exception& e)
+        {
+            AZ_Error("UnitTest", false, "Failed with Python exception of %s", e.what());
+        }
+
+        e.Deactivate();
+
+        EXPECT_EQ(3, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::Detection)]);
+    }
+
     TEST_F(PythonReflectionDictionaryTests, MapComplexTypes)
     {
         enum class LogTypes

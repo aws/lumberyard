@@ -139,7 +139,7 @@ private:
 
         row[OperationColumn]->setText(operation);
         row[StatusColumn]->setText(status);
-        row[StatusColumn]->setData(statusTextColor, Qt::TextColorRole);
+        row[StatusColumn]->setData(statusTextColor, Qt::ForegroundRole);
         row[TimeColumn]->setText(QTime::currentTime().toString());
 
         this->appendRow(row);

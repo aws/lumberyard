@@ -14,14 +14,13 @@ NSCursor *createCursorFromPixmap(const QPixmap pixmap, const QPoint hotspot)
     if (pixmap.devicePixelRatio() > 1.0) {
         QSize layoutSize = pixmap.size() / pixmap.devicePixelRatio();
         QPixmap scaledPixmap = pixmap.scaled(layoutSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-        nsimage = QtMac::toNSImage(scaledPixmap);
-        CGImageRef cgImage = QtMac::toCGImageRef(pixmap);
-        NSBitmapImageRep *imageRep = [[NSBitmapImageRep alloc] initWithCGImage:cgImage];
-        [nsimage addRepresentation:imageRep];
-        [imageRep release];
-        CGImageRelease(cgImage);
+        auto pixmapImage = scaledPixmap.toImage();
+        auto cgImage = pixmapImage.toCGImage();
+        nsimage = [[NSImage alloc] initWithCGImage:cgImage size:NSZeroSize];
     } else {
-        nsimage = QtMac::toNSImage(pixmap);
+        auto pixmapImage = pixmap.toImage();
+        auto cgImage = pixmapImage.toCGImage();
+        nsimage = [[NSImage alloc] initWithCGImage:cgImage size:NSZeroSize];
     }
 
     NSCursor *nsCursor = [[NSCursor alloc] initWithImage:nsimage hotSpot: hotSpot];

@@ -4,7 +4,8 @@
             "Include/CameraFramework/ICameraSubComponent.h",
             "Include/CameraFramework/ICameraLookAtBehavior.h",
             "Include/CameraFramework/ICameraTargetAcquirer.h",
-            "Include/CameraFramework/ICameraTransformBehavior.h"
+            "Include/CameraFramework/ICameraTransformBehavior.h",
+            "Include/CameraFramework/ICameraZoomBehavior.h"
         ],
         "Source": [
             "Source/CameraFrameworkGem.cpp",

@@ -41,7 +41,7 @@ private:
     QScopedPointer<Ui::CAboutDialog>    m_ui;
     QPixmap                             m_backgroundImage;
 
-    int m_enforcedWidth = 602;
-    double m_enforcedRatio = 300.0 / 602.0;
+    int m_enforcedWidth = 600;
+    int m_enforcedHeight = 360;
 };
 

@@ -141,8 +141,13 @@ Negative values will be ignored.\n")->
 
                     DataElement(AZ::Edit::UIHandlers::Slider, &ParticleEmitterSettings::m_particleSizeScaleRandom, "Particle size scale random", "(CPU only) Randomize particle size scale")->
                     Attribute(AZ::Edit::Attributes::Min, 0.f)->
-                    Attribute(AZ::Edit::Attributes::Max, 1.f)->
+                    Attribute(AZ::Edit::Attributes::Max, ParticleEmitterSettings::MaxRandSizeScale)->
                     Attribute(AZ::Edit::Attributes::Step, 0.05f)->
+
+                    DataElement(AZ::Edit::UIHandlers::Slider, &ParticleEmitterSettings::m_viewDistMultiplier, "View distance multiplier", "Adjusts max view distance. If 1.0 then default is used. 1.1 would be 10% further than default. Set to 100 for infinite visibility ")->
+                    Attribute(AZ::Edit::Attributes::Min, 0.f)->
+                    Attribute(AZ::Edit::Attributes::Max, static_cast<float>(IRenderNode::VIEW_DISTANCE_MULTIPLIER_MAX))->
+                    Attribute(AZ::Edit::Attributes::Step, 0.1f)->
 
                     DataElement(AZ::Edit::UIHandlers::CheckBox, &ParticleEmitterSettings::m_ignoreRotation, "Ignore rotation", "Ignored the entity's rotation.")->
                     DataElement(AZ::Edit::UIHandlers::CheckBox, &ParticleEmitterSettings::m_notAttached, "Not attached", "If selected, the entity's position is ignored. Emitter does not follow its entity.")->
@@ -150,9 +155,6 @@ Negative values will be ignored.\n")->
                     DataElement(AZ::Edit::UIHandlers::CheckBox, &ParticleEmitterSettings::m_useLOD, "Use LOD", "Activates LOD if they exist on emitter.")->
 
                     DataElement(AZ::Edit::UIHandlers::Default, &ParticleEmitterSettings::m_targetEntity, "Target Entity", "Target Entity to be used for emitters with Target Attraction or similar features enabled.")->
-                    DataElement(AZ::Edit::UIHandlers::CheckBox, &ParticleEmitterSettings::m_viewDistMultiplier, "View distance multiplier", "Adjusts max view distance. If 1.0 then default is used. 1.1 would be 10% further than default. Set to 100 for infinite visibility ")->
-                    Attribute(AZ::Edit::Attributes::Min, 0.f)->
-                    Attribute(AZ::Edit::Attributes::Max, static_cast<float>(IRenderNode::VIEW_DISTANCE_MULTIPLIER_MAX))->
 
                     DataElement(AZ::Edit::UIHandlers::CheckBox, &ParticleEmitterSettings::m_useVisAreas, "Use VisAreas", "Allow VisAreas to control this component's visibility.")
                 ;
@@ -168,10 +170,15 @@ Negative values will be ignored.\n")->
             behaviorContext->EBus<EditorParticleComponentRequestBus>("EditorParticleComponentRequestBus")
                 ->Event("SetVisibility", &EditorParticleComponentRequestBus::Events::SetVisibility)
                 ->Event("GetVisibility", &EditorParticleComponentRequestBus::Events::GetVisibility)
+                ->Event("Show", &EditorParticleComponentRequestBus::Events::Show)
+                ->Event("Hide", &EditorParticleComponentRequestBus::Events::Hide)
                 ->VirtualProperty("Visible", "GetVisibility", "SetVisibility")
                 ->Event("Enable", &EditorParticleComponentRequestBus::Events::Enable)
                 ->Event("GetEnable", &EditorParticleComponentRequestBus::Events::GetEnable)
                 ->VirtualProperty("Enable", "GetEnable", "Enable")
+                ->Event("GetEnablePreRoll", &EditorParticleComponentRequestBus::Events::GetEnablePreRoll)
+                ->Event("EnablePreRoll", &EditorParticleComponentRequestBus::Events::EnablePreRoll)
+                ->VirtualProperty("EnablePreRoll", "GetEnablePreRoll", "EnablePreRoll")
                 ->Event("SetColorTint", &EditorParticleComponentRequestBus::Events::SetColorTint)
                 ->Event("GetColorTint", &EditorParticleComponentRequestBus::Events::GetColorTint)
                 ->VirtualProperty("ColorTint", "GetColorTint", "SetColorTint")
@@ -181,6 +188,9 @@ Negative values will be ignored.\n")->
                 ->Event("SetTimeScale", &EditorParticleComponentRequestBus::Events::SetTimeScale)
                 ->Event("GetTimeScale", &EditorParticleComponentRequestBus::Events::GetTimeScale)
                 ->VirtualProperty("TimeScale", "GetTimeScale", "SetTimeScale")
+                ->Event("SetPulsePeriod", &EditorParticleComponentRequestBus::Events::SetPulsePeriod)
+                ->Event("GetPulsePeriod", &EditorParticleComponentRequestBus::Events::GetPulsePeriod)
+                ->VirtualProperty("PulsePeriod", "GetPulsePeriod", "SetPulsePeriod")
                 ->Event("SetSpeedScale", &EditorParticleComponentRequestBus::Events::SetSpeedScale)
                 ->Event("GetSpeedScale", &EditorParticleComponentRequestBus::Events::GetSpeedScale)
                 ->VirtualProperty("SpeedScale", "GetSpeedScale", "SetSpeedScale")
@@ -196,6 +206,40 @@ Negative values will be ignored.\n")->
                 ->Event("SetParticleSizeScaleZ", &EditorParticleComponentRequestBus::Events::SetParticleSizeScaleZ)
                 ->Event("GetParticleSizeScaleZ", &EditorParticleComponentRequestBus::Events::GetParticleSizeScaleZ)
                 ->VirtualProperty("ParticleSizeScaleZ", "GetParticleSizeScaleZ", "SetParticleSizeScaleZ")
+                ->Event("SetParticleSizeScaleRandom", &EditorParticleComponentRequestBus::Events::SetParticleSizeScaleRandom)
+                ->Event("GetParticleSizeScaleRandom", &EditorParticleComponentRequestBus::Events::GetParticleSizeScaleRandom)
+                ->VirtualProperty("ParticleSizeScaleRandom", "GetParticleSizeScaleRandom", "SetParticleSizeScaleRandom")
+                ->Event("GetLifetimeStrength", &EditorParticleComponentRequestBus::Events::GetLifetimeStrength)
+                ->Event("SetLifetimeStrength", &EditorParticleComponentRequestBus::Events::SetLifetimeStrength)
+                ->VirtualProperty("LifetimeStrength", "GetLifetimeStrength", "SetLifetimeStrength")
+                ->Event("GetIgnoreRotation", &EditorParticleComponentRequestBus::Events::GetIgnoreRotation)
+                ->Event("SetIgnoreRotation", &EditorParticleComponentRequestBus::Events::SetIgnoreRotation)
+                ->VirtualProperty("IgnoreRotation", "GetIgnoreRotation", "SetIgnoreRotation")
+                ->Event("GetNotAttached", &EditorParticleComponentRequestBus::Events::GetNotAttached)
+                ->Event("SetNotAttached", &EditorParticleComponentRequestBus::Events::SetNotAttached)
+                ->VirtualProperty("NotAttached", "GetNotAttached", "SetNotAttached")
+                ->Event("GetUseBoundingBox", &EditorParticleComponentRequestBus::Events::GetUseBoundingBox)
+                ->Event("SetUseBoundingBox", &EditorParticleComponentRequestBus::Events::SetUseBoundingBox)
+                ->VirtualProperty("UseBoundingBox", "GetUseBoundingBox", "SetUseBoundingBox")
+                ->Event("GetUseLOD", &EditorParticleComponentRequestBus::Events::GetUseLOD)
+                ->Event("SetUseLOD", &EditorParticleComponentRequestBus::Events::SetUseLOD)
+                ->VirtualProperty("UseLOD", "GetUseLOD", "SetUseLOD")
+                ->Event("GetTargetEntity", &EditorParticleComponentRequestBus::Events::GetTargetEntityId)
+                ->Event("SetTargetEntity", &EditorParticleComponentRequestBus::Events::SetTargetEntityId)
+                ->VirtualProperty("TargetEntity", "GetTargetEntity", "SetTargetEntity")
+                ->Event("IsAudioEnabled", &EditorParticleComponentRequestBus::Events::IsAudioEnabled)
+                ->Event("EnableAudio", &EditorParticleComponentRequestBus::Events::EnableAudio)
+                ->VirtualProperty("EnableAudio", "IsAudioEnabled", "EnableAudio")
+                ->Event("GetRTPC", &EditorParticleComponentRequestBus::Events::GetRTPC)
+                ->Event("SetRTPC", &EditorParticleComponentRequestBus::Events::SetRTPC)
+                ->VirtualProperty("AudioRTPC", "GetRTPC", "SetRTPC")
+                ->Event("GetViewDistMultiplier", &EditorParticleComponentRequestBus::Events::GetViewDistMultiplier)
+                ->Event("SetViewDistMultiplier", &EditorParticleComponentRequestBus::Events::SetViewDistMultiplier)
+                ->VirtualProperty("ViewDistMultiplier", "GetViewDistMultiplier", "SetViewDistMultiplier")
+                ->Event("GetUseVisArea", &EditorParticleComponentRequestBus::Events::GetUseVisArea)
+                ->Event("SetUseVisArea", &EditorParticleComponentRequestBus::Events::SetUseVisArea)
+                ->VirtualProperty("UseVisArea", "GetUseVisArea", "SetUseVisArea")
+                ->Event("GetEmitterSettings", &EditorParticleComponentRequestBus::Events::GetEmitterSettings)
                 ;
         }
     }
@@ -450,6 +494,7 @@ Negative values will be ignored.\n")->
         {
             m_emitterFullNameToSelect.clear();
             m_settings.m_selectedEmitter.clear();
+            SetDirty();
         }
 
         EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_AttributesAndValues);
@@ -573,14 +618,33 @@ Negative values will be ignored.\n")->
 
     void EditorParticleComponent::Enable(bool enable)
     {
-        m_settings.m_enable = enable;
-        m_emitter.Enable(enable);
+        if (enable != m_settings.m_enable)
+        {
+            m_settings.m_enable = enable;
+            m_enable = enable;
+            m_emitter.Enable(enable);
+        }
     }
+
+    void EditorParticleComponent::Show()
+    {
+        SetVisibility(true);
+    }
+
+    void EditorParticleComponent::Hide()
+    {
+        SetVisibility(false);
+    }
+
 
     void EditorParticleComponent::SetVisibility(bool visible)
     {
-        m_settings.m_visible = visible;
-        m_emitter.SetVisibility(visible);
+        if (visible != m_settings.m_visible)
+        {
+            m_settings.m_visible = visible;
+            m_visible = visible;
+            m_emitter.SetVisibility(visible);
+        }
     }
 
     bool EditorParticleComponent::GetVisibility()
@@ -588,15 +652,47 @@ Negative values will be ignored.\n")->
         return m_settings.m_visible;
     }
 
+    bool EditorParticleComponent::GetEnablePreRoll()
+    {
+        return m_settings.m_prime;
+    }
+
+    void EditorParticleComponent::EnablePreRoll(bool enable)
+    {
+        if (enable != m_settings.m_prime)
+        {
+            m_settings.m_prime = enable;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    AZ::EntityId EditorParticleComponent::GetTargetEntityId()
+    {
+        return m_settings.m_targetEntity;
+    }
+
+    void EditorParticleComponent::SetTargetEntityId(AZ::EntityId entityId)
+    {
+        if (entityId != m_settings.m_targetEntity)
+        {
+            m_settings.m_targetEntity = entityId;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
     void EditorParticleComponent::SetColorTint(const AZ::Color& tint)
     {
-        m_settings.m_color = tint;
-        m_emitter.ApplyEmitterSetting(m_settings);
+        if (tint != m_settings.m_color)
+        {
+            m_settings.m_color = tint;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
     }
 
     void EditorParticleComponent::SetCountScale(float scale)
     {
-        if (ParticleEmitterSettings::MaxCountScale < scale || scale < 0)
+        if (scale == m_settings.m_countScale
+            || ParticleEmitterSettings::MaxCountScale < scale || scale < 0.f)
         {
             return;
         }
@@ -607,7 +703,8 @@ Negative values will be ignored.\n")->
 
     void EditorParticleComponent::SetTimeScale(float scale)
     {
-        if (ParticleEmitterSettings::MaxTimeScale < scale || scale < 0)
+        if (scale == m_settings.m_timeScale 
+            || ParticleEmitterSettings::MaxTimeScale < scale || scale < 0.f)
         {
             return;
         }
@@ -619,7 +716,8 @@ Negative values will be ignored.\n")->
 
     void EditorParticleComponent::SetSpeedScale(float scale)
     {
-        if (ParticleEmitterSettings::MaxSpeedScale < scale || scale < 0)
+        if (scale == m_settings.m_speedScale 
+            || ParticleEmitterSettings::MaxSpeedScale < scale || scale < 0.f)
         {
             return;
         }
@@ -630,7 +728,8 @@ Negative values will be ignored.\n")->
 
     void EditorParticleComponent::SetGlobalSizeScale(float scale)
     {
-        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        if (scale == m_settings.m_sizeScale
+            || ParticleEmitterSettings::MaxSizeScale < scale || scale < 0.f)
         {
             return;
         }
@@ -641,7 +740,8 @@ Negative values will be ignored.\n")->
 
     void EditorParticleComponent::SetParticleSizeScaleX(float scale)
     {
-        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        if (scale == m_settings.m_particleSizeScaleX
+            || ParticleEmitterSettings::MaxSizeScale < scale || scale < 0.f)
         {
             return;
         }
@@ -652,7 +752,8 @@ Negative values will be ignored.\n")->
 
     void EditorParticleComponent::SetParticleSizeScaleY(float scale)
     {
-        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        if (scale == m_settings.m_particleSizeScaleY
+            || ParticleEmitterSettings::MaxSizeScale < scale || scale < 0.f)
         {
             return;
         }
@@ -663,7 +764,8 @@ Negative values will be ignored.\n")->
 
     void EditorParticleComponent::SetParticleSizeScaleZ(float scale)
     {
-        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        if (scale == m_settings.m_particleSizeScaleZ
+            || ParticleEmitterSettings::MaxSizeScale < scale || scale < 0.f)
         {
             return;
         }
@@ -672,6 +774,33 @@ Negative values will be ignored.\n")->
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
+    void EditorParticleComponent::SetParticleSizeScaleRandom(float scale)
+    {
+        if (scale == m_settings.m_particleSizeScaleRandom
+            || ParticleEmitterSettings::MaxRandSizeScale < scale || scale < 0.f)
+        {
+            return;
+        }
+
+        m_settings.m_particleSizeScaleRandom = scale;
+        m_emitter.ApplyEmitterSetting(m_settings);
+    }
+
+    void EditorParticleComponent::SetPulsePeriod(float pulse)
+    {
+        if (pulse == m_settings.m_pulsePeriod || pulse < 0.f)
+        {
+            return;
+        }
+
+        m_settings.m_pulsePeriod = pulse;
+        m_emitter.ApplyEmitterSetting(m_settings);
+    }
+
+    float EditorParticleComponent::GetPulsePeriod()
+    {
+        return m_settings.m_pulsePeriod;
+    }
 
     bool EditorParticleComponent::GetEnable()
     {
@@ -717,4 +846,150 @@ Negative values will be ignored.\n")->
     {
         return m_settings.m_particleSizeScaleZ;
     }
+
+    float EditorParticleComponent::GetParticleSizeScaleRandom()
+    {
+        return m_settings.m_particleSizeScaleRandom;
+    }
+
+    float EditorParticleComponent::GetLifetimeStrength()
+    {
+        return m_settings.m_strength;
+    }
+
+    void EditorParticleComponent::SetLifetimeStrength(float strength)
+    {
+        if (strength == m_settings.m_strength
+            || ParticleEmitterSettings::MinLifttimeStrength > strength
+            || ParticleEmitterSettings::MaxLifttimeStrength < strength)
+        {
+            return;
+        }
+
+        m_settings.m_strength = strength;
+        m_emitter.ApplyEmitterSetting(m_settings);
+    }
+
+    bool EditorParticleComponent::GetIgnoreRotation()
+    {
+        return m_settings.m_ignoreRotation;
+    }
+
+    void EditorParticleComponent::SetIgnoreRotation(bool ignore)
+    {
+        if (ignore != m_settings.m_ignoreRotation)
+        {
+            m_settings.m_ignoreRotation = ignore;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    bool EditorParticleComponent::GetNotAttached()
+    {
+        return m_settings.m_notAttached;
+    }
+
+    void EditorParticleComponent::SetNotAttached(bool notAttached)
+    {
+        if (notAttached != m_settings.m_notAttached)
+        {
+            m_settings.m_notAttached = notAttached;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    bool EditorParticleComponent::GetUseBoundingBox()
+    {
+        return m_settings.m_registerByBBox;
+    }
+
+    void EditorParticleComponent::SetUseBoundingBox(bool useBox)
+    {
+        if (useBox != m_settings.m_registerByBBox)
+        {
+            m_settings.m_registerByBBox = useBox;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    bool EditorParticleComponent::GetUseLOD()
+    {
+        return m_settings.m_useLOD;
+    }
+
+    void EditorParticleComponent::SetUseLOD(bool activate)
+    {
+        if (activate != m_settings.m_useLOD)
+        {
+            m_settings.m_useLOD = activate;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    // Enable audio
+    bool EditorParticleComponent::IsAudioEnabled()
+    {
+        return m_settings.m_enableAudio;
+    }
+
+    void EditorParticleComponent::EnableAudio(bool enable)
+    {
+        if (enable != m_settings.m_enableAudio)
+        {
+            m_settings.m_enableAudio = enable;
+            m_enableAudio = enable;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    // Set audio RTPC
+    const AZStd::string& EditorParticleComponent::GetRTPC()
+    {
+        return m_settings.m_audioRTPC;
+    }
+
+    void EditorParticleComponent::SetRTPC(const AZStd::string& rtpc)
+    {
+        if (!rtpc.compare(m_settings.m_audioRTPC))
+        {
+            m_settings.m_audioRTPC = rtpc;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    float EditorParticleComponent::GetViewDistMultiplier()
+    {
+        return m_settings.m_viewDistMultiplier;
+    }
+
+    void EditorParticleComponent::SetViewDistMultiplier(float multiplier)
+    {
+        if (multiplier != m_settings.m_viewDistMultiplier)
+        {
+            m_settings.m_viewDistMultiplier = multiplier;
+            m_emitter.ApplyRenderFlags(m_settings);
+        }
+    }
+
+    bool EditorParticleComponent::GetUseVisArea()
+    {
+        return m_settings.m_useVisAreas;
+    }
+
+    void EditorParticleComponent::SetUseVisArea(bool enable)
+    {
+        if (enable != m_settings.m_useVisAreas)
+        {
+            m_settings.m_useVisAreas = enable;
+            m_emitter.ApplyRenderFlags(m_settings);
+        }
+    }
+
+
+    // get emitter setting
+    ParticleEmitterSettings EditorParticleComponent::GetEmitterSettings()
+    {
+        return m_settings;
+    }
+
 } // namespace LmbrCentral

@@ -17,6 +17,14 @@
 
 struct ray_hit;
 
+namespace AzFramework
+{
+    namespace RenderGeometry
+    {
+        struct RayResult;
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // UiCanvasOnMeshBus
 class UiCanvasOnMeshInterface
@@ -25,6 +33,7 @@ class UiCanvasOnMeshInterface
 public:
     virtual ~UiCanvasOnMeshInterface() {}
 
+#if ENABLE_CRY_PHYSICS
     //! Convert the input collision point into a canvas space position and pass the event and that position
     //! to the UI canvas to handle as a positional input event
     //! \return true if the event was handled
@@ -34,6 +43,13 @@ public:
     //! to the UI canvas to handle as a positional input event
     //! \return true if the event was handled
     virtual bool ProcessRayHitInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, const ray_hit& rayHit) = 0;
+#else
+
+    //! Convert the input ray collision into a canvas space position and pass the event and that position
+    //! to the UI canvas to handle as a positional input event
+    //! \return true if the event was handled
+    virtual bool ProcessHitInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, const AzFramework::RenderGeometry::RayResult& rayResult) = 0;
+#endif // ENABLE_CRY_PHYSICS
 };
 
 using UiCanvasOnMeshBus = AZ::EBus<UiCanvasOnMeshInterface>;

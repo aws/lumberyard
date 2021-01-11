@@ -17,8 +17,28 @@
 #include <QFormLayout>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QTreeWidget>
 
 struct HotKey;
+class QKeySequenceCaptureWidget;
+
+class KeyWidgetItem
+    : public QWidget
+{
+    Q_OBJECT
+public:
+    explicit KeyWidgetItem(QWidget* parent = nullptr);
+    ~KeyWidgetItem();
+
+    void SetLabel(const char* text) { m_label->setText(text); }
+    void SetLabel(QString& text) { m_label->setText(text); }
+    void SetCapture(QKeySequenceCaptureWidget* captureWidget);
+
+private:
+    QGridLayout* m_gridLayout;
+    QLabel* m_label;
+    QKeySequenceCaptureWidget* m_captureWidget;
+};
 
 class QKeySequenceEditorDialog
     : public QDialog
@@ -49,5 +69,6 @@ protected:
     QScrollArea* scrollArea;
     QWidget*     scrollWidget;
     QGridLayout* layout;
+    QTreeWidget* m_treeWidget;
 };
 #endif // QKeySequenceEditorDialog_h__

@@ -35,6 +35,9 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTimeZone>
+#include <QRandomGenerator>
+
+#include <AzQtComponents/Utilities/RandomNumberGenerator.h>
 
 #if !defined(BATCH_MODE)
 #include <QMessageBox>
@@ -1040,6 +1043,46 @@ to ensure that the address is correct. Asset Processor won't be running in serve
         return AssetUtilsInternal::FileCopyMoveWithTimeout(sourceFile, outputFile, false, waitTimeInSeconds);
     }
 
+    bool CreateDirectoryWithTimeout(QDir dir, unsigned int waitTimeinSeconds)
+    {
+        if (dir.exists())
+        {
+            return true;
+        }
+
+        int retries = 0;
+        QElapsedTimer timer;
+        timer.start();
+        do
+        {
+            retries++;
+            // Try to create the directory path
+            if (dir.mkpath("."))
+            {
+                return true;
+            }
+            else
+            {
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Unable to create output directory path: %s retrying.\n", dir.absolutePath().toUtf8().data());
+            }
+
+            if (dir.exists())
+            {
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Output directory: %s created by another operation.\n", dir.absolutePath().toUtf8().data());
+                return true;
+            }
+
+            if (waitTimeinSeconds != 0)
+            {
+                QThread::msleep(AssetUtilsInternal::g_RetryWaitInterval);
+            }
+            
+        } while (!timer.hasExpired(waitTimeinSeconds * 1000));
+
+        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Failed to create output directory: %s after %d retries.\n", dir.absolutePath().toUtf8().data(), retries);
+        return false;
+    }
+
     QString NormalizeAndRemoveAlias(QString path)
     {
         QString normalizedPath = NormalizeFilePath(path);
@@ -1566,7 +1609,7 @@ to ensure that the address is correct. Asset Processor won't be running in serve
             AssetUtilsInternal::g_hasInitializedRandomNumberGenerator = true;
             // seed the random number generator a different seed as the main thread.  random numbers are thread-specific.
             // note that 0 is an invalid random seed.
-            qsrand(QTime::currentTime().msecsSinceStartOfDay() + AssetUtilsInternal::g_randomNumberSequentialSeed.fetch_add(1) + 1);
+            AzQtComponents::GetRandomGenerator()->seed(QTime::currentTime().msecsSinceStartOfDay() + AssetUtilsInternal::g_randomNumberSequentialSeed.fetch_add(1) + 1);
         }
 
         QDir tempRoot;
@@ -1702,7 +1745,7 @@ to ensure that the address is correct. Asset Processor won't be running in serve
         }
 #endif
         
-        QStringList tokenized = relativePathFromRoot.split(QChar('/'), QString::SkipEmptyParts);
+        QStringList tokenized = relativePathFromRoot.split(QChar('/'), Qt::SkipEmptyParts);
         QString validatedPath(rootPath);
 
         bool success = true;

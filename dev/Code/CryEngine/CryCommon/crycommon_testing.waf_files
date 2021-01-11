@@ -18,7 +18,8 @@
             "Mocks/IRendererMock.h",
             "Mocks/ITextureMock.h",
             "Mocks/IRemoteConsoleMock.h",
-            "Mocks/ITimeOfDayMock.h"
+            "Mocks/ITimeOfDayMock.h",
+            "Mocks/IViewSystemMock.h"
         ],
         "Mocks/Common_h":
         [

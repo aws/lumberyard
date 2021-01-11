@@ -103,6 +103,8 @@ namespace AzQtComponents
         void onTabBarDoubleClicked();
         void onUndockDockWidget();
         void updateDockingGeometry();
+        void handleScreenAdded(QScreen* screen);
+        void handleScreenRemoved(QScreen* screen);
         void onDropZoneHoverFadeInUpdate();
 
         void updateFloatingPixmap();
@@ -169,8 +171,8 @@ namespace AzQtComponents
         void RepaintFloatingIndicators();
         void SetFloatingPixmapClipping(QWidget* dropOnto, Qt::DockWidgetArea area);
 
-        void AdjustForSnapping(QRect& rect, int cursorScreenIndex);
-        bool AdjustForSnappingToScreenEdges(QRect& rect, int screenIndex);
+        void AdjustForSnapping(QRect& rect, QScreen* cursorScreen);
+        bool AdjustForSnappingToScreenEdges(QRect& rect, QScreen* cursorScreen);
         bool AdjustForSnappingToFloatingWindow(QRect& rect, const QRect& floatingRect);
 
         bool AnyDockWidgetsExist(QStringList names);
@@ -181,7 +183,6 @@ namespace AzQtComponents
         bool WidgetContainsPoint(QWidget* widget, const QPoint& pos) const;
 
         QMainWindow* m_mainWindow;
-        QDesktopWidget* m_desktopWidget;
         AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         QList<QScreen*> m_desktopScreens;
 

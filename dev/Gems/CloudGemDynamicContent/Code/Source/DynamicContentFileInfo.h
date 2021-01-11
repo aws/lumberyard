@@ -70,6 +70,7 @@ namespace CloudCanvas
             const AZStd::string& GetBucketHash() const { return m_bucketHash; }
             const AZStd::string& GetOutputDir() const { return m_outputDir; }
             const AZStd::string& GetFullLocalFileName() const { return m_localFileName; }
+            const AZStd::string& GetVersionId() const { return m_versionId; }
             const AZStd::vector<unsigned char>& GetSignature() const { return m_signature; }
 
             void SetLocalHash(const char* localHash) { m_localHash = localHash; }
@@ -139,6 +140,7 @@ namespace CloudCanvas
             AZStd::string m_outputDir;
             AZStd::string m_isManifest;
             AZStd::string m_requestURL;
+            AZStd::string m_versionId;
             AZ::u64 m_urlCreationTimestamp;
 
             // Full resolved path

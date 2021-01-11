@@ -98,7 +98,7 @@ namespace
     {
         QString varMaterialPath = pPathAndMaterialName;
         std::deque<QString> splittedMaterialPath;
-        for (auto token : varMaterialPath.split(QRegularExpression(R"([\\/])"), QString::SkipEmptyParts))
+        for (auto token : varMaterialPath.split(QRegularExpression(R"([\\/])"), Qt::SkipEmptyParts))
         {
             splittedMaterialPath.push_back(token);
         }
@@ -140,7 +140,7 @@ namespace
     {
         QString varPathProperty = pPathAndPropertyName;
         std::deque<QString> splittedPropertyPath;
-        for (auto token : varPathProperty.split(QRegularExpression(R"([\\/])"), QString::SkipEmptyParts))
+        for (auto token : varPathProperty.split(QRegularExpression(R"([\\/])"), Qt::SkipEmptyParts))
         {
             splittedPropertyPath.push_back(token);
         }

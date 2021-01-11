@@ -5,7 +5,7 @@
     <Texture Map="Heightmap" File="textures/rivers/am_rockground_displ.dds">
      <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.25" TileV="0.25"/>
     </Texture>
-    <Texture Map="Diffuse" File="objects/effects/particleassets/fx_godray_01.dds"/>
+    <Texture Map="Diffuse" File="textures/effects/particleassets/fx_godray_01.dds"/>
    </Textures>
    <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
   </Material>

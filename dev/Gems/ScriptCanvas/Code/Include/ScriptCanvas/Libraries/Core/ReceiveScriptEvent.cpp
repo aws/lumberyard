@@ -237,6 +237,8 @@ namespace ScriptCanvas
                     ; parameterIndex < sentinel
                     ; ++parameterIndex)
                 {
+                    bool isNewSlot = true;
+
                     const AZ::BehaviorParameter& parameter(event.m_parameters[parameterIndex]);
                     Data::Type outputType(AZ::BehaviorContextHelper::IsStringParameter(parameter) ? Data::Type::String() : Data::FromAZType(parameter.m_typeId));
 
@@ -264,12 +266,13 @@ namespace ScriptCanvas
 
                         if (remappingIdIter != m_eventSlotMapping.end())
                         {
+                            isNewSlot = false;
                             slotConfiguration.m_slotId = remappingIdIter->second;
                         }
 
                         slotConfiguration.SetType(outputType);
 
-                        SlotId slotId = AddSlot(slotConfiguration);
+                        SlotId slotId = AddSlot(slotConfiguration, isNewSlot);
 
                         AZ_Error("ScriptCanvas", populationMapping.find(argIdentifier) == populationMapping.end(), "Trying to create the same slot twice. Unable to create sane mapping.");
                     
@@ -389,7 +392,16 @@ namespace ScriptCanvas
 
                 {
                     // now, this should pass execution off to the nodes that will push their output into this result input
+                    size_t latentExecutionId = static_cast<size_t>(AZStd::GetTimeNowMicroSecond());
+                    if (m_latentStartTimerEvent && m_latentStartTimerEvent->HasHandlerConnected())
+                    {
+                        m_latentStartTimerEvent->Signal(AZStd::move(latentExecutionId));
+                    }
                     SignalOutput(scriptEventEntry.m_eventSlotId, ExecuteMode::UntilNodeIsFoundInStack);
+                    if (m_latentStopTimerEvent && m_latentStopTimerEvent->HasHandlerConnected())
+                    {
+                        m_latentStopTimerEvent->Signal(AZStd::move(latentExecutionId));
+                    }
                 }
 
                 // route executed nodes output to my input, and my input to the result
@@ -428,6 +440,9 @@ namespace ScriptCanvas
             {
                 SetAutoConnectToGraphOwner(m_autoConnectToGraphOwner);
                 ScriptEventBase::OnActivate();
+
+                ExecutionTimingNotificationsBus::EventResult(m_latentStartTimerEvent, this->GetOwningScriptCanvasId(), &ExecutionTimingNotifications::GetLatentStartTimerEvent);
+                ExecutionTimingNotificationsBus::EventResult(m_latentStopTimerEvent, this->GetOwningScriptCanvasId(), &ExecutionTimingNotifications::GetLatentStopTimerEvent);
             }
 
             void ReceiveScriptEvent::OnPostActivate()

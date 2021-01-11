@@ -12,6 +12,10 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include "VegetationObject.h"
+
+#include <AzFramework/Asset/AssetSystemBus.h>
+
 #include "VegetationMap.h"
 #include "VegetationTool.h"
 #include "Material/MaterialManager.h"
@@ -22,8 +26,6 @@
 #endif //#ifdef LY_TERRAIN_EDITOR
 
 #include "I3DEngine.h"
-
-#include "VegetationObject.h"
 
 #include <AzCore/Math/Uuid.h>
 
@@ -157,6 +159,7 @@ CVegetationObject::CVegetationObject(int id)
 CVegetationObject::~CVegetationObject()
 {
     VegetationObjectBus::Handler::BusDisconnect();
+    StatObjEventBus::Handler::BusDisconnect(m_statObj);
 
     if (m_statObj)
     {
@@ -188,6 +191,7 @@ void CVegetationObject::SetCategory(const QString& category)
 void CVegetationObject::UnloadObject()
 {
     VegetationObjectBus::Handler::BusDisconnect();
+    StatObjEventBus::Handler::BusDisconnect();
     if (m_statObj)
     {
         m_statObj->Release();
@@ -210,13 +214,21 @@ void CVegetationObject::LoadObject()
         if (m_statObj)
         {
             VegetationObjectBus::Handler::BusDisconnect();
+            StatObjEventBus::Handler::BusDisconnect();
             m_statObj->Release();
             m_statObj = 0;
         }
+        // the vegetation system does not currently cope well with its meshes being missing during compilation, so we escalate them if possible:
+        if (!AZ::IO::FileIOBase::GetInstance()->Exists(filename.toUtf8().constData()))
+        {
+            AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::CompileAssetSync, filename.toUtf8().constData());
+        }
+
         m_statObj = GetIEditor()->GetSystem()->GetI3DEngine()->LoadStatObjUnsafeManualRef(filename.toUtf8().data(), NULL, NULL, false);
         if (m_statObj)
         {
             VegetationObjectBus::Handler::BusConnect(m_statObj);
+            StatObjEventBus::Handler::BusConnect(m_statObj);
             m_statObj->AddRef();
             Vec3 min = m_statObj->GetBoxMin();
             Vec3 max = m_statObj->GetBoxMax();
@@ -329,7 +341,7 @@ void CVegetationObject::UpdateMaterial()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CVegetationObject::OnMaterialChange(IVariable* var)
+void CVegetationObject::OnMaterialChange(IVariable* /*var*/)
 {
     if (m_bVarIgnoreChange)
     {
@@ -343,7 +355,7 @@ void CVegetationObject::OnMaterialChange(IVariable* var)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CVegetationObject::OnFileNameChange(IVariable* var)
+void CVegetationObject::OnFileNameChange(IVariable* /*var*/)
 {
     if (m_bVarIgnoreChange)
     {
@@ -351,19 +363,18 @@ void CVegetationObject::OnFileNameChange(IVariable* var)
     }
 
     UnloadObject();
-    if (CFileUtil::FileExists(mv_fileName))
-    {
-        LoadObject();
-    }
-    else
-    {
-        QString value;
-        mv_fileName->Get(value);
-        AZ_Error("Vegetation", false, "'%s' File not found.", value.toUtf8().constData());
-    }
+    UpdateMaterial();
+    LoadObject();
     GetIEditor()->SetModifiedFlag();
     GetIEditor()->SetModifiedModule(eModifiedTerrain);
 }
+
+
+void CVegetationObject::OnStatObjReloaded()
+{
+    OnFileNameChange(nullptr);
+}
+
 //////////////////////////////////////////////////////////////////////////
 void CVegetationObject::SetEngineParams()
 {
@@ -553,11 +564,21 @@ void CVegetationObject::Serialize(const XmlNodeRef& node, bool bLoading)
 //////////////////////////////////////////////////////////////////////////
 void CVegetationObject::Validate(IErrorReport& report)
 {
-    if (m_statObj && m_statObj->IsDefaultObject())
+    AzFramework::AssetSystem::AssetStatus status = AzFramework::AssetSystem::AssetStatus_Unknown;
+    AzFramework::AssetSystemRequestBus::BroadcastResult(status, &AzFramework::AssetSystemRequestBus::Events::GetAssetStatus, GetFileName().toUtf8().constData());
+
+    if ((status == AzFramework::AssetSystem::AssetStatus_Missing)||(status == AzFramework::AssetSystem::AssetStatus_Failed))
     {
         // File Not found.
         CErrorRecord err;
-        err.error = tr("Geometry file %1 for Vegetation Object not found").arg(GetFileName());
+        if (status == AzFramework::AssetSystem::AssetStatus_Missing)
+        {
+            err.error = tr("Geometry file %1 for Vegetation Object not found").arg(GetFileName());
+        }
+        else
+        {
+            err.error = tr("Geometry file %1 for Vegetation Object failed to compile - check asset processor for problems").arg(GetFileName());
+        }
         err.file = GetFileName();
         err.severity = CErrorRecord::ESEVERITY_WARNING;
         err.flags = CErrorRecord::FLAG_NOFILE;

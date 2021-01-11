@@ -591,6 +591,7 @@ namespace AssetProcessor
 
                     if(runProcessJob)
                     {
+                        result.m_outputProducts.clear();
                         // sending process job command to the builder
                         builderParams.m_assetBuilderDesc.m_processJobFunction(builderParams.m_processJobRequest, result);
                     }
@@ -728,13 +729,11 @@ namespace AssetProcessor
         }
 
         // if outputDirectory does not exist then create it
-        if (!outputDirectory.exists())
+        unsigned int waitTimeInSecs = 3;
+        if (!AssetUtilities::CreateDirectoryWithTimeout(outputDirectory, waitTimeInSecs))
         {
-            if (!outputDirectory.mkpath("."))
-            {
-                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Failed to create output directory: %s\n", outputDirectory.absolutePath().toUtf8().data());
-                return false;
-            }
+            AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Failed to create output directory: %s\n", outputDirectory.absolutePath().toUtf8().data());
+            return false;
         }
 
         // copy the built products into the appropriate location in the real cache and update the job status accordingly.
@@ -946,6 +945,13 @@ namespace AssetProcessor
             AZ_TracePrintf(AssetProcessor::DebugChannel, "Job log request was unsuccessful for job (%s, %s, %s) from the server.\n",
                 builderParams.m_rcJob->GetJobEntry().m_pathRelativeToWatchFolder.toUtf8().data(), builderParams.m_rcJob->GetJobKey().toUtf8().data(),
                 builderParams.m_rcJob->GetPlatformInfo().m_identifier.c_str());
+
+            if(jobLogResponse.m_jobLog.find("No log file found") != AZStd::string::npos)
+            {
+                AZ_TracePrintf(AssetProcessor::DebugChannel, "Unable to find job log from the server. This could happen if you are trying to use the server cache with a copy job,\
+please check the assetprocessorplatformconfig.ini file and ensure that server cache is disabled for the job.\n");
+            }
+            
             return false;
         }
 

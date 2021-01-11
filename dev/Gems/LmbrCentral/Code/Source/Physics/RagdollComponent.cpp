@@ -293,7 +293,17 @@ namespace LmbrCentral
         AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
     }
 
+    void RagdollComponent::EnableSimulationQueued(const Physics::RagdollState& initialState)
+    {
+        AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
+    }
+
     void RagdollComponent::DisableSimulation()
+    {
+        AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
+    }
+
+    void RagdollComponent::DisableSimulationQueued()
     {
         AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
     }
@@ -310,6 +320,11 @@ namespace LmbrCentral
     }
 
     void RagdollComponent::SetState(const Physics::RagdollState& ragdollState)
+    {
+        AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
+    }
+
+    void RagdollComponent::SetStateQueued(const Physics::RagdollState& ragdollState)
     {
         AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
     }

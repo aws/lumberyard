@@ -291,13 +291,41 @@ namespace EditorPythonBindings
                         return;
                     }
                 }
-                callback(pythonParamters);
+
+                try
+                {
+                    pybind11::object pyResult = callback(pythonParamters);
+
+                    // store the result 
+                    if (result && pyResult.is_none() == false)
+                    {
+                        // reset/prepare the stack allocator
+                        m_stackVariableAllocator = {};
+
+                        AZ::BehaviorValueParameter coverted;
+                        const AZ::u32 traits = result->m_traits;
+                        if (Convert::PythonToBehaviorValueParameter(*result, pyResult, coverted, m_stackVariableAllocator))
+                        {
+                            result->Set(coverted);
+                            result->m_value = coverted.GetValueAddress();
+                            if ((traits & AZ::BehaviorParameter::TR_POINTER) == AZ::BehaviorParameter::TR_POINTER)
+                            {
+                                result->m_value = &result->m_value;
+                            }
+                        }
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    AZ_Error("python", false, "Python callback threw an exception %s", e.what());
+                }
             }
 
         private:
             const AZ::BehaviorEBus* m_ebus = nullptr;
             AZ::BehaviorEBusHandler* m_handler = nullptr;
             AZStd::unordered_map<AZStd::string, pybind11::function> m_callbackMap;
+            Convert::StackVariableAllocator m_stackVariableAllocator;
         };
     }
 

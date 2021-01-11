@@ -25,12 +25,9 @@ namespace AZStd
     public:
         enum
         {
-#ifdef AZ_PLATFORM_MAC
-            // OSX does't like it when you initialize a semaphore with INT_MAX. It hangs when doing a signal and then a wait.
-            MAXIMUM_COUNT = INT_MAX - 1
-#else
+            // we prevent semaphores from having a MAX of more than this
+            // because some platforms don't check and overflow
             MAXIMUM_COUNT = 0x7fff
-#endif // AZ_PLATFORM_MAC
         };
 
         typedef native_semaphore_handle_type native_handle_type;
@@ -41,8 +38,8 @@ namespace AZStd
         void acquire();
         template <class Rep, class Period>
         bool try_acquire_for(const chrono::duration<Rep, Period>& rel_time);
-        //template <class Clock, class Duration>
-        //bool try_acquire_until(const chrono::time_point<Clock, Duration>& abs_time);
+        template <class Clock, class Duration>
+        bool try_acquire_until(const chrono::time_point<Clock, Duration>& abs_time);
         void release(unsigned int releaseCount = 1);
 
         native_handle_type native_handle();

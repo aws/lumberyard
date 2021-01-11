@@ -17,7 +17,7 @@ DockableLibraryTreeView > RenameableTitleBar #RenameableIcon
   min-height: 17px;
   max-width: 19px;
   max-height: 17px;
-  image: url(:/particleQT/icons/libraries_icon.png);
+  image: url(:/particleQT/icons/libraries_icon.svg);
 }
 
 DockableLibraryTreeView > RenameableTitleBar #RenameableCollapsIcon[Expanded="true"]
@@ -36,4 +36,35 @@ DockableLibraryTreeView > RenameableTitleBar #RenameableCollapsIcon[Expanded="fa
   max-width: 19px;
   max-height: 17px;
   image: url(:/particleQT/icons/caret-right.svg);
+}
+
+PreviewToolButton
+{
+  min-width: 24px;
+  min-height: 24px;
+  max-width: 24px;
+  max-height: 24px;
+  qproperty-iconSize: 16px;
+}
+
+.QTreeWidget[HotkeyLabel="Standard"]::item:has-children
+{
+  border-bottom: 1px solid #666666;
+}
+
+.QKeySequenceCaptureWidget[HotkeyLabel="Standard"],
+.QKeySequenceCaptureWidget[HotkeyLabel="Modified"]
+{
+  border: none;
+  background-color: #CCCCCC;
+  border-radius: 3px;
+  color: #909090;
+}
+
+.QKeySequenceCaptureWidget[HotkeyLabel="Selected"]
+{
+  border: none;
+  background-color: #FFFFFF;
+  border-radius: 3px;
+  color: black;
 }

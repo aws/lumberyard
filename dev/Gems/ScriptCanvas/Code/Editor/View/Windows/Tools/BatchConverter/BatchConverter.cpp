@@ -49,14 +49,14 @@ namespace ScriptCanvasEditor
         {
             m_processing = false;
 
-            GetMainWindow()->SaveAsset(m_assetId, [this](bool isSuccessful, AZ::Data::Asset<ScriptCanvasAsset>, AZ::Data::AssetId)
+            GetMainWindow()->SaveAsset(m_assetId, [this](bool isSuccessful, AZ::Data::Asset<ScriptCanvas::ScriptCanvasAssetBase>, AZ::Data::AssetId)
             {
                 this->AZ::SystemTickBus::Handler::BusConnect();
             });
         }
     }
     
-    BatchOperatorTool::OperationStatus ScriptCanvasBatchConverter::OperateOnFile(const QString& fileName)
+    BatchOperatorTool::OperationStatus ScriptCanvasBatchConverter::OperateOnFile(const QString& fileName, AZ::TypeId assetTypeId)
     {
         OperationStatus status = OperationStatus::Incomplete;
         
@@ -88,7 +88,7 @@ namespace ScriptCanvasEditor
         
         if (sourceInfoFound)
         {
-            AssetTrackerRequestBus::Broadcast(&AssetTrackerRequests::Load, assetInfo.m_assetId, azrtti_typeid<ScriptCanvasAsset>(), onAssetReady);
+            AssetTrackerRequestBus::Broadcast(&AssetTrackerRequests::Load, assetInfo.m_assetId, assetTypeId, onAssetReady);
         }
         else
         {

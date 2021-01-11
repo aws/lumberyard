@@ -31,8 +31,8 @@ namespace AzQtComponents
     class CardNotification;
     class Style;
 
-    //! A Card is a container for other widgets that provides a title bar and can be expanded/collapsed
-    //! or dragged around.
+    //! A container for other widgets that provides a title bar and can be expanded/collapsed or
+    //! dragged around.
     //! To make use of a Card, set its title and a content widget. The content widget will be
     //! automatically shown and hidden as the Card is expanded and collapsed.
     //! Beyond that, a Card can also include a secondary expandable widget, for features such as
@@ -168,6 +168,7 @@ namespace AzQtComponents
         CardHeader* m_header = nullptr;
         CardHeader* m_secondaryHeader = nullptr;
         QVBoxLayout* m_mainLayout = nullptr;
+        bool m_expanded = true;
         bool m_selected = false;
         bool m_dragging = false;
         bool m_dropTarget = false;

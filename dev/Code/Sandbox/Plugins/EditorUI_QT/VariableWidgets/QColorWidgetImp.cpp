@@ -56,7 +56,7 @@ QColorWidgetImp::QColorWidgetImp(CAttributeItem* parent)
     
     buildMenu();
 
-    m_tooltip = new QToolTipWidget(this);
+    m_tooltip = new QToolTipWrapper(this);
 
     //Code depends on alpha being initialized first.
     if (m_AlphaVar)

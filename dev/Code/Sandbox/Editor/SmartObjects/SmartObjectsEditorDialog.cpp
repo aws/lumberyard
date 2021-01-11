@@ -570,7 +570,7 @@ public:
         QString newLocation;
         QString location = sFolder;
         int i = 0;
-        for (auto folder : location.split(QRegularExpression(QStringLiteral(R"([/\\])")), QString::SkipEmptyParts))
+        for (auto folder : location.split(QRegularExpression(QStringLiteral(R"([/\\])")), Qt::SkipEmptyParts))
         {
             newLocation += '/';
             newLocation += folder;

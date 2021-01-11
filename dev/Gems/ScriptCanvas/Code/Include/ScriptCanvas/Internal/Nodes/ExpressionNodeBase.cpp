@@ -297,7 +297,25 @@ namespace ScriptCanvas
                                 m_isInError = true;
                                 m_parseError = ExpressionEvaluation::ParsingError();
                                 m_parseError.m_offsetIndex = m_format.find_first_of(variableString);
-                                m_parseError.m_errorString = AZStd::string::format("Using reserved slot name \"%s\" in expression at position %zu", variableString.c_str(), m_parseError.m_offsetIndex);
+
+                                const auto& totalSlots = GetSlots();
+
+                                AZStd::string reservedNames;
+
+                                for (const auto& slot : totalSlots)
+                                {
+                                    if (slot.IsExecution() || slot.IsOutput())
+                                    {
+                                        if (!reservedNames.empty())
+                                        {
+                                            reservedNames.append(", ");
+                                        }
+
+                                        reservedNames.append(slot.GetName());
+                                    }
+                                }
+
+                                m_parseError.m_errorString = AZStd::string::format("Using one of the reserved slot names \"%s\" in expression at position %zu", reservedNames.c_str(), m_parseError.m_offsetIndex);
 
                                 AZStd::string parseError = m_parseError.m_errorString;
                                 GetGraph()->ReportError((*this), "Parsing Error", parseError);
@@ -329,7 +347,14 @@ namespace ScriptCanvas
                         size_t newMapping = variableSlotMapping.count(eraseSlot->GetName());
                         bool signalRemoval = newMapping == 0;
 
-                        RemoveSlot(eraseSlot->GetId(), signalRemoval);
+                        SlotId slotId = eraseSlot->GetId();
+
+                        RemoveSlot(slotId, signalRemoval);
+
+                        if (signalRemoval)
+                        {
+                            m_slotToVariableMap.erase(slotId);
+                        }
                     }
 
                     // Start our counting from our raw variable position ignoring any other slots that might have been added.

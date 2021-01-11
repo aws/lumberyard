@@ -41,7 +41,7 @@ namespace ScriptCanvasEditor
     protected:
     
         // Operates on the specified files. Returns whether or not the file has completed being operated upon.
-        virtual OperationStatus OperateOnFile(const QString& fileName) = 0;
+        virtual OperationStatus OperateOnFile(const QString& fileName, AZ::TypeId) = 0;
         void SignalOperationComplete();
         
         MainWindow* GetMainWindow() const;

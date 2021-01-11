@@ -149,10 +149,11 @@ namespace ScriptCanvasEditor
         virtual void HighlightNodes(const AZStd::vector<NodeIdPair>& nodes) = 0;
 
         virtual AZStd::vector<NodeIdPair> GetNodesOfType(const ScriptCanvas::NodeTypeIdentifier&) = 0;
-        virtual AZStd::vector<NodeIdPair> GetVariableNodes(const ScriptCanvas::VariableId&) = 0;        
+        virtual AZStd::vector<NodeIdPair> GetVariableNodes(const ScriptCanvas::VariableId&) = 0;
 
         virtual void RemoveUnusedVariables() = 0;
 
+        virtual bool CanConvertVariableNodeToReference(const GraphCanvas::NodeId& nodeId) = 0;
         virtual bool ConvertVariableNodeToReference(const GraphCanvas::NodeId& nodeId) = 0;
         virtual bool ConvertReferenceToVariableNode(const GraphCanvas::Endpoint& endpoint) = 0;
 
@@ -160,6 +161,8 @@ namespace ScriptCanvasEditor
 
         virtual bool IsRuntimeGraph() const = 0;
         virtual bool IsFunctionGraph() const = 0;
+
+        virtual bool CanExposeEndpoint(const GraphCanvas::Endpoint& endpoint) = 0;
 
         virtual ScriptCanvas::Endpoint ConvertToScriptCanvasEndpoint(const GraphCanvas::Endpoint& endpoinnt) const = 0;
         virtual GraphCanvas::Endpoint ConvertToGraphCanvasEndpoint(const ScriptCanvas::Endpoint& endpoint) const = 0;

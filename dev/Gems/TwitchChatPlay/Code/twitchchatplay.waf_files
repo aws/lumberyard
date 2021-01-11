@@ -1,0 +1,13 @@
+{
+    "auto": {
+        "Include": [
+            "Include/TwitchChatPlay/TwitchChatPlayBus.h",
+            "Include/TwitchChatPlay/TwitchChatPlayNotificationsBus.h"
+        ],
+        "Source": [
+            "Source/TwitchChatPlayModule.cpp",
+            "Source/TwitchChatPlaySystemComponent.cpp",
+            "Source/TwitchChatPlaySystemComponent.h"
+        ]
+    }
+}

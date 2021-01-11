@@ -46,7 +46,7 @@ QPushButton:pressed
 
 QPushButton:disabled
 {
-    color: #BBBBBB;
+    color: #999999;
 }
 
 QPushButton:flat
@@ -67,7 +67,7 @@ QPushButton.Primary:disabled,
 QPushButton:default:disabled,
 QToolButton.SmallIcon:disabled::menu-indicator
 {
-    color: #AAAAAA;
+    color: #BBBBBB;
 }
 
 QPushButton.SmallIcon

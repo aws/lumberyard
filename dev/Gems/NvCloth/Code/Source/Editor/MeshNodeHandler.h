@@ -46,7 +46,7 @@ namespace NvCloth
 
             MeshNodeHandler() = default;
             
-            // AzToolsFramework::PropertyHandler overrides
+            // AzToolsFramework::PropertyHandler overrides ...
             AZ::u32 GetHandlerName() const override;
             QWidget* CreateGUI(QWidget* parent) override;
             bool IsDefaultHandler() const override;

@@ -30,14 +30,12 @@ namespace NvCloth
 
         explicit ActorAssetHelper(AZ::EntityId entityId);
 
-        // AssetHelper overrides
+        // AssetHelper overrides ...
         void GatherClothMeshNodes(MeshNodeList& meshNodes) override;
         bool ObtainClothMeshNodeInfo(
             const AZStd::string& meshNode,
             MeshNodeInfo& meshNodeInfo,
-            AZStd::vector<SimParticleType>& meshParticles,
-            AZStd::vector<SimIndexType>& meshIndices,
-            AZStd::vector<SimUVType>& meshUVs) override;
+            MeshClothInfo& meshClothInfo) override;
         bool DoesSupportSkinnedAnimation() const override
         {
             return true;
@@ -46,8 +44,6 @@ namespace NvCloth
     private:
         bool CopyDataFromEMotionFXMesh(
             const EMotionFX::Mesh& emfxMesh,
-            AZStd::vector<SimParticleType>& meshParticles,
-            AZStd::vector<SimIndexType>& meshIndices,
-            AZStd::vector<SimUVType>& meshUVs);
+            MeshClothInfo& meshClothInfo);
     };
 } // namespace NvCloth

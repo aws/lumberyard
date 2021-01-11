@@ -544,6 +544,13 @@ namespace AssetProcessor
         return true;
     }
 
+    AZStd::string AssetCatalog::ReturnFullSourcePathFromRelativeProductPath(const AZStd::string& relPath)
+    {
+        AZStd::string sourcePathResult;
+        GetFullSourcePathFromRelativeProductPath(relPath, sourcePathResult);
+        return sourcePathResult;
+    }
+
     bool AssetCatalog::GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath)
     {
         assetInfo.m_assetId.SetInvalid();

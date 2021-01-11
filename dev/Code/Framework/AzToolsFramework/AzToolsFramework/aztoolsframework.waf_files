@@ -5,12 +5,14 @@
             "StdAfx.cpp"
         ],
         "AssetEditor": [
-            "AssetEditor/AssetEditorBus.h",
-            "AssetEditor/AssetEditorToolbar.ui",
-            "AssetEditor/AssetEditorStatusBar.ui",
-            "AssetEditor/AssetEditorWidget.cpp",
-            "AssetEditor/AssetEditorWidget.h",
-            "AssetEditor/AssetEditorUtils.h"
+          "AssetEditor/AssetEditorBus.h",
+          "AssetEditor/AssetEditorToolbar.ui",
+          "AssetEditor/AssetEditorStatusBar.ui",
+          "AssetEditor/AssetEditorWidget.cpp",
+          "AssetEditor/AssetEditorWidget.h",
+          "AssetEditor/AssetEditorHeader.cpp",
+          "AssetEditor/AssetEditorHeader.h",
+          "AssetEditor/AssetEditorUtils.h"
         ],
         "AssetEditor/Resources": [
             "AssetEditor/Resources/AssetEditorResources.qrc"
@@ -411,8 +413,6 @@
             "UI/PropertyEditor/DHQComboBox.cpp",
             "UI/PropertyEditor/DHQSlider.hxx",
             "UI/PropertyEditor/DHQSlider.cpp",
-            "UI/PropertyEditor/DHQSpinbox.hxx",
-            "UI/PropertyEditor/DHQSpinbox.cpp",
             "UI/PropertyEditor/EntityIdQLabel.hxx",
             "UI/PropertyEditor/EntityIdQLabel.cpp",
             "UI/PropertyEditor/EntityIdQLineEdit.h",

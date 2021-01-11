@@ -1054,7 +1054,7 @@ namespace AzFramework
             }
             SocketConnection::TMessageCallbackHandle callbackHandle = GetNewCallbackHandle();
             {
-                AZStd::lock_guard<AZStd::mutex> lock(m_responseHandlerMutex);
+                AZStd::lock_guard<AZStd::recursive_mutex> lock(m_responseHandlerMutex);
 
                 // If we should queue up the add, put it in another list to be taken care of when done invoking type callbacks
                 if (m_shouldQueueHandlerChanges)
@@ -1071,7 +1071,7 @@ namespace AzFramework
 
         void AssetProcessorConnection::RemoveMessageHandler(AZ::u32 typeId, SocketConnection::TMessageCallbackHandle callbackHandle)
         {
-            AZStd::lock_guard<AZStd::mutex> lock(m_responseHandlerMutex);
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_responseHandlerMutex);
             // If we should queue up the remove, put it in another list to be taken care of when done invoking type callbacks
             if (m_shouldQueueHandlerChanges)
             {
@@ -1096,7 +1096,7 @@ namespace AzFramework
 
         void AssetProcessorConnection::InvokeMessageHandler(AZ::u32 typeId, AZ::u32 serial, const void* dataBuffer, AZ::u32 dataLength)
         {
-            AZStd::lock_guard<AZStd::mutex> lock(m_responseHandlerMutex);
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_responseHandlerMutex);
 
             m_shouldQueueHandlerChanges = true;
 
@@ -1141,7 +1141,7 @@ namespace AzFramework
                 return;
             }
 
-            AZStd::lock_guard<AZStd::mutex> lock(m_responseHandlerMutex);
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_responseHandlerMutex);
             // If we should queue up the add, put it in another list to be taken care of when done invoking type callbacks
             if (m_shouldQueueHandlerChanges)
             {
@@ -1155,7 +1155,7 @@ namespace AzFramework
 
         void AssetProcessorConnection::RemoveResponseHandler(AZ::u32 typeId, AZ::u32 serial)
         {
-            AZStd::lock_guard<AZStd::mutex> lock(m_responseHandlerMutex);
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_responseHandlerMutex);
             // If we should queue up the remove, put it in another list to be taken care of when done invoking type callbacks
             if (m_shouldQueueHandlerChanges)
             {
@@ -1178,7 +1178,7 @@ namespace AzFramework
 
         void AssetProcessorConnection::InvokeResponseHandler(AZ::u32 typeId, AZ::u32 serial, const void* dataBuffer, AZ::u32 dataLength)
         {
-            AZStd::lock_guard<AZStd::mutex> lock(m_responseHandlerMutex);
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_responseHandlerMutex);
 
             m_shouldQueueHandlerChanges = true;
 
@@ -1215,7 +1215,7 @@ namespace AzFramework
 
         void AssetProcessorConnection::FlushResponseHandlers()
         {
-            AZStd::lock_guard<AZStd::mutex> lock(m_responseHandlerMutex);
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_responseHandlerMutex);
             for (auto callback : m_responseHandlers)
             {
                 // send a 0, nullptr to each callback, which is the signal for "the request failed"

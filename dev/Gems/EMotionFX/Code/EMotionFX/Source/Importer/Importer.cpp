@@ -1331,8 +1331,8 @@ namespace EMotionFX
             return "128-bit Colors";
         case Mesh::ATTRIB_ORGVTXNUMBERS:
             return "Original Vertex Numbers";
-        case Mesh::ATTRIB_CLOTH_INVMASSES:
-            return "Cloth Inverse Masses";
+        case Mesh::ATTRIB_CLOTH_DATA:
+            return "Cloth Data";
         default:
             return "<Unknown>";
         }
@@ -1404,7 +1404,7 @@ namespace EMotionFX
         // colors, original vertex numbers and cloth inverse masses (uint32)
         case Mesh::ATTRIB_ORGVTXNUMBERS:
         case Mesh::ATTRIB_COLORS32:
-        case Mesh::ATTRIB_CLOTH_INVMASSES:
+        case Mesh::ATTRIB_CLOTH_DATA:
         {
             uint32* data = (uint32*)layer->GetOriginalData();
             const uint32 numAttribs = layer->GetNumAttributes();

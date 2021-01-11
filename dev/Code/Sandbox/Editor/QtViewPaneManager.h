@@ -132,6 +132,7 @@ struct QtViewPane
         return m_options.isPreview;
     }
 
+    QWidget* CreateWidget();
     bool Close(CloseModes = CloseMode::Destroy);
     bool CloseInstance(QDockWidget* dockWidget, CloseModes closeModes = CloseMode::Destroy);
 };

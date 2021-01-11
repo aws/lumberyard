@@ -763,7 +763,7 @@ namespace AssetProcessor
             "ScanFolderPK = :scanfolderpk, "
             "FileName = :filename, "
             "IsFolder = :isfolder, "
-            "ModTime = :modtime "
+            "ModTime = :modtime, "
             "Hash = :hash "
             "WHERE FileID = :fileid;";
         static const auto s_UpdateFileQuery = MakeSqlQuery(UPDATE_FILE, UPDATE_FILE_STATEMENT, LOG_NAME,

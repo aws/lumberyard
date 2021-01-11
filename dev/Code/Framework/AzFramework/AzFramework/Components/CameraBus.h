@@ -12,6 +12,7 @@
 #pragma once
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Transform.h>
 
 namespace Camera
@@ -131,7 +132,80 @@ namespace Camera
         /**
         * Makes the camera the active view
         */
-        virtual void MakeActiveView() = 0;
+        virtual void MakeActiveView()
+        {
+            AZ_WarningOnce("CameraBus", false, "MakeActiveView is deprecated.  Please use SetActiveView.");
+            SetActiveView(true);
+        }
+
+        /**
+        * Projects a world point to a screen point
+        */
+        virtual bool ProjectWorldPointToScreen(const AZ::Vector3& worldPoint, AZ::Vector3& outScreenPoint) const
+        {
+            AZ_UNUSED(worldPoint);
+            AZ_UNUSED(outScreenPoint);
+            return false;
+        }
+
+        /**
+        * Unproject a screen point to the world
+        */
+        virtual bool UnprojectScreenPointToWorld(const AZ::Vector3& screenPoint, AZ::Vector3& outWorldPoint) const
+        {
+            AZ_UNUSED(screenPoint);
+            AZ_UNUSED(outWorldPoint);
+            return false;
+        }
+
+        /**
+        * Projects a world point to a viewport
+        */
+        virtual bool ProjectWorldPointToViewport(const AZ::Vector3& worldPoint, const AZ::Vector4& viewport, AZ::Vector3& outViewportPoint) const
+        {
+            AZ_UNUSED(worldPoint);
+            AZ_UNUSED(viewport);
+            AZ_UNUSED(outViewportPoint);
+            return false;
+        }
+
+        /**
+        * Unproject a viewport point to a world point
+        */
+        virtual bool UnprojectViewportPointToWorld(const AZ::Vector3& viewportPoint, const AZ::Vector4& viewport, AZ::Vector3& outWorldPoint) const
+        {
+            AZ_UNUSED(viewportPoint);
+            AZ_UNUSED(viewport);
+            AZ_UNUSED(outWorldPoint);
+            return false;
+        }
+
+        /**
+        * Get the projection matrix
+        */
+        virtual void GetProjectionMatrix(AZ::Matrix4x4& outProjectionMatrix) const
+        {
+            AZ_UNUSED(outProjectionMatrix);
+        }
+
+        /**
+        * Check if the camera view is the active view
+        */
+        virtual bool IsActiveView() const
+        {
+            return false;
+        }
+
+        /**
+        * Set active view to this camera
+        * @param active If true, set the camera as active. 
+        * If false and this camera is active, set the previous camera active
+        */
+        virtual void SetActiveView(bool active)
+        {
+            AZ_UNUSED(active);
+        }
+
 
         virtual Configuration GetConfiguration() 
         {
@@ -213,9 +287,9 @@ namespace Camera
         struct CameraNotificationConnectionPolicy
             : public AZ::EBusConnectionPolicy<Bus>
         {
-            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
+            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, typename Bus::Context::ConnectLockGuard& connectLock, const typename Bus::BusIdType& id = 0)
             {
-                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
+                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, connectLock, id);
 
                 AZ::EBusAggregateResults<AZ::EntityId> results;
                 CameraBus::BroadcastResult(results, &CameraRequests::GetCameras);

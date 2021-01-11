@@ -125,6 +125,10 @@ CDatabaseFrameWnd::CDatabaseFrameWnd(CBaseLibraryManager* pItemManager, QWidget*
 
 CDatabaseFrameWnd::~CDatabaseFrameWnd()
 {
+    // Block Signals to prevent changes in the m_pLibraryListComboBox
+    // from triggering OnChangedLibrary on teardown.
+    m_pLibraryListComboBox->blockSignals(true);
+
     m_pLibraryListModel->clear();
 
     GetIEditor()->UnregisterNotifyListener(this);
@@ -243,7 +247,7 @@ CBaseLibrary* CDatabaseFrameWnd::FindLibrary(const QString& libraryName)
 
 int CDatabaseFrameWnd::GetComboBoxIndex(CBaseLibrary* pLibrary)
 {
-    return m_pLibraryListComboBox->findData(qVariantFromValue<CBaseLibrary*>(pLibrary));
+    return m_pLibraryListComboBox->findData(QVariant::fromValue<CBaseLibrary*>(pLibrary));
 }
 
 CBaseLibrary* CDatabaseFrameWnd::NewLibrary(const QString& libraryName)
@@ -403,7 +407,6 @@ void CDatabaseFrameWnd::OnRenameItem()
 
 void CDatabaseFrameWnd::OnChangedLibrary()
 {
-    QString library;
     CBaseLibrary* pBaseLibrary = NULL;
     if (m_pLibraryListComboBox)
     {
@@ -796,7 +799,7 @@ QVariant LibraryListModel::data(const QModelIndex& index, int role) const
     }
 
     case Qt::UserRole:
-        return qVariantFromValue<CBaseLibrary*>(library);
+        return QVariant::fromValue<CBaseLibrary*>(library);
     }
 
     return {};
@@ -849,7 +852,7 @@ Qt::ItemFlags LibraryItemTreeModel::flags(const QModelIndex& index) const
 {
     if (!index.isValid())
     {
-        return 0;
+        return Qt::ItemFlags();
     }
 
     Qt::ItemFlags flags = QAbstractItemModel::flags(index);
@@ -953,7 +956,7 @@ QVariant LibraryItemTreeModel::data(const QModelIndex& index, int role) const
             return entry->first;
         }
         case Qt::UserRole:
-            return qVariantFromValue<CBaseLibraryItem*>(nullptr);
+            return QVariant::fromValue<CBaseLibraryItem*>(nullptr);
         }
     }
     else
@@ -966,7 +969,7 @@ QVariant LibraryItemTreeModel::data(const QModelIndex& index, int role) const
         case Qt::DisplayRole:
             return item->GetShortName();
         case Qt::UserRole:
-            return qVariantFromValue<CBaseLibraryItem*>(item);
+            return QVariant::fromValue<CBaseLibraryItem*>(item);
         }
     }
 

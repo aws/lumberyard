@@ -62,7 +62,8 @@
         "Tests/Editor": 
         [
             "Tests/Editor/FileManagerTests.cpp",
-            "Tests/Editor/ParametersGroupDefaultValues.cpp"
+            "Tests/Editor/ParametersGroupDefaultValues.cpp",
+            "Tests/Editor/MotionSetLoadEscalation.cpp"
         ],
         "Tests/ProvidesUI/AnimGraph": 
         [
@@ -89,7 +90,6 @@
             "Tests/ProvidesUI/AnimGraph/Transitions/RemoveTransition.cpp",
             "Tests/ProvidesUI/AnimGraph/Transitions/AddTransition.cpp",
             "Tests/ProvidesUI/AnimGraph/Transitions/AddTransitionCondition.cpp",
-            "Tests/ProvidesUI/AnimGraph/Transitions/EditTransition.cpp",
             "Tests/ProvidesUI/AnimGraph/Transitions/RemoveTransitionCondition.cpp"
         ],
         "Tests/ProvidesUI/AnimGraph/StateMachine": 
@@ -108,7 +108,8 @@
         "Tests/ProvidesUI/Motions":
         [
             "Tests/ProvidesUI/Motions/CanAddMotions.cpp",
-            "Tests/ProvidesUI/Motions/MotionPlaybacksTests.cpp"
+            "Tests/ProvidesUI/Motions/MotionPlaybacksTests.cpp",
+	    "Tests/ProvidesUI/Motions/CanRemoveMotions.cpp"
         ],
         "Tests/EMotionFXBuilder": 
         [

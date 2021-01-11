@@ -26,6 +26,11 @@
 #include <I3DEngine.h>
 #include <ICryAnimation.h>
 
+#if !ENABLE_CRY_PHYSICS
+#include <AzFramework/Entity/EntityContextBus.h>
+#include <AzFramework/Render/GeometryIntersectionBus.h>
+#endif
+
 namespace LmbrCentral
 {
     //////////////////////////////////////////////////////////////////////////
@@ -74,7 +79,41 @@ namespace LmbrCentral
             behaviorContext->EBus<MeshComponentRequestBus>("MeshComponentRequestBus")
                 ->Event("SetVisibility", &MeshComponentRequestBus::Events::SetVisibility)
                 ->Event("GetVisibility", &MeshComponentRequestBus::Events::GetVisibility)
-                ->VirtualProperty("Visibility", "GetVisibility", "SetVisibility");
+                ->VirtualProperty("Visibility", "GetVisibility", "SetVisibility")
+                ->Event("SetMeshAsset", &MeshComponentRequestBus::Events::SetMeshAsset)
+                    ->Attribute(AZ::Script::Attributes::AssetType, "Static Mesh")
+                ->Event("GetMeshAsset", &MeshComponentRequestBus::Events::GetMeshAssetId)
+                ->VirtualProperty("MeshAsset", "GetMeshAsset", "SetMeshAsset")
+                ->Event("SetOpacity", &MeshComponentRequestBus::Events::SetOpacity)
+                ->Event("GetOpacity", &MeshComponentRequestBus::Events::GetOpacity)
+                ->VirtualProperty("Opacity", "GetOpacity", "SetOpacity")
+                ->Event("SetMaxViewDistance", &MeshComponentRequestBus::Events::SetMaxViewDistance)
+                ->Event("GetMaxViewDistance", &MeshComponentRequestBus::Events::GetMaxViewDistance)
+                ->VirtualProperty("MaxViewDistance", "GetMaxViewDistance", "SetMaxViewDistance")
+                ->Event("SetViewDistanceMultiplier", &MeshComponentRequestBus::Events::SetViewDistanceMultiplier)
+                ->Event("GetViewDistanceMultiplier", &MeshComponentRequestBus::Events::GetViewDistanceMultiplier)
+                ->VirtualProperty("ViewDistanceMultiplier", "GetViewDistanceMultiplier", "SetViewDistanceMultiplier")
+                ->Event("SetLODDistanceRatio", &MeshComponentRequestBus::Events::SetLODDistanceRatio)
+                ->Event("GetLODDistanceRatio", &MeshComponentRequestBus::Events::GetLODDistanceRatio)
+                ->VirtualProperty("LODDistanceRatio", "GetLODDistanceRatio", "SetLODDistanceRatio")
+                ->Event("SetCastShadows", &MeshComponentRequestBus::Events::SetCastShadows)
+                ->Event("GetCastShadows", &MeshComponentRequestBus::Events::GetCastShadows)
+                ->VirtualProperty("CastShadows", "GetCastShadows", "SetCastShadows")
+                ->Event("SetLODBasedOnBoundingBoxes", &MeshComponentRequestBus::Events::SetLODBasedOnBoundingBoxes)
+                ->Event("GetLODBasedOnBoundingBoxes", &MeshComponentRequestBus::Events::GetLODBasedOnBoundingBoxes)
+                ->VirtualProperty("LODBasedOnBoundingBoxes", "GetLODBasedOnBoundingBoxes", "SetLODBasedOnBoundingBoxes")
+                ->Event("SetUseVisAreas", &MeshComponentRequestBus::Events::SetUseVisAreas)
+                ->Event("GetUseVisAreas", &MeshComponentRequestBus::Events::GetUseVisAreas)
+                ->VirtualProperty("UseVisAreas", "GetUseVisAreas", "SetUseVisAreas")
+                ->Event("SetReceiveWind", &MeshComponentRequestBus::Events::SetReceiveWind)
+                ->Event("GetReceiveWind", &MeshComponentRequestBus::Events::GetReceiveWind)
+                ->VirtualProperty("ReceiveWind", "GetReceiveWind", "SetReceiveWind")
+                ->Event("SetAcceptDecals", &MeshComponentRequestBus::Events::SetAcceptDecals)
+                ->Event("GetAcceptDecals", &MeshComponentRequestBus::Events::GetAcceptDecals)
+                ->VirtualProperty("AcceptDecals", "GetAcceptDecals", "SetAcceptDecals")
+                ->Event("SetDeformableMesh", &MeshComponentRequestBus::Events::SetDeformableMesh)
+                ->Event("GetDeformableMesh", &MeshComponentRequestBus::Events::GetDeformableMesh)
+                ->VirtualProperty("DeformableMesh", "GetDeformableMesh", "SetDeformableMesh");
 
             behaviorContext->EBus<RenderBoundsRequestBus>("RenderBoundsRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
@@ -338,6 +377,10 @@ namespace LmbrCentral
         AZ::Data::AssetBus::Handler::BusDisconnect();
 
         CreateMesh();
+#if !ENABLE_CRY_PHYSICS
+        AzFramework::RenderGeometry::IntersectionNotificationBus::Event(m_contextId,
+            &AzFramework::RenderGeometry::IntersectionNotifications::OnGeometryChanged, GetEntityId());
+#endif
     }
 
     void MeshComponentRenderNode::RefreshRenderState()
@@ -366,6 +409,11 @@ namespace LmbrCentral
     void MeshComponentRenderNode::SetTransformStaticState(bool isStatic)
     {
         m_renderOptions.m_hasStaticTransform = isStatic;
+    }
+
+    const AZ::Transform& MeshComponentRenderNode::GetTransform() const
+    {
+        return m_worldTransform;
     }
 
     void MeshComponentRenderNode::SetAuxiliaryRenderFlags(uint32 flags)
@@ -477,6 +525,10 @@ namespace LmbrCentral
     {
         // The entity to which we're attached has moved.
         UpdateWorldTransform(parentWorld);
+#if !ENABLE_CRY_PHYSICS
+        AzFramework::RenderGeometry::IntersectionNotificationBus::Event(m_contextId,
+            &AzFramework::RenderGeometry::IntersectionNotifications::OnGeometryChanged, GetEntityId());
+#endif
     }
 
     void MeshComponentRenderNode::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
@@ -521,26 +573,18 @@ namespace LmbrCentral
 
                 // Inform listeners that the mesh has been changed
                 LmbrCentral::MeshComponentNotificationBus::Event(m_renderOptions.m_attachedToEntityId, &LmbrCentral::MeshComponentNotifications::OnMeshCreated, asset);
+#if !ENABLE_CRY_PHYSICS
+                AzFramework::RenderGeometry::IntersectionNotificationBus::Event(m_contextId, &AzFramework::RenderGeometry::IntersectionNotifications::OnGeometryChanged, GetEntityId());
+#endif // ENABLE_CRY_PHYSICS
             }
         }
     }
 
     void MeshComponentRenderNode::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
-        //The equal function just check the AssetId.
-        if (asset == m_meshAsset)
-        {
-            // We need to make sure m_meshAsset is assigned with the new asset.
-            // Since the new asset passed in has zero refCount. The assigning will clear the refCount of the old m_meshAsset
-            // and set the refCount of the new asset to 1, otherwise it will be unloaded.
-            m_meshAsset = asset;
-            BuildRenderMesh();
-
-            RefreshRenderState();
-
-            // Inform listeners that the mesh has been changed
-            LmbrCentral::MeshComponentNotificationBus::Event(m_renderOptions.m_attachedToEntityId, &LmbrCentral::MeshComponentNotifications::OnMeshCreated, asset);
-        }
+        // note that this also corrects the assetId if it is incorrect - do not remove the following line
+        // even if you call OnAssetReady
+        OnAssetReady(asset);
     }
 
     void MeshComponentRenderNode::UpdateWorldTransform(const AZ::Transform& entityTransform)
@@ -603,6 +647,181 @@ namespace LmbrCentral
     bool MeshComponentRenderNode::GetVisible()
     {
         return m_visible;
+    }
+
+    float MeshComponentRenderNode::GetOpacity()
+    {
+        return m_renderOptions.m_opacity;
+    }
+
+    void MeshComponentRenderNode::SetOpacity(float opacity)
+    {
+        if (m_renderOptions.m_opacity != opacity)
+        {
+            m_renderOptions.m_opacity = opacity;
+        }
+    }
+
+    float MeshComponentRenderNode::GetMaxViewDistance()
+    {
+        return m_renderOptions.m_maxViewDist;
+    }
+
+    void MeshComponentRenderNode::SetMaxViewDistance(float maxViewDistance)
+    {
+        if (m_renderOptions.m_maxViewDist != maxViewDistance)
+        {
+            m_renderOptions.m_maxViewDist = maxViewDistance;
+            if (IsRegisteredWithRenderer())
+            {
+                RegisterWithRenderer(false);
+                RegisterWithRenderer(true);
+            }
+        }
+    }
+
+    float MeshComponentRenderNode::GetViewDistanceMultiplier()
+    {
+        return m_renderOptions.m_viewDistMultiplier;
+    }
+
+    void MeshComponentRenderNode::SetViewDistanceMultiplier(float viewDistanceMultiplier)
+    {
+        if (m_renderOptions.m_viewDistMultiplier != viewDistanceMultiplier)
+        {
+            m_renderOptions.m_viewDistMultiplier = viewDistanceMultiplier;
+            if (IsRegisteredWithRenderer())
+            {
+                RegisterWithRenderer(false);
+                RegisterWithRenderer(true);
+            }
+        }
+    }
+
+    AZ::u32 MeshComponentRenderNode::GetLODDistanceRatio()
+    {
+        return m_renderOptions.m_lodRatio;
+    }
+
+    void MeshComponentRenderNode::SetLODDistanceRatio(AZ::u32 lodDistanceRatio)
+    {
+        if (m_renderOptions.m_lodRatio != lodDistanceRatio)
+        {
+            m_renderOptions.m_lodRatio = lodDistanceRatio;
+            if (IsRegisteredWithRenderer())
+            {
+                RegisterWithRenderer(false);
+                RegisterWithRenderer(true);
+            }
+        }
+    }
+
+    bool MeshComponentRenderNode::GetCastShadows()
+    {
+        return m_renderOptions.m_castShadows;
+    }
+
+    void MeshComponentRenderNode::SetCastShadows(bool shouldCastShadows)
+    {
+        if (m_renderOptions.m_castShadows != shouldCastShadows)
+        {
+            m_renderOptions.m_castShadows = shouldCastShadows;
+            if (IsRegisteredWithRenderer())
+            {
+                RegisterWithRenderer(false);
+                RegisterWithRenderer(true);
+            }
+        }
+    }
+
+    bool MeshComponentRenderNode::GetLODBasedOnBoundingBoxes()
+    {
+        return m_renderOptions.m_lodBoundingBoxBased;
+    }
+
+    void MeshComponentRenderNode::SetLODBasedOnBoundingBoxes(bool lodBasedOnBoundingBoxes)
+    {
+        if (m_renderOptions.m_lodBoundingBoxBased != lodBasedOnBoundingBoxes)
+        {
+            m_renderOptions.m_lodBoundingBoxBased = lodBasedOnBoundingBoxes;
+            if (IsRegisteredWithRenderer())
+            {
+                RegisterWithRenderer(false);
+                RegisterWithRenderer(true);
+            }
+        }
+    }
+
+    bool MeshComponentRenderNode::GetUseVisAreas()
+    {
+        return m_renderOptions.m_useVisAreas;
+    }
+
+    void MeshComponentRenderNode::SetUseVisAreas(bool useVisAreas)
+    {
+        if (m_renderOptions.m_useVisAreas != useVisAreas)
+        {
+            m_renderOptions.m_useVisAreas = useVisAreas;
+            if (IsRegisteredWithRenderer())
+            {
+                RegisterWithRenderer(false);
+                RegisterWithRenderer(true);
+            }
+        }
+    }
+
+    bool MeshComponentRenderNode::GetReceiveWind()
+    {
+        return m_renderOptions.m_receiveWind;
+    }
+
+    void MeshComponentRenderNode::SetReceiveWind(bool shouldReceiveWind)
+    {
+        if (m_renderOptions.m_receiveWind != shouldReceiveWind)
+        {
+            m_renderOptions.m_receiveWind = shouldReceiveWind;
+            if (IsRegisteredWithRenderer())
+            {
+                RegisterWithRenderer(false);
+                RegisterWithRenderer(true);
+            }
+        }
+    }
+
+    bool MeshComponentRenderNode::GetAcceptDecals()
+    {
+        return m_renderOptions.m_acceptDecals;
+    }
+
+    void MeshComponentRenderNode::SetAcceptDecals(bool shouldAcceptDecals)
+    {
+        if (m_renderOptions.m_acceptDecals != shouldAcceptDecals)
+        {
+            m_renderOptions.m_acceptDecals = shouldAcceptDecals;
+            if (IsRegisteredWithRenderer())
+            {
+                RegisterWithRenderer(false);
+                RegisterWithRenderer(true);
+            }
+        }
+    }
+
+    bool MeshComponentRenderNode::GetDeformableMesh()
+    {
+        return m_renderOptions.m_dynamicMesh;
+    }
+
+    void MeshComponentRenderNode::SetDeformableMesh(bool isDeformableMesh)
+    {
+        if (m_renderOptions.m_dynamicMesh != isDeformableMesh)
+        {
+            m_renderOptions.m_dynamicMesh = isDeformableMesh;
+            if (IsRegisteredWithRenderer())
+            {
+                RegisterWithRenderer(false);
+                RegisterWithRenderer(true);
+            }
+        }
     }
 
     void MeshComponentRenderNode::RegisterWithRenderer(bool registerWithRenderer)
@@ -785,47 +1004,59 @@ namespace LmbrCentral
             return;
         }
 
-        IStatObj* obj = GetEntityStatObj();
-
-        for (const LmbrCentral::MeshModificationRequestHelper::MeshLODPrimIndex& meshIndices : m_modificationHelper.MeshesToEdit())
+        if (!m_modificationHelper.GetMeshModified())
         {
-            if (meshIndices.lodIndex != 0)
-            {
-                continue;
-            }
-
+            IStatObj* obj = GetEntityStatObj();
             int subObjectCount = obj->GetSubObjectCount();
+
+            AZStd::function<IStatObj*(size_t)> getSubObject;
             if (subObjectCount == 0)
             {
-                if (meshIndices.primitiveIndex > 0)
+                getSubObject = [obj](size_t index)
                 {
-                    AZ_Warning("MeshComponentRenderNode", false, "Mesh indices out of range");
-                    continue;
-                }
-
-                MeshModificationNotificationBus::Event(
-                    GetEntityId(),
-                    &MeshModificationNotificationBus::Events::ModifyMesh,
-                    meshIndices.lodIndex,
-                    meshIndices.primitiveIndex,
-                    obj->GetRenderMesh());
+                    if (index > 0)
+                    {
+                        AZ_Warning("MeshComponentRenderNode", false, "Mesh indices out of range");
+                        return static_cast<IStatObj*>(nullptr);
+                    }
+                    return obj;
+                };
             }
             else
             {
-                if (meshIndices.primitiveIndex >= subObjectCount)
+                getSubObject = [obj, subObjectCount](size_t index)
                 {
-                    AZ_Warning("MeshComponentRenderNode", false, "Mesh indices out of range");
+                    if (index >= subObjectCount)
+                    {
+                        AZ_Warning("MeshComponentRenderNode", false, "Mesh indices out of range");
+                        return static_cast<IStatObj*>(nullptr);
+                    }
+                    return obj->GetSubObject(index)->pStatObj;
+                };
+            }
+
+            for (const LmbrCentral::MeshModificationRequestHelper::MeshLODPrimIndex& meshIndices : m_modificationHelper.MeshesToEdit())
+            {
+                if (meshIndices.lodIndex != 0)
+                {
                     continue;
                 }
 
-                IStatObj* childObj = obj->GetSubObject(meshIndices.primitiveIndex)->pStatObj;
+                IStatObj* subObject = getSubObject(meshIndices.primitiveIndex);
+                if (!subObject)
+                {
+                    continue;
+                }
+
                 MeshModificationNotificationBus::Event(
                     GetEntityId(),
                     &MeshModificationNotificationBus::Events::ModifyMesh,
                     meshIndices.lodIndex,
                     meshIndices.primitiveIndex,
-                    childObj->GetRenderMesh());
+                    subObject->GetRenderMesh());
             }
+
+            m_modificationHelper.SetMeshModified(true);
         }
 
         SRendParams rParams(inRenderParams);
@@ -963,7 +1194,17 @@ namespace LmbrCentral
 
         if (pMat)
         {
-            m_material.SetAssetPath(pMat->GetName());
+            // GetName may strip the ".mtl" extension from the asset name in its UnifyName logic
+            // Ensure we have a fully qualified filename for our asset reference
+            // CMatMan::LoadMaterial handles this in a similar fashion
+            AZStd::string materialFilename = pMat->GetName();
+            const char* materialExtension = ".mtl";
+            auto extPos = materialFilename.find(".");
+            if (extPos == AZStd::string::npos)
+            {
+                materialFilename += materialExtension;
+            }
+            m_material.SetAssetPath(materialFilename.c_str());
         }
         else
         {
@@ -1056,12 +1297,21 @@ namespace LmbrCentral
         MeshComponentRequestBus::Handler::BusConnect(m_entity->GetId());
         RenderBoundsRequestBus::Handler::BusConnect(m_entity->GetId());
         RenderNodeRequestBus::Handler::BusConnect(m_entity->GetId());
+#if !ENABLE_CRY_PHYSICS
+        AzFramework::EntityContextId contextId;
+        AzFramework::EntityIdContextQueryBus::EventResult(contextId, GetEntityId(), &AzFramework::EntityIdContextQueries::GetOwningContextId);
+        AzFramework::RenderGeometry::IntersectionRequestBus::Handler::BusConnect({ GetEntityId(), contextId });
+        m_meshRenderNode.SetContextId(contextId);
+#endif
         m_meshRenderNode.CreateMesh();
         LegacyMeshComponentRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void MeshComponent::Deactivate()
     {
+#if !ENABLE_CRY_PHYSICS
+        AzFramework::RenderGeometry::IntersectionRequestBus::Handler::BusDisconnect();
+#endif
         MeshComponentRequestBus::Handler::BusDisconnect();
         RenderBoundsRequestBus::Handler::BusDisconnect();
         MaterialOwnerRequestBus::Handler::BusDisconnect();
@@ -1168,6 +1418,47 @@ namespace LmbrCentral
         return m_meshRenderNode.GetEntityStatObj();
     }
 
+#if !ENABLE_CRY_PHYSICS
+    AzFramework::RenderGeometry::RayResult MeshComponent::RenderGeometryIntersect(const AzFramework::RenderGeometry::RayRequest& ray)
+    {
+        AzFramework::RenderGeometry::RayResult result;
+        if (!GetVisibility() && ray.m_onlyVisible)
+        {
+            return result;
+        }
+
+        if (IStatObj* geometry = GetStatObj())
+        {
+            const AZ::Vector3 rayDirection = (ray.m_endWorldPosition - ray.m_startWorldPosition);
+            const AZ::Transform& transform = m_meshRenderNode.GetTransform();
+            const AZ::Transform inverseTransform = transform.GetInverseFull();
+
+            const AZ::Vector3 rayStartLocal = inverseTransform * ray.m_startWorldPosition;
+            const AZ::Vector3 rayDistNormLocal = inverseTransform.Multiply3x3(rayDirection).GetNormalized();
+
+            SRayHitInfo hi;
+            hi.inReferencePoint = AZVec3ToLYVec3(rayStartLocal);
+            hi.inRay = Ray(hi.inReferencePoint, AZVec3ToLYVec3(rayDistNormLocal));
+            hi.bInFirstHit = true;
+            hi.bGetVertColorAndTC = true;
+            if (geometry->RayIntersection(hi))
+            {
+                result.m_uv = LYVec2ToAZVec2(hi.vHitTC);
+                result.m_worldPosition = transform * LYVec3ToAZVec3(hi.vHitPos);
+                result.m_worldNormal = inverseTransform.GetTranspose3x3().Multiply3x3(LYVec3ToAZVec3(hi.vHitNormal)).GetNormalized();
+                result.m_distance = (result.m_worldPosition - ray.m_startWorldPosition).GetLength();
+                result.m_entityAndComponent = { GetEntityId(), GetId() };
+            }
+        }
+        return result;
+    }
+
+    AZ::Aabb MeshComponent::GetGeometryBounds()
+    {
+        return GetWorldBounds();
+    }
+#endif // !ENABLE_CRY_PHYSICS
+
     bool MeshComponent::GetVisibility()
     {
         return m_meshRenderNode.GetVisible();
@@ -1178,6 +1469,106 @@ namespace LmbrCentral
         m_meshRenderNode.SetVisible(isVisible);
     }
 
+    float MeshComponent::GetOpacity()
+    {
+        return m_meshRenderNode.GetOpacity();
+    }
+
+    void MeshComponent::SetOpacity(float opacity)
+    {
+        m_meshRenderNode.SetOpacity(opacity);
+    }
+
+    float MeshComponent::GetMaxViewDistance()
+    {
+        return m_meshRenderNode.GetMaxViewDistance();
+    }
+
+    void MeshComponent::SetMaxViewDistance(float maxViewDistance)
+    {
+        m_meshRenderNode.SetMaxViewDistance(maxViewDistance);
+    }
+
+    float MeshComponent::GetViewDistanceMultiplier()
+    {
+        return m_meshRenderNode.GetViewDistanceMultiplier();
+    }
+
+    void MeshComponent::SetViewDistanceMultiplier(float viewDistanceMultiplier)
+    {
+        m_meshRenderNode.SetViewDistanceMultiplier(viewDistanceMultiplier);
+    }
+
+    AZ::u32 MeshComponent::GetLODDistanceRatio()
+    {
+        return m_meshRenderNode.GetLODDistanceRatio();
+    }
+
+    void MeshComponent::SetLODDistanceRatio(AZ::u32 lodDistanceRatio)
+    {
+        m_meshRenderNode.SetLODDistanceRatio(lodDistanceRatio);
+    }
+
+    bool MeshComponent::GetCastShadows()
+    {
+        return m_meshRenderNode.GetCastShadows();
+    }
+
+    void MeshComponent::SetCastShadows(bool shouldCastShadows)
+    {
+        m_meshRenderNode.SetCastShadows(shouldCastShadows);
+    }
+
+    bool MeshComponent::GetLODBasedOnBoundingBoxes()
+    {
+        return m_meshRenderNode.GetLODBasedOnBoundingBoxes();
+    }
+
+    void MeshComponent::SetLODBasedOnBoundingBoxes(bool lodBasedOnBoundingBoxes)
+    {
+        m_meshRenderNode.SetLODBasedOnBoundingBoxes(lodBasedOnBoundingBoxes);
+    }
+
+    bool MeshComponent::GetUseVisAreas()
+    {
+        return m_meshRenderNode.GetUseVisAreas();
+    }
+
+    void MeshComponent::SetUseVisAreas(bool useVisAreas)
+    {
+        m_meshRenderNode.SetUseVisAreas(useVisAreas);
+    }
+
+    bool MeshComponent::GetReceiveWind()
+    {
+        return m_meshRenderNode.GetReceiveWind();
+    }
+
+    void MeshComponent::SetReceiveWind(bool shouldReceiveWind)
+    {
+        m_meshRenderNode.SetReceiveWind(shouldReceiveWind);
+    }
+
+    bool MeshComponent::GetAcceptDecals()
+    {
+        return m_meshRenderNode.GetAcceptDecals();
+    }
+
+    void MeshComponent::SetAcceptDecals(bool shouldAcceptDecals)
+    {
+        m_meshRenderNode.SetAcceptDecals(shouldAcceptDecals);
+    }
+
+    bool MeshComponent::GetDeformableMesh()
+    {
+        return m_meshRenderNode.GetDeformableMesh();
+    }
+
+    void MeshComponent::SetDeformableMesh(bool isDeformableMesh)
+    {
+        m_meshRenderNode.SetDeformableMesh(isDeformableMesh);
+    }
+    
     void MeshComponentRenderNode::BuildRenderMesh()
     {
         m_statObj = nullptr; // Release smart pointer
@@ -1191,20 +1582,20 @@ namespace LmbrCentral
         // Populate m_statObj. If the mesh doesn't require to be unique, we reuse the render mesh from the asset. If the
         // mesh requires to be unique, we create a copy of the asset's render mesh since it will be modified.
 
-        bool hasClothInverseMasses = !data->m_statObj->GetClothInverseMasses().empty();
+        bool hasClothData = !data->m_statObj->GetClothData().empty();
         const int subObjectCount = data->m_statObj->GetSubObjectCount();
-        for (int i = 0; i < subObjectCount && !hasClothInverseMasses; ++i)
+        for (int i = 0; i < subObjectCount && !hasClothData; ++i)
         {
             IStatObj::SSubObject* subObject = data->m_statObj->GetSubObject(i);
             if (subObject &&
                 subObject->pStatObj &&
-                !subObject->pStatObj->GetClothInverseMasses().empty())
+                !subObject->pStatObj->GetClothData().empty())
             {
-                hasClothInverseMasses = true;
+                hasClothData = true;
             }
         }
 
-        bool useUniqueMesh = hasClothInverseMasses;
+        bool useUniqueMesh = hasClothData;
 
         if (useUniqueMesh)
         {

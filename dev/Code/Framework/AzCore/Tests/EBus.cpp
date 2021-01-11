@@ -1826,6 +1826,38 @@ namespace UnitTest
         AllocatorInstance<PoolAllocator>::Destroy();
     }
 
+    struct EBusRecursiveTest
+        : public EBus
+    {
+        void RecursiveQueueFunction()
+        {
+            // This prevents the test from running forever in the failure case
+            if (m_callCount < 10)
+            {
+                QueueMessageTest::QueueTestSingleBus::QueueFunction([this]() {RecursiveQueueFunction(); });
+            }
+
+            ++m_callCount;
+        }
+
+        int m_callCount = 0;
+    };
+
+    TEST_F(EBusRecursiveTest, QueueRecursiveMessage_OnlyExecutesOncePerCall)
+    {
+        using namespace QueueMessageTest;
+
+        QueueTestSingleBus::ExecuteQueuedEvents();
+        QueueTestSingleBus::AllowFunctionQueuing(true);
+
+        RecursiveQueueFunction();
+
+        QueueTestSingleBus::ExecuteQueuedEvents();
+        QueueTestSingleBus::ClearQueuedEvents();
+
+        ASSERT_EQ(m_callCount, 2); // 1 initial call + the queued call
+    }
+
     class QueueEbusTest
         : public ScopedAllocatorSetupFixture
     {
@@ -3466,13 +3498,14 @@ namespace UnitTest
         template<class Bus>
         struct ConnectionPolicy : public AZ::EBusConnectionPolicy<Bus>
         {
-            static void Connect(typename Bus::BusPtr&, typename Bus::Context&, typename Bus::HandlerNode& handler, const typename Bus::BusIdType&)
+            static void Connect(typename Bus::BusPtr&, typename Bus::Context&, typename Bus::HandlerNode& handler, typename Bus::Context::ConnectLockGuard& , const typename Bus::BusIdType&)
             {
                 handler->MessageWhichOccursDuringConnect();
             }
         };
     };
     using BusWithConnectionPolicyBus = AZ::EBus<BusWithConnectionPolicy>;
+
 
     class HandlerWhichDisconnectsDuringDelivery
         : public BusWithConnectionPolicyBus::Handler
@@ -3483,10 +3516,195 @@ namespace UnitTest
         }
     };
 
+
     TEST_F(EBus, ConnectionPolicy_DisconnectDuringDelivery)
     {
         HandlerWhichDisconnectsDuringDelivery handlerTest;
         handlerTest.BusConnect();
+    }
+
+    class BusWithConnectionPolicyUnlocksBeforeHandler
+        : public AZ::EBusTraits
+    {
+    public:
+        using MutexType = AZStd::recursive_mutex;
+
+        virtual ~BusWithConnectionPolicyUnlocksBeforeHandler() = default;
+
+        virtual int GetPreUnlockDelay() const { return 0; }
+        virtual int GetPostUnlockDelay() const { return 0; }
+        virtual bool ShouldUnlock() const { return true; }
+        virtual void MessageWhichOccursDuringConnect() = 0;
+
+        template<class Bus>
+        struct ConnectionPolicy : public AZ::EBusConnectionPolicy<Bus>
+        {
+            static void Connect(typename Bus::BusPtr&, typename Bus::Context&, typename Bus::HandlerNode& handler, typename Bus::Context::ConnectLockGuard& connectLock, const typename Bus::BusIdType&)
+            {
+                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(handler->GetPreUnlockDelay()));
+
+                if (handler->ShouldUnlock())
+                {
+                    connectLock.unlock();
+                }
+
+                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(handler->GetPostUnlockDelay()));
+                handler->MessageWhichOccursDuringConnect();
+            }
+        };
+    };
+    using BusWithConnectionPolicyUnlocksBus = AZ::EBus<BusWithConnectionPolicyUnlocksBeforeHandler>;
+
+    class DelayUnlockHandler
+        : public BusWithConnectionPolicyUnlocksBus::Handler
+    {
+    public:
+        DelayUnlockHandler() = default;
+        DelayUnlockHandler(int preDelay, int postDelay) :
+            m_preDelay(preDelay),
+            m_postDelay(postDelay)
+        {
+
+        }
+        void MessageWhichOccursDuringConnect() override
+        {
+            if (m_connectMethod)
+            {
+                m_connectMethod();
+            }
+            m_didConnect = true;
+        }
+
+        int GetPreUnlockDelay() const override { return m_preDelay; }
+        int GetPostUnlockDelay() const override { return m_postDelay; }
+        bool ShouldUnlock() const override { return m_shouldUnlock; }
+
+        bool m_shouldUnlock{ true };
+        AZStd::atomic_bool m_didConnect{ false };
+
+        int m_preDelay{ 0 };
+        int m_postDelay{ 0 };
+        AZStd::function<void()> m_connectMethod;
+    };
+
+    TEST_F(EBus, ConnectionPolicy_DisconnectDuringDeliveryUnlocked_Success)
+    {
+        DelayUnlockHandler handlerTest;
+        handlerTest.m_connectMethod = [&handlerTest]() { handlerTest.BusDisconnect(); };
+        handlerTest.BusConnect();
+        EXPECT_EQ(handlerTest.m_didConnect, true);
+    }
+
+    TEST_F(EBus, ConnectionPolicy_DisconnectDuringDeliveryDelayUnlocked_Success)
+    {
+        constexpr int numTests = 100;
+        for (int disconnectTest = 0; disconnectTest < numTests; ++disconnectTest)
+        {
+            DelayUnlockHandler handlerTest(0, 1);
+            handlerTest.BusConnect();
+            AZStd::thread disconnectThread([&handlerTest]()
+            {
+                handlerTest.BusDisconnect();
+            }
+            );
+            disconnectThread.join();
+            EXPECT_EQ(handlerTest.m_didConnect, true);
+        }
+    }
+
+    TEST_F(EBus, ConnectionPolicy_DisconnectDuringDeliveryPreDelayUnlocked_Success)
+    {
+        constexpr int numTests = 100;
+        for (int disconnectTest = 0; disconnectTest < numTests; ++disconnectTest)
+        {
+            DelayUnlockHandler handlerTest(1, 0);
+            handlerTest.BusConnect();
+            AZStd::thread disconnectThread([&handlerTest]()
+            {
+                handlerTest.BusDisconnect();
+            }
+            );
+            disconnectThread.join();
+            EXPECT_EQ(handlerTest.m_didConnect, true);
+        }
+    }
+
+    TEST_F(EBus, ConnectionPolicy_WaitOnSecondHandlerWhileStillLocked_CantComplete)
+    {
+        DelayUnlockHandler waitHandler;
+        // Test without releasing the lock - this is expected to prevent our second handler from connecting
+        // so will block this thread
+        waitHandler.m_shouldUnlock = false;
+
+        DelayUnlockHandler connectHandler;
+        waitHandler.m_connectMethod = [&connectHandler]()
+        {
+            constexpr int waitMsMax = 100;
+            auto startTime = AZStd::chrono::system_clock::now();
+            auto endTime = startTime + AZStd::chrono::milliseconds(waitMsMax);
+
+            // The other bus should not be able to complete because we're still holding the connect lock
+            while (AZStd::chrono::system_clock::now() < endTime && !connectHandler.BusIsConnected())
+            {
+                AZStd::this_thread::yield();
+            }
+                
+            EXPECT_GE(AZStd::chrono::system_clock::now(), endTime);
+        };
+        AZStd::thread connectThread([&connectHandler, &waitHandler]()
+        {
+            constexpr int waitMsMax = 100;
+            auto startTime = AZStd::chrono::system_clock::now();
+            auto endTime = startTime + AZStd::chrono::milliseconds(waitMsMax);
+            while (AZStd::chrono::system_clock::now() < endTime && !waitHandler.m_didConnect)
+            {
+                AZStd::this_thread::yield();
+            }
+            connectHandler.BusConnect();
+        }
+        );
+        waitHandler.BusConnect();
+        connectThread.join();
+        EXPECT_EQ(connectHandler.m_didConnect, true);
+        EXPECT_EQ(waitHandler.m_didConnect, true);
+        waitHandler.BusDisconnect();
+        connectHandler.BusDisconnect();
+    }
+
+    TEST_F(EBus, ConnectionPolicy_WaitOnSecondHandlerWhileUnlocked_CanComplete)
+    {
+        constexpr int numTests = 20;
+        for (int connectTest = 0; connectTest < numTests; ++connectTest)
+        {
+            DelayUnlockHandler waitHandler;
+            DelayUnlockHandler connectHandler;
+            waitHandler.m_connectMethod = [&connectHandler]()
+            {
+                constexpr int waitMsMax = 100;
+                auto startTime = AZStd::chrono::system_clock::now();
+                auto endTime = startTime + AZStd::chrono::milliseconds(waitMsMax);
+
+                // The other bus should be able to connect
+                while (AZStd::chrono::system_clock::now() < endTime && !connectHandler.m_didConnect)
+                {
+                    AZStd::this_thread::yield();
+                }
+                EXPECT_EQ(connectHandler.BusIsConnected(), true);
+                EXPECT_LE(AZStd::chrono::system_clock::now(), endTime);
+            };
+            AZStd::thread connectThread([&connectHandler]()
+            {
+
+                connectHandler.BusConnect();
+            }
+            );
+            waitHandler.BusConnect();
+            connectThread.join();
+            EXPECT_EQ(connectHandler.m_didConnect, true);
+            EXPECT_EQ(waitHandler.m_didConnect, true);
+            waitHandler.BusDisconnect();
+            connectHandler.BusDisconnect();
+        }
     }
 
     class IdBusWithConnectionPolicy
@@ -3503,7 +3721,7 @@ namespace UnitTest
         template<class Bus>
         struct ConnectionPolicy : public AZ::EBusConnectionPolicy<Bus>
         {
-            static void Connect(typename Bus::BusPtr&, typename Bus::Context&, typename Bus::HandlerNode& handler, const typename Bus::BusIdType&)
+            static void Connect(typename Bus::BusPtr&, typename Bus::Context&, typename Bus::HandlerNode& handler, typename Bus::Context::ConnectLockGuard& , const typename Bus::BusIdType&)
             {
                 handler->MessageWhichOccursDuringConnect();
             }
@@ -3557,7 +3775,7 @@ namespace UnitTest
         template<class Bus>
         struct ConnectionPolicy : public AZ::EBusConnectionPolicy<Bus>
         {
-            static void Connect(typename Bus::BusPtr& ptr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id)
+            static void Connect(typename Bus::BusPtr& ptr, typename Bus::Context& context, typename Bus::HandlerNode& handler, typename Bus::Context::ConnectLockGuard& , const typename Bus::BusIdType& id)
             {
                 EXPECT_EQ(handler.GetBusId(), id);
                 EXPECT_EQ(handler.m_holder, ptr);

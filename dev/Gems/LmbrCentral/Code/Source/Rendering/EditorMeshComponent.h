@@ -29,6 +29,7 @@
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/RenderBoundsBus.h>
 
+#include <LmbrCentralEditor.h>
 #include "MeshComponent.h"
 
 
@@ -36,12 +37,13 @@ struct IPhysicalEntity;
 
 namespace LmbrCentral
 {
+AZ_PUSH_DISABLE_WARNING(4275, "-Wunknown-warning-option") // 4251: 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo
     /**
      * In-editor mesh component.
      * Conducts some additional listening and operations to ensure immediate
      * effects when changing fields in the editor.
      */
-    class EditorMeshComponent
+    class LMBR_CENTRAL_EDITOR_API EditorMeshComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , public AZ::Data::AssetBus::Handler
         , private AzFramework::AssetCatalogEventBus::Handler
@@ -63,6 +65,7 @@ namespace LmbrCentral
         , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
         , private AzToolsFramework::EditorLocalBoundsRequestBus::Handler
         , private AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler
+AZ_POP_DISABLE_OVERRIDE_WARNING
     {
     public:
         AZ_COMPONENT(EditorMeshComponent, "{FC315B86-3280-4D03-B4F0-5553D7D08432}", AzToolsFramework::Components::EditorComponentBase)
@@ -108,6 +111,26 @@ namespace LmbrCentral
         AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_mesh.GetMeshAsset(); }
         void SetVisibility(bool visible) override;
         bool GetVisibility() override;
+        float GetOpacity() override;
+        void SetOpacity(float opacity) override;
+        float GetMaxViewDistance() override;
+        void SetMaxViewDistance(float maxViewDistance) override;
+        float GetViewDistanceMultiplier() override;
+        void SetViewDistanceMultiplier(float viewDistanceMultiplier) override;
+        AZ::u32 GetLODDistanceRatio() override;
+        void SetLODDistanceRatio(AZ::u32 lodDistanceRatio) override;
+        bool GetCastShadows() override;
+        void SetCastShadows(bool shouldCastShadows) override;
+        bool GetLODBasedOnBoundingBoxes() override;
+        void SetLODBasedOnBoundingBoxes(bool lodBasedOnBoundingBoxes) override;
+        bool GetUseVisAreas() override;
+        void SetUseVisAreas(bool useVisAreas) override;
+        bool GetReceiveWind() override;
+        void SetReceiveWind(bool shouldReceiveWind) override;
+        bool GetAcceptDecals() override;
+        void SetAcceptDecals(bool shouldAcceptDecals) override;
+        bool GetDeformableMesh() override;
+        void SetDeformableMesh(bool isDeformableMesh) override;
 
         // MaterialOwnerRequestBus
         void SetMaterial(_smart_ptr<IMaterial>) override;

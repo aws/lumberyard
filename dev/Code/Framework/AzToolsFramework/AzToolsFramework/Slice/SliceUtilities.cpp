@@ -2357,18 +2357,6 @@ namespace AzToolsFramework
             return isNonTrivial;
         }
 
-        //=========================================================================
-        AZ::EntityId ReparentNonTrivialEntityHierarchy(const AZ::EntityId& entityId, const AZ::EntityId& newParentId)
-        {
-            AZ_WarningOnce("SliceUtilities::ReparentNonTrivialEntityHierarchy",
-                false,
-                "ReparentNonTrivialEntityHierarchy is being staged for deprecation. Please consider using ReparentNonTrivialSliceInstanceHierarchy as a replacement");
-
-            ReparentNonTrivialSliceInstanceHierarchy(entityId, newParentId);
-
-            return entityId;
-        }
-
         void ReparentNonTrivialSliceInstanceHierarchy(const AZ::EntityId& entityId, const AZ::EntityId& newParentId)
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -2392,6 +2380,7 @@ namespace AzToolsFramework
             bool showDetailsButton)
         {
             QMessageBox warningMessageBox(parent);
+            warningMessageBox.setObjectName("SliceUtilities.warningMessageBox");
             warningMessageBox.setWindowTitle(QObject::tr("Remove invalid references"));
             // Qt's .arg(firstArg, secondArg) changes behavior on the data type of firstArg and secondArg.
             // If firstArg and secondArg are both QStrings, then secondArg will actually replace %2.

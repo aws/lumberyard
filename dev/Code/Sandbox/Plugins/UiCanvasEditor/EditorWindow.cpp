@@ -2634,7 +2634,7 @@ void EditorWindow::ShowTraceMessages(const AZStd::string& canvasName)
     }
 
     SandboxEditor::ErrorDialog errorDialog(this);
-    QString title = QString().sprintf("Error Log - %s", canvasName.c_str());
+    QString title = QString().asprintf("Error Log - %s", canvasName.c_str());
     errorDialog.setWindowTitle(title);
     errorDialog.AddMessages(SandboxEditor::ErrorDialog::MessageType::Error, m_errors);
     errorDialog.AddMessages(SandboxEditor::ErrorDialog::MessageType::Warning, m_warnings);

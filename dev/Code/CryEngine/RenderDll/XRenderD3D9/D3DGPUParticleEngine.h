@@ -58,5 +58,7 @@ public:
     virtual void Render(EmitterTypePtr emitter, EGPUParticlePass pass, int shadowMode, float fov, float aspectRatio, bool isWireframeEnabled) override;
 
 protected:
+    void DeleteQueuedItems();
+
     CImpl_GPUParticles* m_impl;
 };

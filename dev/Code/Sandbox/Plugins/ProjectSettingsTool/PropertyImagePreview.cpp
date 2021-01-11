@@ -29,7 +29,7 @@ namespace ProjectSettingsTool
     static const int maxPreviewDim = 96;
 
     PropertyImagePreviewCtrl::PropertyImagePreviewCtrl(QWidget* parent)
-        : PropertyFileSelectCtrl(parent)
+        : PropertyFuncValBrowseEditCtrl(parent)
         , m_defaultImagePreview(nullptr)
         , m_defaultPath("")
     {
@@ -50,14 +50,22 @@ namespace ProjectSettingsTool
             myLayout->addWidget(m_preview);
         }
 
-        m_selectFunctor = &SelectImageFromFileDialog;
-
-        connect(m_pLineEdit, &QLineEdit::textChanged, this, &PropertyImagePreviewCtrl::LoadPreview);
+        connect(this->m_browseEdit, &AzQtComponents::BrowseEdit::attachedButtonTriggered, this, [this]()
+        {
+            QString path = SelectImageFromFileDialog(browseEdit()->text());
+            if (!path.isEmpty())
+            {
+                SetValueUser(path);
+            }
+        });
+ 
+        connect(browseEdit(), &AzQtComponents::BrowseEdit::textChanged, this, &PropertyImagePreviewCtrl::LoadPreview);
     }
 
     void PropertyImagePreviewCtrl::SetValue(const QString& path)
     {
-        PropertyFuncValLineEditCtrl::SetValue(path);
+        browseEdit()->setText(path);
+
         // Preview will not be shown if path is set to empty because it has not changed so call it here
         LoadPreview();
     }
@@ -77,7 +85,7 @@ namespace ProjectSettingsTool
         if (m_defaultImagePreview == nullptr)
         {
             m_defaultImagePreview = imageSelect;
-            connect(imageSelect, &PropertyStringLineEditCtrl::valueChanged, this, &PropertyImagePreviewCtrl::LoadPreview);
+           connect(imageSelect, &PropertyFuncValBrowseEditCtrl::ValueChangedByUser, this, &PropertyImagePreviewCtrl::LoadPreview);
         }
         else
         {
@@ -93,12 +101,12 @@ namespace ProjectSettingsTool
     void PropertyImagePreviewCtrl::AddOverrideToValidator(PropertyImagePreviewCtrl* preview)
     {
         qobject_cast<DefaultImageValidator*>(m_validator)->AddOverride(preview);
-        connect(preview, &PropertyFuncValLineEditCtrl::ValueChangedByUser, this, &PropertyFuncValLineEditCtrl::ForceValidate);
+        connect(browseEdit(), &AzQtComponents::BrowseEdit::textChanged, this, &PropertyImagePreviewCtrl::ForceValidate);
     }
 
     void PropertyImagePreviewCtrl::LoadPreview()
     {
-        QString currentPath = GetValue();
+        QString currentPath = browseEdit()->text();
         const QString* imagePath = nullptr;
 
         if (!currentPath.isEmpty())
@@ -109,7 +117,7 @@ namespace ProjectSettingsTool
         {
             if (m_defaultImagePreview != nullptr)
             {
-                currentPath = m_defaultImagePreview->GetValue();
+                currentPath = browseEdit()->text();
             }
             if (!currentPath.isEmpty())
             {
@@ -183,9 +191,9 @@ namespace ProjectSettingsTool
                 m_defaultPath = path.data();
             }
         }
-        else
+        else 
         {
-            PropertyFileSelectCtrl::ConsumeAttribute(attrib, attrValue, debugName);
+            PropertyFuncValBrowseEditCtrl::ConsumeAttribute(attrib, attrValue, debugName);
         }
     }
 

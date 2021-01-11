@@ -114,6 +114,24 @@ namespace AzToolsFramework
             return requestingGame;
         }
 
+        static bool EntityHasPendingComponents(const AZ::EntityId entityId)
+        {
+            AZ::Entity::ComponentArrayType pendingComponents;
+            EditorPendingCompositionRequestBus::Event(
+                entityId, &EditorPendingCompositionRequestBus::Events::GetPendingComponents,
+                pendingComponents);
+
+            return !pendingComponents.empty();
+        }
+
+        static bool CanEnterComponentMode(const AZ::EntityId entityId)
+        {
+            // if the editor is transitioning to game mode or if any entities in the selection are not
+            // selectable (invisible/locked) or if any components are in a pending state (a conflict is
+            // present), make it impossible to enter Component Mode
+            return !EditorRequestingGame() && IsSelectableInViewport(entityId) && !EntityHasPendingComponents(entityId);
+        }
+
         void ComponentModeDelegate::Reflect(AZ::ReflectContext* context)
         {
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -130,11 +148,13 @@ namespace AzToolsFramework
                             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &ComponentModeDelegate::OnComponentModeEnterButtonPressed)
                             ->Attribute(AZ::Edit::Attributes::ButtonText, "Edit")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &EnterComponentModeButtonVisible)
+                            ->Attribute(AZ::Edit::Attributes::AcceptsMultiEdit, true)
                             ->Attribute(AZ::Edit::Attributes::ReadOnly, &ComponentModeDelegate::ComponentModeButtonInactive)
                         ->UIElement(AZ::Edit::UIHandlers::Button, "", s_componentModeLeaveDescription)
                             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &ComponentModeDelegate::OnComponentModeLeaveButtonPressed)
                             ->Attribute(AZ::Edit::Attributes::ButtonText, "Done")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &LeaveComponentModeButtonVisible)
+                            ->Attribute(AZ::Edit::Attributes::AcceptsMultiEdit, true)
                             ;
                 }
             }
@@ -240,59 +260,59 @@ namespace AzToolsFramework
         bool ComponentModeDelegate::DetectEnterComponentModeInteraction(
             const ViewportInteraction::MouseInteractionEvent& mouseInteraction)
         {
-            if (ShouldDetectEnterLeaveComponentMode(mouseInteraction))
+            if (!ShouldDetectEnterLeaveComponentMode(mouseInteraction) ||
+                DoubleClickedComponent(mouseInteraction, m_handler) != DoubleClickOutcome::OnComponent)
             {
-                if (EditorRequestingGame() || !IsSelectableInViewport(m_entityComponentIdPair.GetEntityId()))
-                {
-                    return false;
-                }
-
-                if (DoubleClickedComponent(mouseInteraction, m_handler) == DoubleClickOutcome::OnComponent)
-                {
-                    EntityIdList entityIds;
-                    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(
-                        entityIds, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
-
-                    AZStd::vector<AZ::Uuid> componentTypes;
-                    AZ::Entity::ComponentArrayType components;
-                    // reserve small initial buffer for common case
-                    components.reserve(8);
-                    componentTypes.reserve(8);
-                    // build a list of all components on each entity in the current selection
-                    for (AZ::EntityId entityId : entityIds)
-                    {
-                        components.clear();
-
-                        // get all components related to the entity
-                        GetAllComponentsForEntity(GetEntity(entityId), components);
-                        RemoveHiddenComponents(components);
-
-                        AZStd::transform(
-                            components.begin(), components.end(), AZStd::back_inserter(componentTypes),
-                            [](const AZ::Component* component) { return component->GetUnderlyingComponentType(); });
-                    }
-
-                    // count how many components of our type are in the selection
-                    const size_t componentCount =
-                        AZStd::count_if(componentTypes.begin(), componentTypes.end(),
-                        [this](const AZ::Uuid& componentType) { return componentType == m_componentType; });
-
-                    // if the count matches the entity selection size, we know each entity has a
-                    // component of that type, and so it will be displaying in the Entity Outliner
-                    // if this is the case we know it is safe to enter ComponentMode
-                    if (componentCount == entityIds.size())
-                    {
-                        AddComponentMode();
-                    }
-
-                    // we still want to notify the outside world an attempt was made to enter
-                    // ComponentMode - ComponentModeCollection::ModesAdded() must be called
-                    // to determine if ComponentMode was actually entered
-                    return true;
-                }
+                return false;
             }
 
-            return false;
+            if (!CanEnterComponentMode(m_entityComponentIdPair.GetEntityId()))
+            {
+                // note: return true here to indicate attempted to enter component mode,
+                // we do not want the attempted double-click to deselect the entity
+                return true;
+            }
+
+            EntityIdList entityIds;
+            AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(
+                entityIds, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+
+            AZStd::vector<AZ::Uuid> componentTypes;
+            AZ::Entity::ComponentArrayType components;
+            // reserve small initial buffer for common case
+            components.reserve(8);
+            componentTypes.reserve(8);
+            // build a list of all components on each entity in the current selection
+            for (AZ::EntityId entityId : entityIds)
+            {
+                components.clear();
+
+                // get all components related to the entity
+                GetAllComponentsForEntity(GetEntity(entityId), components);
+                RemoveHiddenComponents(components);
+
+                AZStd::transform(
+                    components.begin(), components.end(), AZStd::back_inserter(componentTypes),
+                    [](const AZ::Component* component) { return component->GetUnderlyingComponentType(); });
+            }
+
+            // count how many components of our type are in the selection
+            const size_t componentCount =
+                AZStd::count_if(componentTypes.begin(), componentTypes.end(),
+                [this](const AZ::Uuid& componentType) { return componentType == m_componentType; });
+
+            // if the count matches the entity selection size, we know each entity has a
+            // component of that type, and so it will be displaying in the Entity Outliner
+            // if this is the case we know it is safe to enter ComponentMode
+            if (componentCount == entityIds.size())
+            {
+                AddComponentMode();
+            }
+
+            // we still want to notify the outside world an attempt was made to enter
+            // ComponentMode - ComponentModeCollection::ModesAdded() must be called
+            // to determine if ComponentMode was actually entered
+            return true;
         }
 
         bool ComponentModeDelegate::DetectLeaveComponentModeInteraction(
@@ -333,11 +353,9 @@ namespace AzToolsFramework
 
             if (canBegin)
             {
-                for (AZ::EntityId selectedEntityId : selectedEntityIds)
+                for (const AZ::EntityId& selectedEntityId : selectedEntityIds)
                 {
-                    // if any entities in the selection are not selectable (invisible/locked)
-                    // then still make it impossible to enter begin ComponentMode
-                    if (!IsSelectableInViewport(selectedEntityId))
+                    if (!CanEnterComponentMode(selectedEntityId))
                     {
                         canBegin = false;
                         break;

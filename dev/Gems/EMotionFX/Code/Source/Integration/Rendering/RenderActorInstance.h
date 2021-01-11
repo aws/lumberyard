@@ -18,18 +18,13 @@
 
 #include <EMotionFX/Source/ActorInstance.h>
 
+#include <Integration/ActorComponentBus.h>
 #include <Integration/Assets/ActorAsset.h>
 
 namespace EMotionFX
 {
     namespace Integration
     {
-        enum class SkinningMethod : AZ::u32
-        {
-            DualQuat = 0,
-            Linear
-        };
-
         class RenderActorInstance
         {
         public:

@@ -306,7 +306,7 @@ void CCurveEditorTangentControl::Paint(QPainter& painter, const QPalette& palett
     {
         highlightPercent = 0.5f;
     }
-    const QColor tangentColor = CurveEditorHelpers::LerpColor(palette.color(QPalette::Highlight), palette.color(QPalette::Background), highlightPercent);
+    const QColor tangentColor = CurveEditorHelpers::LerpColor(palette.color(QPalette::Highlight), palette.color(QPalette::Window), highlightPercent);
     const QPen tangentPen = QPen(tangentColor);
 
     painter.setPen(tangentPen);

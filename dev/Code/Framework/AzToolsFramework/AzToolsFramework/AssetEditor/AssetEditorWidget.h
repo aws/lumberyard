@@ -29,6 +29,7 @@ namespace Ui
 {
     class AssetEditorToolbar;
     class AssetEditorStatusBar;
+    class AssetEditorHeader;
 }
 
 namespace AzToolsFramework
@@ -123,6 +124,7 @@ namespace AzToolsFramework
 
             void SetStatusText(const QString& assetStatus);
             void ApplyStatusText();
+            void SetupHeader();
 
             QString m_queuedAssetStatus;
 
@@ -137,6 +139,7 @@ namespace AzToolsFramework
             AZStd::vector<AZ::Data::AssetType>  m_genericAssetTypes;
             AZ::Data::AssetId                    m_sourceAssetId;
             AZ::Data::Asset<AZ::Data::AssetData> m_inMemoryAsset;
+            Ui::AssetEditorHeader* m_header;
             ReflectedPropertyEditor* m_propertyEditor;
             AZ::SerializeContext* m_serializeContext = nullptr;
 

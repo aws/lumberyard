@@ -190,6 +190,7 @@ namespace AzQtComponents
         QLineEdit* m_searchField = nullptr;
         QBoxLayout* m_searchLayout = nullptr;
         int m_estimatedTableHeight = 0;
+        int m_estimatedTableWidth = 256;
         int m_heightEstimatePadding = 10;
         int m_searchLayoutMargin = 4;
         bool m_lineEditSearchVisible = true;
@@ -258,6 +259,7 @@ namespace AzQtComponents
         static QString GetBackgroundColor();
         static QString GetSeparatorColor();
 
+        QToolButton* assetTypeSelectorButton() const;
     signals:
         void TextFilterChanged(const QString& activeTextFilter);
         void TypeFilterChanged(const SearchTypeFilterList& activeTypeFilters);
@@ -283,8 +285,6 @@ namespace AzQtComponents
         const SearchTypeFilterList& typeFilters() const;
 
         virtual FilterCriteriaButton* createCriteriaButton(const SearchTypeFilter& filter, int filterIndex);
-
-        QToolButton* assetTypeSelectorButton() const;
 
         virtual void SetupPaintDelegates();
     private slots:

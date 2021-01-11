@@ -11,13 +11,16 @@
 # $Revision: #1 $
 
 import content_manifest
+import content_bucket
 import staging
 import types
 import signing
 from six import iteritems  # Python 2.7/3.7 Compatibility
 import resource_manager.cli
 import cloudfront
+import dynamic_content_migrator
 
+STAGING_STATUS_CHOICES = ['PUBLIC', 'PRIVATE', 'WINDOW']
 
 def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     subparser = subparsers.add_parser("dynamic-content", help="Commands to manage the CloudGemDynamicContent gem")
@@ -26,6 +29,7 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
 
     subparser = dynamic_content_subparsers.add_parser('show-manifest', help='List all entries in the content manifest')
     subparser.add_argument('--manifest-path', required=False, help='Path to the manifest to use')
+    subparser.add_argument('--manifest-version-id', required=False, help='Version of the standalone manifest pak. Use the latest version if this argument is not specified')
     subparser.add_argument('--section', required=False, help='Section to show (Paks, Files)')
     subparser.add_argument('--file-name', required=False, help='File entry (local Folder + key) to show')
     subparser.add_argument('--platform-type', required=False, help='Platform of the file entry to list')
@@ -70,18 +74,26 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
 
     subparser = dynamic_content_subparsers.add_parser('list-bucket-content', help='List the manifest files found in the content bucket')
     subparser.add_argument('--manifest-path', required=False, help='Path to the manifest to use')
+    subparser.add_argument('--manifest-version-id', required=False, help='Version of the standalone manifest pak. Use the latest version if this argument is not specified')
     add_common_args(subparser)
     subparser.set_defaults(func=content_manifest.list_bucket_content)
+
+    subparser = dynamic_content_subparsers.add_parser('list-file-versions', help='List all versions of a manifest or pak file found in the content bucket.\
+        Returns newest to oldest version based on uploaded date.')
+    subparser.add_argument('--file-name', required=False, help='Name of the manifest or pak file')
+    add_common_args(subparser)
+    subparser.set_defaults(func=content_manifest.command_list_file_versions)
 
     subparser = dynamic_content_subparsers.add_parser('upload-manifest-content', help='Upload any changed manifest content to the content bucket')
     subparser.add_argument('--manifest-path', required=False, help='Path to the manifest to use')
     subparser.add_argument('--deployment-name', required=False, help='Which deployment to upload content to')
-    subparser.add_argument('--staging-status', required=False, help='What staging status should the content and manifest default to (eg PUBLIC/PRIVATE)')
+    subparser.add_argument('--staging-status', required=False, default='PRIVATE', choices=STAGING_STATUS_CHOICES, help='What staging status should the content and manifest default to (eg PUBLIC/PRIVATE)')
     subparser.add_argument('--start-date', required=False, help='Start date value for WINDOW staging (NOW or date/time in format January 15 2018 14:30) - UTC time')
     subparser.add_argument('--end-date', required=False, help='End date value for WINDOW staging (NEVER or date/time in format January 15 2018 14:30) - UTC time')
-    subparser.add_argument('--all', required=False, action='store_true', help='Upload all paks regardless of file check')
+    subparser.add_argument('--all', required=False, action='store_true', help='Build and upload all paks. Ignores the results of file checks for content that has not changed')
     subparser.add_argument('--signing', required=False, action='store_true', help='Add file signatures to the content table for client side verification')
     subparser.add_argument('--invalidate-existing-files', required=False, action='store_true', help='Remove a file from CloudFront edge caches if exists')
+    subparser.add_argument('--replace', required=False, action='store_true', help='Remove older versions when a new version has been uploaded')
 
     add_common_args(subparser)
     subparser.set_defaults(func=content_manifest.command_upload_manifest_content)
@@ -89,7 +101,7 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     subparser = dynamic_content_subparsers.add_parser('upload-folder', help='Upload all of the bundles found in a given folder')
     subparser.add_argument('--folder', required=True, help='Path to the folder upload bundles from')
     subparser.add_argument('--deployment-name', required=False, help='Which deployment to upload content to')
-    subparser.add_argument('--staging-status', required=False, help='What staging status should the content and manifest default to (eg PUBLIC/PRIVATE)')
+    subparser.add_argument('--staging-status', required=False, default='PRIVATE', choices=STAGING_STATUS_CHOICES, help='What staging status should the content and manifest default to (eg PUBLIC/PRIVATE)')
     subparser.add_argument('--start-date', required=False, help='Start date value for WINDOW staging (NOW or date/time in format January 15 2018 14:30) - UTC time')
     subparser.add_argument('--end-date', required=False, help='End date value for WINDOW staging (NEVER or date/time in format January 15 2018 14:30) - UTC time')
     subparser.add_argument('--signing', required=False, action='store_true', help='Add file signatures to the content table for client side verification')
@@ -115,19 +127,26 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
 
     subparser = dynamic_content_subparsers.add_parser('compare-bucket-content', help='Compare manifest content to the bucket using HEAD Metadata checks')
     subparser.add_argument('--manifest-path', required=False, help='Path to the manifest to use')
+    subparser.add_argument('--manifest-version-id', required=False, help='Version of the manifest. Use the latest version if this argument is not specified')
     add_common_args(subparser)
     subparser.set_defaults(func=content_manifest.compare_bucket_content)
 
-    subparser = dynamic_content_subparsers.add_parser('clear-dynamic-content', help='Empty the bucket and table content')
-    subparser.add_argument('--manifest-path', required=False, help='Path to the manifest to use')
+    subparser = dynamic_content_subparsers.add_parser('clear-dynamic-content', help='Empty the bucket and table content. Only delete the latest version if not specific argument is specified')
+    subparser.add_argument('--all-versions', required=False, action='store_true', help='Remove all versions of dynamic content.')
+    subparser.add_argument('--noncurrent-versions', required=False, action='store_true', help='Remove all the noncurrent versions of dynamic content.')
+    subparser.add_argument('--confirm-deleting-noncurrent-versions', '-C', action='store_true',
+                        help='Confirms that you know this command will delete all the noncurrent versions of files in the content bucket and '\
+                            'you will not be able to roll back to any previous version after this operation.')
     add_common_args(subparser)
     subparser.set_defaults(func=content_manifest.command_empty_content)
 
     subparser = dynamic_content_subparsers.add_parser('set-staging-status', help='Set the staging status of a given file')
     subparser.add_argument('--file-path', required=True, help='File name in bucket')
-    subparser.add_argument('--staging-status', required=True, help='Staging status (PUBLIC for available, WINDOW for available within start and end date)')
+    subparser.add_argument('--version-id', required=False, help='Version id of the file')
+    subparser.add_argument('--staging-status', required=True, choices=STAGING_STATUS_CHOICES, help='Staging status (PUBLIC for available, WINDOW for available within start and end date)')
     subparser.add_argument('--start-date', required=False, help='Start date value for WINDOW staging (NOW or date/time in format January 15 2018 14:30) - UTC time')
     subparser.add_argument('--end-date', required=False, help='End date value for WINDOW staging (NEVER or date/time in format January 15 2018 14:30) - UTC time')
+    subparser.add_argument('--include-children', required=False, action='store_true', help='Set the staging status for all the children paks')
     add_common_args(subparser)
     subparser.set_defaults(func=staging.command_set_staging_status)
 
@@ -138,7 +157,7 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
 
     subparser = dynamic_content_subparsers.add_parser('build-new-paks', help='Create pak files based on manifest files which have changed')
     subparser.add_argument('--manifest-path', required=False, help='Path to the manifest to use')
-    subparser.add_argument('--all', required=False, action='store_true', help='Upload all paks regardless of file check')
+    subparser.add_argument('--all', required=False, action='store_true', help='Build all paks and update their manifest hash values regardless of file check')
     add_common_args(subparser)
     subparser.set_defaults(func=content_manifest.command_build_new_paks)
 
@@ -177,6 +196,20 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     add_common_args(subparser)
     subparser.set_defaults(func=content_manifest.command_add_file_to_pak)
 
+    subparser = dynamic_content_subparsers.add_parser('migrate-staging-settings', help='Migrate existing staging settings information when content versioning is enabled or suspended')
+    subparser.add_argument('--deployment-name', required=False, help='Which deployment to migrate existing staging settings information for')
+    add_common_args(subparser)
+    subparser.set_defaults(func=dynamic_content_migrator.command_migrate_table_entries)
+
+    subparser = dynamic_content_subparsers.add_parser('suspend-versioning', help='Suspend dynamic content versioning')
+    subparser.add_argument('--deployment-name', required=False, help='Which deployment to suspend versioning for')
+    subparser.add_argument('--confirm-versioning-suspension', '-C', action='store_true',
+                        help='Confirms that you know this command will suspend content versioning and '\
+                        'you need to update the deployment afterwards.')
+    add_common_args(subparser)
+    subparser.set_defaults(func=dynamic_content_migrator.command_suspend_versioning)
+
+
 def add_cli_view_commands(hook, view_context, **kwargs):
     def list_manifests(self, manifests):
         for manifest in manifests:
@@ -198,13 +231,19 @@ def add_cli_view_commands(hook, view_context, **kwargs):
         for manifest in filesList:
             key_name = manifest.get('keyName', '')
             hash = manifest.get('hash', '')
+            content_hash = manifest.get('contentHash', '')
+            version_id = manifest.get('versionId')
             cache_root = manifest.get('cacheRoot', '')
             local_folder = manifest.get('localFolder', '')
             bucket_prefix = manifest.get('BucketPrefix', '')
             output_dir = manifest.get('outputDir', '')
             pak_file = manifest.get('pakFile', '')
             platform_type = manifest.get('platformType', '')
-            self._output_message('\nFile Key: {}\nHash: {}\nCache Root: {}\nLocal Folder: {}\nBucket Prefix: {}\noutputDir: {}\npakFile: {}\nplatformType: {}'.format(key_name, hash, cache_root, local_folder, bucket_prefix, output_dir, pak_file, platform_type))
+            if version_id:
+                message = f'\nFile Key: {key_name}\nHash: {hash}\nContent Hash: {content_hash}\nVersion ID: {version_id}\nCache Root: {cache_root}\nLocal Folder: {local_folder}\nBucket Prefix: {bucket_prefix}\noutputDir: {output_dir}\npakFile: {pak_file}\nplatformType: {platform_type}'
+            else:
+                message = f'\nFile Key: {key_name}\nHash: {hash}\nContent Hash: {content_hash}\nCache Root: {cache_root}\nLocal Folder: {local_folder}\nBucket Prefix: {bucket_prefix}\noutputDir: {output_dir}\npakFile: {pak_file}\nplatformType: {platform_type}'
+            self._output_message(message)
 
     view_context.show_manifest_file = types.MethodType(show_manifest_file, view_context)
 

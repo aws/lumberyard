@@ -52,6 +52,7 @@
 #include <AzFramework/Network/NetBindingComponent.h>
 #include <AzFramework/Network/NetBindingSystemComponent.h>
 #include <AzFramework/Physics/Utils.h>
+#include <AzFramework/Render/GameIntersectorComponent.h>
 #include <AzFramework/Script/ScriptRemoteDebugging.h>
 #include <AzFramework/Script/ScriptComponent.h>
 #include <AzFramework/StreamingInstall/StreamingInstall.h>
@@ -573,6 +574,7 @@ namespace AzFramework
             azrtti_typeid<AzFramework::SceneSystemComponent>(),
             azrtti_typeid<AzFramework::AzFrameworkConfigurationSystemComponent>(),
             azrtti_typeid<AzFramework::GameEntityContextComponent>(),
+            azrtti_typeid<AzFramework::RenderGeometry::GameIntersectorComponent>(),
             azrtti_typeid<AzFramework::AssetSystem::AssetSystemComponent>(),
             azrtti_typeid<AzFramework::InputSystemComponent>(),
             azrtti_typeid<AzFramework::DrillerNetworkAgentComponent>(),

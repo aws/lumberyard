@@ -15,9 +15,12 @@
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/UnitTest/TestTypes.h>
+#include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzTest/AzTest.h>
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
+#include <Rendering/MeshAssetHandler.h>
+
 
 #include "Source/Rendering/EditorMeshComponent.h"
 
@@ -144,6 +147,153 @@ namespace UnitTest
             m_testMeshComponentDescriptor.reset();
         }
     };
+
+    struct MeshAssetHandlerFixture
+        : ScopedAllocatorSetupFixture
+    {
+    protected:
+        void SetUp() override
+        {
+            AZ::AllocatorInstance<AZ::PoolAllocator>::Create();
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
+
+            Data::AssetManager::Create(Data::AssetManager::Descriptor());
+            Data::AssetManager::Instance().SetAssetInfoUpgradingEnabled(false);
+
+            m_handler.Register();
+        }
+
+        void TearDown() override
+        {
+            m_handler.Unregister();
+            Data::AssetManager::Destroy();
+
+            AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
+        }
+
+        MeshAssetHandler m_handler;
+    };
+
+    struct MockAssetSystemRequestHandler
+        : AzFramework::AssetSystemRequestBus::Handler
+    {
+        MockAssetSystemRequestHandler()
+        {
+            BusConnect();
+        }
+
+        ~MockAssetSystemRequestHandler()
+        {
+            BusDisconnect();
+        }
+
+        AssetSystem::AssetStatus GetAssetStatusById(const AZ::Data::AssetId& assetId) override
+        {
+            m_statusRequest = true;
+
+            return AssetSystem::AssetStatus_Queued;
+        }
+
+        MOCK_METHOD1(CompileAssetSync, AssetSystem::AssetStatus (const AZStd::string&));
+        MOCK_METHOD1(CompileAssetSync_FlushIO, AssetSystem::AssetStatus (const AZStd::string&));
+        MOCK_METHOD1(CompileAssetSyncById, AssetSystem::AssetStatus (const AZ::Data::AssetId&));
+        MOCK_METHOD1(CompileAssetSyncById_FlushIO, AssetSystem::AssetStatus (const AZ::Data::AssetId&));
+        MOCK_METHOD4(ConfigureSocketConnection, bool (const AZStd::string&, const AZStd::string&, const AZStd::string&, const AZStd::string&));
+        MOCK_METHOD1(Connect, bool (const char*));
+        MOCK_METHOD2(ConnectWithTimeout, bool (const char*, AZStd::chrono::duration<float>));
+        MOCK_METHOD0(Disconnect, bool ());
+        MOCK_METHOD1(EscalateAssetBySearchTerm, bool (AZStd::string_view));
+        MOCK_METHOD1(EscalateAssetByUuid, bool (const AZ::Uuid&));
+        MOCK_METHOD0(GetAssetProcessorPingTimeMilliseconds, float ());
+        MOCK_METHOD1(GetAssetStatus, AssetSystem::AssetStatus (const AZStd::string&));
+        MOCK_METHOD1(GetAssetStatus_FlushIO, AssetSystem::AssetStatus (const AZStd::string&));
+        MOCK_METHOD1(GetAssetStatusById_FlushIO, AssetSystem::AssetStatus (const AZ::Data::AssetId&));
+        MOCK_METHOD3(GetUnresolvedProductReferences, void (AZ::Data::AssetId, AZ::u32&, AZ::u32&));
+        MOCK_METHOD0(SaveCatalog, bool ());
+        MOCK_METHOD1(SetAssetProcessorIP, void (const AZStd::string&));
+        MOCK_METHOD1(SetAssetProcessorPort, void (AZ::u16));
+        MOCK_METHOD1(SetBranchToken, void (const AZStd::string&));
+        MOCK_METHOD1(SetProjectName, void (const AZStd::string&));
+        MOCK_METHOD0(ShowAssetProcessor, void ());
+        MOCK_METHOD1(ShowInAssetProcessor, void (const AZStd::string&));
+
+        bool m_statusRequest = false;
+    };
+
+    struct MockCatalog
+        : Data::AssetCatalogRequestBus::Handler
+    {
+        MockCatalog()
+        {
+            BusConnect();
+        }
+
+        ~MockCatalog()
+        {
+            BusDisconnect();
+        }
+
+        AZ::Data::AssetId GetAssetIdByPath(const char*, const AZ::Data::AssetType&, bool) override
+        {
+            m_generatedId = AZ::Data::AssetId(AZ::Uuid::CreateRandom(), 1234);
+
+            return m_generatedId;
+        }
+
+        MOCK_METHOD1(GetAssetInfoById, AZ::Data::AssetInfo (const AZ::Data::AssetId&));
+        MOCK_METHOD1(AddAssetType, void (const AZ::Data::AssetType&));
+        MOCK_METHOD1(AddDeltaCatalog, bool (AZStd::shared_ptr<AzFramework::AssetRegistry>));
+        MOCK_METHOD1(AddExtension, void (const char*));
+        MOCK_METHOD0(ClearCatalog, void ());
+        MOCK_METHOD5(CreateBundleManifest, bool (const AZStd::string&, const AZStd::vector<AZStd::string>&, const AZStd::string&, int, const AZStd::vector<AZStd::string>&));
+        MOCK_METHOD2(CreateDeltaCatalog, bool (const AZStd::vector<AZStd::string>&, const AZStd::string&));
+        MOCK_METHOD0(DisableCatalog, void ());
+        MOCK_METHOD1(EnableCatalogForAsset, void (const AZ::Data::AssetType&));
+        MOCK_METHOD3(EnumerateAssets, void (BeginAssetEnumerationCB, AssetEnumerationCB, EndAssetEnumerationCB));
+        MOCK_METHOD1(GenerateAssetIdTEMP, AZ::Data::AssetId (const char*));
+        MOCK_METHOD1(GetAllProductDependencies, AZ::Outcome<AZStd::vector<Data::ProductDependency>, AZStd::string> (const Data::AssetId&));
+        MOCK_METHOD3(GetAllProductDependenciesFilter, AZ::Outcome<AZStd::vector<Data::ProductDependency>, AZStd::string> (const Data::AssetId&, const AZStd::unordered_set<Data::AssetId>&, const AZStd::vector<AZStd::string>&));
+        MOCK_METHOD1(GetAssetPathById, AZStd::string (const AZ::Data::AssetId&));
+        MOCK_METHOD1(GetDirectProductDependencies, AZ::Outcome<AZStd::vector<Data::ProductDependency>, AZStd::string> (const Data::AssetId&));
+        MOCK_METHOD1(GetHandledAssetTypes, void (AZStd::vector<AZ::Data::AssetType>&));
+        MOCK_METHOD0(GetRegisteredAssetPaths, AZStd::vector<AZStd::string> ());
+        MOCK_METHOD2(InsertDeltaCatalog, bool (AZStd::shared_ptr<AzFramework::AssetRegistry>, size_t));
+        MOCK_METHOD2(InsertDeltaCatalogBefore, bool (AZStd::shared_ptr<AzFramework::AssetRegistry>, AZStd::shared_ptr<AzFramework::AssetRegistry>));
+        MOCK_METHOD1(LoadCatalog, bool (const char*));
+        MOCK_METHOD2(RegisterAsset, void (const AZ::Data::AssetId&, AZ::Data::AssetInfo&));
+        MOCK_METHOD1(RemoveDeltaCatalog, bool (AZStd::shared_ptr<AzFramework::AssetRegistry>));
+        MOCK_METHOD1(SaveCatalog, bool (const char*));
+        MOCK_METHOD0(StartMonitoringAssets, void ());
+        MOCK_METHOD0(StopMonitoringAssets, void ());
+        MOCK_METHOD1(UnregisterAsset, void (const AZ::Data::AssetId&));
+
+        AZ::Data::AssetId m_generatedId{};
+    };
+
+    struct MockAssetData
+        : MeshAsset
+    {
+        MockAssetData(AZ::Data::AssetId assetId)
+        {
+            m_assetId = assetId;
+        }
+    };
+
+    TEST_F(MeshAssetHandlerFixture, LoadAsset_StillInQueue_LoadsSubstituteAsset)
+    {
+        MockAssetSystemRequestHandler assetSystem;
+        MockCatalog catalog;
+        AZ::Data::AssetId assetId(AZ::Uuid::CreateRandom(), 0);
+
+        Data::AssetPtr assetPointer = aznew MockAssetData(assetId);
+        AZ::Data::Asset<AZ::Data::AssetData> asset = assetPointer;
+        auto substituteAssetId = m_handler.AssetMissingInCatalog(asset);
+
+        ASSERT_TRUE(assetSystem.m_statusRequest);
+        ASSERT_TRUE(catalog.m_generatedId.IsValid());
+        ASSERT_EQ(substituteAssetId, catalog.m_generatedId);
+    }
 
 #if ENABLE_CRY_PHYSICS
     TEST_F(EditorMeshComponentTestFixture, OrthonormalTransformIsPassedToPhysicalEntity)

@@ -54,7 +54,7 @@ namespace ImageProcessingEditor
         {
             m_ui->formatLabel->hide();
             m_ui->formatComboBox->show();
-            QObject::connect(m_ui->formatComboBox, static_cast<void(QComboBox::*)(const QString&)>(&QComboBox::currentIndexChanged), this, &ResolutionSettingItemWidget::OnChangeFormat);
+            QObject::connect(m_ui->formatComboBox, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &ResolutionSettingItemWidget::OnChangeFormat);
         }
         QObject::connect(m_ui->downResSpinBox, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &ResolutionSettingItemWidget::OnChangeDownRes);
 
@@ -125,7 +125,7 @@ namespace ImageProcessingEditor
         m_ui->formatComboBox->clear();
     }
 
-    void ResolutionSettingItemWidget::OnChangeFormat(const QString& format)
+    void ResolutionSettingItemWidget::OnChangeFormat(int index)
     {
         bool oldState = m_ui->formatComboBox->blockSignals(true);       
         m_ui->formatComboBox->blockSignals(oldState);  

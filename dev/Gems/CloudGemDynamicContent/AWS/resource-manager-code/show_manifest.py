@@ -25,9 +25,20 @@ def invalid_file(filePath):
 def skipping_invalid_file(filePath):
     output_message('Skipping Invalid File: {}'.format(filePath))
 
+def skipping_manifest_update():
+    output_message('No content change found. Skipping manifest upload.')
+
 
 def updating_file_hashes(manifestPath):
     output_message('Updating file hashes for {}'.format(manifestPath))
+
+
+def content_hash_comparison_disk(file_path, manifest_content_hash, disk_content_hash):
+    output_message('Comparing content hashes for {}'.format(file_path))
+    if manifest_content_hash == disk_content_hash:
+        output_message(' MATCH Manifest: {}  Disk: {}'.format(manifest_content_hash, disk_content_hash))
+    else:
+        output_message(' UPDATE Manifest: {}  Disk: {}'.format(manifest_content_hash, disk_content_hash))
 
 
 def hash_comparison_disk(filePath, manifestHash, diskHash):
@@ -38,12 +49,20 @@ def hash_comparison_disk(filePath, manifestHash, diskHash):
         output_message(' UPDATE Manifest: {}  Disk: {}'.format(manifestHash, diskHash))
 
 
-def hash_comparison_bucket(filePath, manifestHash, bucketHash):
-    output_message('Comparing hashes for {}'.format(filePath))
-    if manifestHash == bucketHash:
-        output_message(' MATCH Manifest: {}  Bucket: {}'.format(manifestHash, bucketHash))
+def content_hash_comparison_bucket(file_path, manifest_content_hash, bucket_content_hash):
+    output_message('Comparing content hashes for {}'.format(file_path))
+    if manifest_content_hash == bucket_content_hash:
+        output_message(' MATCH Manifest: {}  Bucket: {}'.format(manifest_content_hash, bucket_content_hash))
     else:
-        output_message(' UPDATE Manifest: {}  Bucket: {}'.format(manifestHash, bucketHash))
+        output_message(' UPDATE Manifest: {}  Bucket: {}'.format(manifest_content_hash, bucket_content_hash))
+
+
+def content_version_comparison_bucket(file_path, manifest_version, bucket_version):
+    output_message('Comparing versions for {}'.format(file_path))
+    if manifest_version == bucket_version:
+        output_message(' MATCH Manifest: {}  Bucket: {}'.format(manifest_version, bucket_version))
+    else:
+        output_message(' UPDATE Manifest: {}  Bucket: {}'.format(manifest_version, bucket_version))
 
 
 def found_stack(stack_id):
@@ -118,6 +137,20 @@ def manifest_not_writable(manifestPath):
 def list_manifests(files):
     for file in files:
         output_message(file)
+
+
+def list_file_versions(file_name, versions):
+    if len(versions) == 0:
+        output_message(f'File {file_name} has not been uploaded')
+    else:
+        output_message(f'File {file_name} has {len(versions)} version(s)')
+    for version in versions:
+        version_id = version.get('VersionId', '')
+        last_modified = staging.get_formatted_time_string(version.get('LastModified', datetime.time()))
+        message = f'Version ID: {version_id} Last Modified: {last_modified}'
+        if version.get('IsLatest', False):
+            message += ' (Latest)'
+        output_message(message)
 
 
 def show_file_signature(file_path, to_sign, result):

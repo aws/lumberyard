@@ -19,11 +19,27 @@
 #include <Source/PythonReflectionComponent.h>
 #include <Source/PythonProxyObject.h>
 
+#include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
 #include <AzCore/Component/Entity.h>
+
+namespace UnitTest
+{
+    enum class TestEnumClass : AZ::s32
+    {
+        Zaphod = 1,
+        Arthur
+    };
+}
+
+// give the enum values types
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(UnitTest::TestEnumClass, "{F8EBD52A-D508-4A37-81CA-40E1DC176BCC}")
+}
 
 namespace UnitTest
 {
@@ -35,6 +51,8 @@ namespace UnitTest
 
         float m_myFloat = 0.0f;
         AZ::s64 m_s64 = 0;
+        AZ::s32 m_s32 = 0;
+        TestEnumClass m_enumClass = TestEnumClass::Arthur;
 
         float GetFloat() const
         {
@@ -54,8 +72,27 @@ namespace UnitTest
             return static_cast<AZ::u16>(::strlen(message));
         }
 
+        enum TestEnum
+        {
+            TE_Zero = 0,
+            TE_One = 1,
+        };
+
         void Reflect(AZ::ReflectContext* context)
         {
+            if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+            {
+                serializeContext->Enum<TestEnumClass>()
+                    ->Value("Zaphod", TestEnumClass::Zaphod)
+                    ->Value("Arthur", TestEnumClass::Arthur)
+                    ;
+
+                serializeContext->Class<PythonReflectionObjectProxyPropertyTester>()
+                    ->Field("EnumClass", &PythonReflectionObjectProxyPropertyTester::m_enumClass)
+                    ->Field("Int32", &PythonReflectionObjectProxyPropertyTester::m_s32)
+                    ;
+            }
+
             if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
             {
                 behaviorContext->Class<PythonReflectionObjectProxyPropertyTester>("TestObjectProxy")
@@ -74,6 +111,11 @@ namespace UnitTest
                     ->Property("f32", [](PythonReflectionObjectProxyPropertyTester* that) { return static_cast<float>(32.0f); }, nullptr)
                     ->Property("d64", [](PythonReflectionObjectProxyPropertyTester* that) { return static_cast<double>(64.0); }, nullptr)
                     ->Method("printMessage", &PythonReflectionObjectProxyPropertyTester::PrintMessage)
+                    ->Enum<TE_Zero>("Zero")
+                    ->Enum<TE_One>("One")
+                    ->Property("enumClass", BehaviorValueProperty(&PythonReflectionObjectProxyPropertyTester::m_enumClass))
+                    ->Enum<aznumeric_cast<AZ::s32>(TestEnumClass::Zaphod)>("Zaphod")
+                    ->Enum<aznumeric_cast<AZ::s32>(TestEnumClass::Arthur)>("Arthur")
                     ;
             }
         }
@@ -360,6 +402,52 @@ namespace UnitTest
         }
     };
 
+    class PythonObjectReprTester
+    {
+    private:
+        AZ::s64 m_value;
+
+        AZStd::string GetRepr() const
+        {
+            return AZStd::string::format("TestReprObject(%d)", m_value);
+        }
+
+    public:
+        AZ_TYPE_INFO(PythonObjectReprTester, "{eb29174e-c556-4b35-8ee0-9ca5aa287420}");
+
+        PythonObjectReprTester()
+        {
+            m_value = -1;
+        }
+
+        PythonObjectReprTester(AZ::s64 value) : m_value(value)
+        {
+
+        }
+
+        AZStd::string ToString() const
+        {
+            return AZStd::string::format("MyValue: %d", m_value);
+        }
+
+        void Reflect(AZ::ReflectContext* context)
+        {
+            if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->Class<PythonObjectReprTester>("TestReprObject")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Module, "test.proxy")
+                    ->Property("value", [](PythonObjectReprTester* that) { return that->m_value; }, [](PythonObjectReprTester* that, AZ::s64 value) { that->m_value = value; })
+                    ->Method("__repr__", [](PythonObjectReprTester* that) { return that->GetRepr(); })
+                    ->Method("ToString", [](PythonObjectReprTester* that) { return that->ToString(); })
+                        ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
+                    ->Constructor()
+                    ->Constructor<AZ::s64>()
+                    ;
+            }
+        }
+    };
+
     //////////////////////////////////////////////////////////////////////////
     // fixtures
 
@@ -431,6 +519,7 @@ namespace UnitTest
         };
 
         PythonReflectionObjectProxyPropertyTester pythonReflectionObjectProxyPropertyTester;
+        pythonReflectionObjectProxyPropertyTester.Reflect(m_app.GetSerializeContext());
         pythonReflectionObjectProxyPropertyTester.Reflect(m_app.GetBehaviorContext());
 
         AZ::Entity e;
@@ -508,6 +597,7 @@ namespace UnitTest
         };
 
         PythonReflectionObjectProxyPropertyTester pythonReflectionObjectProxyPropertyTester;
+        pythonReflectionObjectProxyPropertyTester.Reflect(m_app.GetSerializeContext());
         pythonReflectionObjectProxyPropertyTester.Reflect(m_app.GetBehaviorContext());
 
         AZ::Entity e;
@@ -577,6 +667,7 @@ namespace UnitTest
         };
 
         PythonReflectionObjectProxyPropertyTester pythonReflectionObjectProxyPropertyTester;
+        pythonReflectionObjectProxyPropertyTester.Reflect(m_app.GetSerializeContext());
         pythonReflectionObjectProxyPropertyTester.Reflect(m_app.GetBehaviorContext());
 
         PythonReflectionObjectProxyTester pythonReflectionObjectProxyTester;
@@ -1358,5 +1449,286 @@ namespace UnitTest
         e.Deactivate();
 
         EXPECT_EQ(7, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::Found)]);
+    }
+
+    TEST_F(PythonObjectProxyTests, EnumsAreFound)
+    {
+        enum class LogTypes
+        {
+            Skip = 0,
+            Found,
+            Equals
+        };
+
+        m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
+        {
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                if (AzFramework::StringFunc::StartsWith(message, "Found"))
+                {
+                    return aznumeric_cast<int>(LogTypes::Found);
+                }
+                else if (AzFramework::StringFunc::StartsWith(message, "Equals"))
+                {
+                    return aznumeric_cast<int>(LogTypes::Equals);
+                }
+            }
+            return aznumeric_cast<int>(LogTypes::Skip);
+        };
+
+        PythonReflectionObjectProxyPropertyTester pythonReflectionObjectProxyPropertyTester;
+        pythonReflectionObjectProxyPropertyTester.Reflect(m_app.GetSerializeContext());
+        pythonReflectionObjectProxyPropertyTester.Reflect(m_app.GetBehaviorContext());
+
+        AZ::Entity e;
+        Activate(e);
+
+        SimulateEditorBecomingInitialized();
+
+        try
+        {
+            pybind11::exec(R"(
+                import azlmbr.object
+                import azlmbr.test.proxy
+
+                value = azlmbr.test.proxy.TestObjectProxy_Zero
+                print ('Found_TestObjectProxy_Zero')
+                if (value == 0):
+                    print ('Equals_TestObjectProxy_Zero is 0')
+
+                value = azlmbr.test.proxy.TestObjectProxy_One
+                print ('Found_TestObjectProxy_One')
+                if (value == 1):
+                    print ('Equals_TestObjectProxy_One is 1')
+            )");
+        }
+        catch (const std::exception& e)
+        {
+            AZ_Error("UnitTest", false, "Failed on with Python exception: %s", e.what());
+        }
+
+        e.Deactivate();
+
+        EXPECT_EQ(2, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::Found)]);
+        EXPECT_EQ(2, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::Equals)]);        
+    }
+
+    TEST_F(PythonObjectProxyTests, ClassEnumsAreFound)
+    {
+        enum class LogTypes
+        {
+            Skip = 0,
+            Assigned,
+            Equals
+        };
+
+        m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
+        {
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                if (AzFramework::StringFunc::StartsWith(message, "Assigned"))
+                {
+                    return aznumeric_cast<int>(LogTypes::Assigned);
+                }
+                else if (AzFramework::StringFunc::StartsWith(message, "Equals"))
+                {
+                    return aznumeric_cast<int>(LogTypes::Equals);
+                }
+            }
+            return aznumeric_cast<int>(LogTypes::Skip);
+        };
+
+        PythonReflectionObjectProxyPropertyTester pythonReflectionObjectProxyPropertyTester;
+        pythonReflectionObjectProxyPropertyTester.Reflect(m_app.GetSerializeContext());
+        pythonReflectionObjectProxyPropertyTester.Reflect(m_app.GetBehaviorContext());
+
+        AZ::Entity e;
+        Activate(e);
+        SimulateEditorBecomingInitialized();
+
+        try
+        {
+            pybind11::exec(R"(
+                import azlmbr.object
+                import azlmbr.test.proxy
+
+                value = azlmbr.test.proxy.TestObjectProxy_Zaphod
+                print ('Assigned TestObjectProxy_Zaphod')
+                if (value == 1):
+                    print ('Equals TestObjectProxy_Zaphod is 1')
+
+                value = azlmbr.test.proxy.TestObjectProxy_Arthur
+                print ('Assigned TestObjectProxy_Arthur')
+                if (value == 2):
+                    print ('Equals TestObjectProxy_Arthur is 2')
+
+                proxy = azlmbr.test.proxy.TestObjectProxy()
+                enumValue = azlmbr.test.proxy.TestObjectProxy_Arthur
+                proxyValue = proxy.enumClass
+                if (proxyValue == enumValue):
+                    print ('Equals TestObjectProxy_Arthur is value.enumClass')
+
+                proxy.enumClass = azlmbr.test.proxy.TestObjectProxy_Zaphod
+                print ('Assigned TestObjectProxy_Zaphod to value.enumClass ({})'.format(proxy.enumClass))
+                if (proxy.enumClass == azlmbr.test.proxy.TestObjectProxy_Zaphod):
+                    print ('Equals TestObjectProxy_Zaphod now is value.enumClass')
+            )");
+        }
+        catch (const std::exception& e)
+        {
+            AZ_Error("UnitTest", false, "Failed on with Python exception: %s", e.what());
+        }
+
+        e.Deactivate();
+
+        EXPECT_EQ(3, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::Assigned)]);
+        EXPECT_EQ(4, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::Equals)]);
+    }    
+
+    TEST_F(PythonObjectProxyTests, Repr)
+    {
+        enum class LogTypes
+        {
+            Skip = 0,
+            Found
+        };
+
+        m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
+        {
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                if (AzFramework::StringFunc::StartsWith(message, "Found"))
+                {
+                    return aznumeric_cast<int>(LogTypes::Found);
+                }
+            }
+            return aznumeric_cast<int>(LogTypes::Skip);
+        };
+
+        // class that implements repr
+        PythonObjectReprTester reprTester;
+        reprTester.Reflect(m_app.GetBehaviorContext());
+
+        // class that doesn't implement repr
+        PythonObjectBaseTester pythonObjectBaseTester;
+        pythonObjectBaseTester.Reflect(m_app.GetBehaviorContext());
+
+        AZ::Entity e;
+        Activate(e);
+
+        SimulateEditorBecomingInitialized();
+
+        try
+        {
+            pybind11::exec(R"(
+                import azlmbr.object
+                import azlmbr.test.proxy
+
+                # test repr with a newly created object with default values
+                proxyTest = azlmbr.object.create('TestReprObject')
+                retrieved_repr = repr(proxyTest)
+                if retrieved_repr == 'TestReprObject(-1)':
+                    print ('Found default repr')
+
+                # test repr with different state, via constructor
+                proxyTest = azlmbr.test.proxy.TestReprObject(42)
+                retrieved_repr = repr(proxyTest)
+                if retrieved_repr == 'TestReprObject(42)':
+                    print ('Found valid state repr')
+
+                # test repr with a modified object
+                proxyTest.value = 84
+                retrieved_repr = repr(proxyTest)
+                if retrieved_repr == 'TestReprObject(84)':
+                    print ('Found valid modified state repr')
+
+                # test repr for objects that don't implement it
+                proxyTest = azlmbr.test.proxy.TestObjectBase()
+                retrieved_repr = repr(proxyTest)
+                if retrieved_repr.startswith('<TestObjectBase via PythonProxyObject'):
+                    print ('Found fallback repr')
+
+            )");
+        }
+        catch (const std::exception& ex)
+        {
+            AZ_Warning("UnitTest", false, "Failed on with Python exception: %s", ex.what());
+            FAIL();
+        }
+
+        e.Deactivate();
+
+        EXPECT_EQ(4, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::Found)]);
+    }
+
+    TEST_F(PythonObjectProxyTests, ToString)
+    {
+        enum class LogTypes
+        {
+            Skip = 0,
+            Found
+        };
+
+        m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
+        {
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                if (AzFramework::StringFunc::StartsWith(message, "Found"))
+                {
+                    return aznumeric_cast<int>(LogTypes::Found);
+                }
+            }
+            return aznumeric_cast<int>(LogTypes::Skip);
+        };
+
+        // class that implements ToString
+        PythonObjectReprTester reprTester;
+        reprTester.Reflect(m_app.GetBehaviorContext());
+
+        // class that doesn't implement ToString
+        PythonObjectBaseTester pythonObjectBaseTester;
+        pythonObjectBaseTester.Reflect(m_app.GetBehaviorContext());
+
+        AZ::Entity e;
+        Activate(e);
+
+        SimulateEditorBecomingInitialized();
+
+        try
+        {
+            pybind11::exec(R"(
+                import azlmbr.object
+                import azlmbr.test.proxy
+
+                # test str with a newly created object with default values
+                proxyTest = azlmbr.object.create('TestReprObject')
+                retrieved_str = str(proxyTest)
+                if retrieved_str == 'MyValue: -1':
+                    print ('Found str')
+
+                # test str with a modified object
+                proxyTest.value = 42
+                retrieved_str = str(proxyTest)
+                if retrieved_str == 'MyValue: 42':
+                    print ('Found valid modified state str')
+
+                # test str for objects that don't implement it, fallback to repr
+                proxyTest = azlmbr.test.proxy.TestObjectBase()
+                retrieved_str = str(proxyTest)
+                retrieved_repr = repr(proxyTest)
+                if retrieved_str == retrieved_repr:
+                    print ('Found fallback str based on repr')
+
+            )");
+        }
+        catch (const std::exception& ex)
+        {
+            AZ_Warning("UnitTest", false, "Failed on with Python exception: %s", ex.what());
+            FAIL();
+        }
+
+        e.Deactivate();
+
+        EXPECT_EQ(3, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::Found)]);
     }
 }

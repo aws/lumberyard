@@ -10,8 +10,6 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
 #include <Integration/ActorComponentBus.h>
 
 #include <Components/ClothComponentMesh/ActorClothColliders.h>
@@ -52,9 +50,9 @@ namespace NvCloth
                     colliderConfig->m_position);
             capsuleCollider.m_radius = capsuleShapeConfig->m_radius;
             capsuleCollider.m_height = capsuleShapeConfig->m_height;
-            capsuleCollider.m_nvCapsuleIndex = capsuleIndex;
-            capsuleCollider.m_nvSphereAIndex = sphereAIndex;
-            capsuleCollider.m_nvSphereBIndex = sphereBIndex;
+            capsuleCollider.m_capsuleIndex = capsuleIndex;
+            capsuleCollider.m_sphereAIndex = sphereAIndex;
+            capsuleCollider.m_sphereBIndex = sphereBIndex;
 
             return capsuleCollider;
         }
@@ -160,8 +158,8 @@ namespace NvCloth
                 break;
 
                 default:
-                    AZ_Warning("ActorAssetHelper", false, "Joint '%s' has an unexpected shape type (%d) for cloth collider.",
-                        clothNodeConfig.m_name.c_str(), shapeConfigPair.second->GetShapeType());
+                    AZ_Warning("ActorAssetHelper", false, "Joint '%s' has an unexpected shape type (%u) for cloth collider.",
+                        clothNodeConfig.m_name.c_str(), static_cast<AZ::u8>(shapeConfigPair.second->GetShapeType()));
                     break;
                 }
             }
@@ -176,13 +174,13 @@ namespace NvCloth
 
         actorClothColliders->m_sphereColliders = AZStd::move(sphereColliders);
         actorClothColliders->m_capsuleColliders = AZStd::move(capsuleColliders);
-        actorClothColliders->m_nvSpheres.resize(sphereCount);
-        actorClothColliders->m_nvCapsuleIndices.resize(capsuleCount * 2); // 2 sphere indices per capsule
+        actorClothColliders->m_spheres.resize(sphereCount);
+        actorClothColliders->m_capsuleIndices.resize(capsuleCount * 2); // 2 sphere indices per capsule
 
         for (const auto& capsuleCollider : actorClothColliders->m_capsuleColliders)
         {
-            actorClothColliders->m_nvCapsuleIndices[capsuleCollider.m_nvCapsuleIndex + 0] = capsuleCollider.m_nvSphereAIndex;
-            actorClothColliders->m_nvCapsuleIndices[capsuleCollider.m_nvCapsuleIndex + 1] = capsuleCollider.m_nvSphereBIndex;
+            actorClothColliders->m_capsuleIndices[capsuleCollider.m_capsuleIndex + 0] = capsuleCollider.m_sphereAIndex;
+            actorClothColliders->m_capsuleIndices[capsuleCollider.m_capsuleIndex + 1] = capsuleCollider.m_sphereBIndex;
         }
 
         // Calculates the current transforms for the colliders
@@ -229,8 +227,7 @@ namespace NvCloth
     {
         const AZ::Vector3 spherePosition = sphere.m_currentModelSpaceTransform.GetTranslation();
         AZ_Assert(sphere.m_nvSphereIndex != InvalidIndex, "Sphere collider has invalid index");
-        m_nvSpheres[sphere.m_nvSphereIndex] = 
-            physx::PxVec4(spherePosition.GetX(), spherePosition.GetY(), spherePosition.GetZ(), sphere.m_radius);
+        m_spheres[sphere.m_nvSphereIndex].Set(spherePosition, sphere.m_radius);
     }
 
     void ActorClothColliders::UpdateCapsule(const CapsuleCollider& capsule)
@@ -241,12 +238,10 @@ namespace NvCloth
 
         const AZ::Vector3 sphereAPosition = capsulePosition + basisZ;
         const AZ::Vector3 sphereBPosition = capsulePosition - basisZ;
-        AZ_Assert(capsule.m_nvSphereAIndex != InvalidIndex, "Capsule collider has an invalid index for its first sphere");
-        AZ_Assert(capsule.m_nvSphereBIndex != InvalidIndex, "Capsule collider has an invalid index for its second sphere");
-        m_nvSpheres[capsule.m_nvSphereAIndex] = 
-            physx::PxVec4(sphereAPosition.GetX(), sphereAPosition.GetY(), sphereAPosition.GetZ(), capsule.m_radius);
-        m_nvSpheres[capsule.m_nvSphereBIndex] = 
-            physx::PxVec4(sphereBPosition.GetX(), sphereBPosition.GetY(), sphereBPosition.GetZ(), capsule.m_radius);
+        AZ_Assert(capsule.m_sphereAIndex != InvalidIndex, "Capsule collider has an invalid index for its first sphere");
+        AZ_Assert(capsule.m_sphereBIndex != InvalidIndex, "Capsule collider has an invalid index for its second sphere");
+        m_spheres[capsule.m_sphereAIndex].Set(sphereAPosition, capsule.m_radius);
+        m_spheres[capsule.m_sphereBIndex].Set(sphereBPosition, capsule.m_radius);
     }
 
     const AZStd::vector<SphereCollider>& ActorClothColliders::GetSphereColliders() const
@@ -259,13 +254,13 @@ namespace NvCloth
         return m_capsuleColliders;
     }
 
-    const AZStd::vector<physx::PxVec4>& ActorClothColliders::GetSpheres() const
+    const AZStd::vector<AZ::Vector4>& ActorClothColliders::GetSpheres() const
     {
-        return m_nvSpheres;
+        return m_spheres;
     }
 
     const AZStd::vector<uint32_t>& ActorClothColliders::GetCapsuleIndices() const
     {
-        return m_nvCapsuleIndices;
+        return m_capsuleIndices;
     }
 } // namespace NvCloth

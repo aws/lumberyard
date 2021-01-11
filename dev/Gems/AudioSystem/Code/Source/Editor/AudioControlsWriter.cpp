@@ -111,11 +111,11 @@ namespace AudioControls
         {
             TLibraryStorage library;
             int i = 0;
-            QModelIndex child = root.child(i, 0);
+            QModelIndex child = root.model()->index(i, 0, root);
             while (child.isValid())
             {
                 WriteItem(child, "", library, root.data(eDR_MODIFIED).toBool());
-                child = root.child(++i, 0);
+                child = root.model()->index(++i, 0, root);
             }
 
             const char* controlsPath = nullptr;
@@ -194,13 +194,13 @@ namespace AudioControls
             if (index.data(eDR_TYPE) == eIT_FOLDER)
             {
                 int i = 0;
-                QModelIndex child = index.child(i, 0);
+                QModelIndex child = index.model()->index(i, 0, index);
                 while (child.isValid())
                 {
                     AZStd::string newPath = path.empty() ? "" : path + "/";
                     newPath += index.data(Qt::DisplayRole).toString().toUtf8().data();
                     WriteItem(child, newPath, library, index.data(eDR_MODIFIED).toBool() || isParentModified);
-                    child = index.child(++i, 0);
+                    child = index.model()->index(++i, 0, index);
                 }
 
                 QStandardItem* item = m_layoutModel->itemFromIndex(index);
@@ -240,14 +240,14 @@ namespace AudioControls
         }
 
         int i = 0;
-        QModelIndex child = index.child(i, 0);
+        QModelIndex child = index.model()->index(i, 0, index);
         while (child.isValid())
         {
             if (IsItemModified(child))
             {
                 return true;
             }
-            child = index.child(++i, 0);
+            child = index.model()->index(++i, 0, index);
         }
         return false;
     }

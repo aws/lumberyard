@@ -273,7 +273,7 @@ namespace ScriptCanvasEditor
             {
                 return m_relativeGraphPath;
             }
-            else if (role == Qt::TextColorRole)
+            else if (role == Qt::ForegroundRole)
             {
                 return QColor(42,132,252);
             }

@@ -833,6 +833,69 @@ void CView::UpdateAudioListener(Matrix34 const& rMatrix)
     }
 }
 
+bool CView::ProjectWorldPointToScreen(const AZ::Vector3& worldPoint, AZ::Vector3& outScreenPoint)
+{
+    int x = 0, y = 0, w = 0, h = 0;
+    if (gEnv && gEnv->pRenderer)
+    {
+        gEnv->pRenderer->GetViewport(&x, &y, &w, &h);
+    }
+
+    return ProjectWorldPointToViewport(worldPoint, AZ::Vector4(aznumeric_cast<float>(x), aznumeric_cast<float>(y), aznumeric_cast<float>(w), aznumeric_cast<float>(h)), outScreenPoint);
+}
+
+bool CView::UnprojectScreenPointToWorld(const AZ::Vector3& screenPoint, AZ::Vector3& outWorldPoint)
+{
+    int x = 0, y = 0, w = 0, h = 0;
+    if (gEnv && gEnv->pRenderer)
+    {
+        gEnv->pRenderer->GetViewport(&x, &y, &w, &h);
+    }
+
+    return UnprojectViewportPointToWorld(screenPoint, AZ::Vector4(aznumeric_cast<float>(x), aznumeric_cast<float>(y), aznumeric_cast<float>(w), aznumeric_cast<float>(h)), outWorldPoint);
+}
+
+bool CView::ProjectWorldPointToViewport(const AZ::Vector3& worldPoint, const AZ::Vector4& viewport, AZ::Vector3& outViewportPoint)
+{
+    const CCamera& camera = GetCamera();
+    Vec3 viewportPoint;
+    Vec2i topLeft(aznumeric_caster(static_cast<float>(viewport.GetX())), aznumeric_caster(static_cast<float>(viewport.GetY())));
+    Vec2i widthHeight(aznumeric_caster(static_cast<float>(viewport.GetZ())), aznumeric_caster(static_cast<float>(viewport.GetW())));
+    bool isOnScreen = camera.Project(AZVec3ToLYVec3(worldPoint), viewportPoint, topLeft, widthHeight);
+    outViewportPoint = LYVec3ToAZVec3(viewportPoint);
+    return isOnScreen;
+}
+
+bool CView::UnprojectViewportPointToWorld(const AZ::Vector3& viewportPoint, const AZ::Vector4& viewport, AZ::Vector3& outWorldPoint)
+{
+    const CCamera& camera = GetCamera();
+    Vec3 worldPoint;
+    Vec2i topLeft(aznumeric_caster(static_cast<float>(viewport.GetX())), aznumeric_caster(static_cast<float>(viewport.GetY())));
+    Vec2i widthHeight(aznumeric_caster(static_cast<float>(viewport.GetZ())), aznumeric_caster(static_cast<float>(viewport.GetW())));
+    bool isInFrustum = camera.Unproject(AZVec3ToLYVec3(viewportPoint), worldPoint, topLeft, widthHeight);
+    outWorldPoint = LYVec3ToAZVec3(worldPoint);
+    return isInFrustum;
+}
+
+void CView::GetProjectionMatrix(const float nearClipPlaneDistance, const float farClipPlaneDistance, AZ::Matrix4x4& outProjectionMatrix)
+{
+    const CCamera& camera = GetCamera();
+    float aspectRatio = camera.GetProjRatio();
+    float yScale = 1.0f / tanf(camera.GetFov() / 2.0f);
+    float xScale = yScale / camera.GetProjRatio();
+
+    float m22 = aznumeric_caster(aznumeric_cast<double>(farClipPlaneDistance) / (aznumeric_cast<double>(nearClipPlaneDistance) - aznumeric_cast<double>(farClipPlaneDistance)));
+    float m23 = aznumeric_caster(aznumeric_cast<double>(nearClipPlaneDistance) * aznumeric_cast<double>(farClipPlaneDistance) / (aznumeric_cast<double>(nearClipPlaneDistance) - aznumeric_cast<double>(farClipPlaneDistance)));
+
+    outProjectionMatrix = AZ::Matrix4x4::CreateFromRows(
+        AZ::Vector4(xScale, 0.0f, 0.0f, 0.0f),
+        AZ::Vector4(0.0f, yScale, 0.0f, 0.0f),
+        AZ::Vector4(0.0f, 0.0f, m22, m23),
+        AZ::Vector4(0.0f, 0.0f, -1.0f, 0.0f)
+    );
+}
+
+
 //////////////////////////////////////////////////////////////////////////
 void CView::SetActive(bool const bActive)
 {

@@ -42,6 +42,8 @@
             "PropertyFileSelect.h",
             "PropertyFuncValLineEdit.cpp",
             "PropertyFuncValLineEdit.h",
+            "PropertyFuncValBrowseEdit.cpp",
+            "PropertyFuncValBrowseEdit.h",
             "PropertyImagePreview.cpp",
             "PropertyImagePreview.h",
             "PropertyLinked.cpp",

@@ -10,30 +10,23 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
 #include <ISystem.h>
 #include <IConsole.h>
 
-#include <Utils/Allocators.h>
-#include <System/SystemComponent.h>
-#include <System/Cloth.h>
-
+#include <AzCore/Interface/Interface.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/EditContextConstants.inl>
 
+#include <System/SystemComponent.h>
+#include <System/FactoryCUDA.h>
+#include <Utils/Allocators.h>
+
+// NvCloth library includes
 #include <foundation/PxAllocatorCallback.h>
 #include <foundation/PxErrorCallback.h>
-
 #include <NvCloth/Callbacks.h>
-#include <NvCloth/Factory.h>
 #include <NvCloth/Solver.h>
-
-#ifdef CUDA_ENABLED
-#include <cuda.h>
-#include <CryLibrary.h>
-#endif
 
 namespace NvCloth
 {
@@ -49,7 +42,7 @@ namespace NvCloth
             void* allocate(size_t size, const char* typeName, const char* filename, int line) override
             {
                 void* ptr = AZ::AllocatorInstance<AzClothAllocator>::Get().Allocate(size, alignment, 0, "NvCloth", filename, line);
-                AZ_Assert((reinterpret_cast<size_t>(ptr) & (alignment-1)) == 0, "NvCloth requires %d-byte aligned memory allocations.", alignment);
+                AZ_Assert((reinterpret_cast<size_t>(ptr) & (alignment-1)) == 0, "NvCloth requires %zu-byte aligned memory allocations.", alignment);
                 return ptr;
             }
 
@@ -111,84 +104,46 @@ namespace NvCloth
             }
         };
 
+        // Implementation of the profiler callback interface for NvCloth.
+        class AzClothProfilerCallback
+            : public physx::PxProfilerCallback
+        {
+        public:
+            void* zoneStart(const char* eventName, bool detached,
+                [[maybe_unused]] uint64_t contextId) override
+            {
+                if (detached)
+                {
+                    AZ_PROFILE_INTERVAL_START(AZ::Debug::ProfileCategory::Cloth, AZ::Crc32(eventName), eventName);
+                }
+                else
+                {
+                    AZ_PROFILE_EVENT_BEGIN(AZ::Debug::ProfileCategory::Cloth, eventName);
+                }
+                return nullptr;
+            }
+
+            void zoneEnd([[maybe_unused]] void* profilerData,
+                const char* eventName, bool detached,
+                [[maybe_unused]] uint64_t contextId) override
+            {
+                if (detached)
+                {
+                    AZ_PROFILE_INTERVAL_END(AZ::Debug::ProfileCategory::Cloth, AZ::Crc32(eventName));
+                }
+                else
+                {
+                    AZ_PROFILE_EVENT_END(AZ::Debug::ProfileCategory::Cloth);
+                }
+            }
+        };
+
         AZStd::unique_ptr<AzClothAllocatorCallback> ClothAllocatorCallback;
         AZStd::unique_ptr<AzClothErrorCallback> ClothErrorCallback;
         AZStd::unique_ptr<AzClothAssertHandler> ClothAssertHandler;
+        AZStd::unique_ptr<AzClothProfilerCallback> ClothProfilerCallback;
 
-#ifdef CUDA_ENABLED
-        class CudaContextManager
-        {
-        public:
-            static AZStd::unique_ptr<CudaContextManager> Create()
-            {
-                // CUDA requires nvcuda.dll to work, which is part of NVIDIA graphics card driver.
-                // Loading the library before any cuda call to determine if it's available.
-                HMODULE nvcudaLib = CryLoadLibrary("nvcuda.dll");
-                if (!nvcudaLib)
-                {
-                    AZ_Warning("Cloth", false, "Cannot load nvcuda.dll. CUDA requires an NVIDIA GPU with latest drivers.");
-                    return nullptr;
-                }
-
-                if (!NvClothCompiledWithCudaSupport())
-                {
-                    AZ_Warning("Cloth", false, "NvCloth library not built with CUDA support");
-                    return nullptr;
-                }
-
-                // Initialize CUDA and get context.
-                CUresult cudaResult = cuInit(0);
-                if (cudaResult != CUDA_SUCCESS)
-                {
-                    AZ_Warning("Cloth", false, "CUDA didn't initialize correctly. Error code: %d", cudaResult);
-                    return nullptr;
-                }
-
-                int cudaDeviceCount = 0;
-                cudaResult = cuDeviceGetCount(&cudaDeviceCount);
-                if (cudaResult != CUDA_SUCCESS || cudaDeviceCount <= 0)
-                {
-                    AZ_Warning("Cloth", false, "CUDA initialization didn't get any devices");
-                    return nullptr;
-                }
-
-                CUcontext cudaContext = NULL;
-                const int flags = 0;
-                const CUdevice device = 0; // Use first device to create cuda context on
-                cudaResult = cuCtxCreate(&cudaContext, flags, device);
-                if (cudaResult != CUDA_SUCCESS)
-                {
-                    AZ_Warning("Cloth", false, "CUDA didn't create context correctly. Error code: %d", cudaResult);
-                    return nullptr;
-                }
-
-                return AZStd::make_unique<CudaContextManager>(cudaContext);
-            }
-
-            CudaContextManager(CUcontext cudaContext)
-                : m_cudaContext(cudaContext)
-            {
-                AZ_Assert(m_cudaContext, "Invalid cuda context");
-            }
-
-            ~CudaContextManager()
-            {
-                cuCtxDestroy(m_cudaContext);
-            }
-
-            CUcontext GetContext()
-            {
-                return m_cudaContext;
-            }
-
-        private:
-            CUcontext m_cudaContext = NULL;
-        };
-
-        AZStd::unique_ptr<CudaContextManager> ClothCudaContextManager;
-
-        int32_t g_clothEnableCuda = 0;
-#endif //CUDA_ENABLED
+        int32_t ClothEnableCuda = 0;
     }
 
     void SystemComponent::Reflect(AZ::ReflectContext* context)
@@ -223,21 +178,64 @@ namespace NvCloth
     {
     }
 
+    void SystemComponent::InitializeNvClothLibrary()
+    {
+        AZ::AllocatorInstance<AzClothAllocator>::Create();
+
+        ClothAllocatorCallback = AZStd::make_unique<AzClothAllocatorCallback>();
+        ClothErrorCallback = AZStd::make_unique<AzClothErrorCallback>();
+        ClothAssertHandler = AZStd::make_unique<AzClothAssertHandler>();
+        ClothProfilerCallback = AZStd::make_unique<AzClothProfilerCallback>();
+
+        nv::cloth::InitializeNvCloth(
+            ClothAllocatorCallback.get(),
+            ClothErrorCallback.get(),
+            ClothAssertHandler.get(),
+            ClothProfilerCallback.get());
+        AZ_Assert(CheckLastClothError(), "Failed to initialize NvCloth library");
+    }
+
+    void SystemComponent::TearDownNvClothLibrary()
+    {
+        // NvCloth library doesn't need any destruction
+        ClothProfilerCallback.reset();
+        ClothAssertHandler.reset();
+        ClothErrorCallback.reset();
+        ClothAllocatorCallback.reset();
+
+        AZ::AllocatorInstance<AzClothAllocator>::Destroy();
+    }
+
+    bool SystemComponent::CheckLastClothError()
+    {
+        if (ClothErrorCallback)
+        {
+            return ClothErrorCallback->GetLastError() == physx::PxErrorCode::eNO_ERROR;
+        }
+        return false;
+    }
+
+    void SystemComponent::ResetLastClothError()
+    {
+        if (ClothErrorCallback)
+        {
+            return ClothErrorCallback->ResetLastError();
+        }
+    }
+
     void SystemComponent::Activate()
     {
         CrySystemEventBus::Handler::BusConnect();
 
-        // Initialization of NvCloth Library delayed until OnCrySystemInitialized
+        // Initialization of the System delayed until OnCrySystemInitialized
         // because that's when CVARs will be registered and available.
     }
 
     void SystemComponent::Deactivate()
     {
-        CrySystemEventBus::Handler::BusDisconnect();
-        AZ::TickBus::Handler::BusDisconnect();
-        SystemRequestBus::Handler::BusDisconnect();
+        DestroySystem();
 
-        TearDownNvClothLibrary();
+        CrySystemEventBus::Handler::BusDisconnect();
     }
 
     void SystemComponent::OnCrySystemInitialized(ISystem& system,
@@ -248,16 +246,11 @@ namespace NvCloth
         {
             // Can't use macros here because we have to use our pointer.
             // Still using legacy console cvars because they read the values from cfg files.
-#ifdef CUDA_ENABLED
-            globalEnv->pConsole->Register("cloth_EnableCuda", &g_clothEnableCuda, 0, VF_READONLY | VF_INVISIBLE,
+            globalEnv->pConsole->Register("cloth_EnableCuda", &ClothEnableCuda, 0, VF_READONLY | VF_INVISIBLE,
                 "If enabled, cloth simulation will run on GPU using CUDA on supported cards.");
-#endif //CUDA_ENABLED
         }
 
-        InitializeNvClothLibrary();
-
-        SystemRequestBus::Handler::BusConnect();
-        AZ::TickBus::Handler::BusConnect();
+        InitializeSystem();
     }
 
     void SystemComponent::OnCrySystemShutdown(ISystem& system)
@@ -265,156 +258,240 @@ namespace NvCloth
         SSystemGlobalEnvironment* globalEnv = system.GetGlobalEnvironment();
         if (globalEnv && globalEnv->pConsole)
         {
-#ifdef CUDA_ENABLED
             globalEnv->pConsole->UnregisterVariable("cloth_EnableCuda");
-#endif //CUDA_ENABLED
         }
     }
 
-    nv::cloth::Factory* SystemComponent::GetClothFactory()
+    ISolver* SystemComponent::FindOrCreateSolver(const AZStd::string& name)
     {
-        return m_factory.get();
-    }
-
-    void SystemComponent::AddCloth(nv::cloth::Cloth* cloth)
-    {
-        if (cloth)
+        if (ISolver* solver = GetSolver(name))
         {
-            m_solver->addCloth(cloth);
+            return solver;
         }
-    }
 
-    void SystemComponent::RemoveCloth(nv::cloth::Cloth* cloth)
-    {
-        if (cloth)
+        if (AZStd::unique_ptr<Solver> newSolver = m_factory->CreateSolver(name))
         {
-            m_solver->removeCloth(cloth);
+            m_solvers.push_back(AZStd::move(newSolver));
+            return m_solvers.back().get();
         }
+
+        return nullptr;
     }
 
-    void SystemComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
+    void SystemComponent::DestroySolver(ISolver*& solver)
     {
-        AZ_UNUSED(time);
-
-        if (m_solver->getNumCloths() > 0)
+        if (solver)
         {
-            SystemNotificationsBus::Broadcast(&SystemNotificationsBus::Events::OnPreUpdateClothSimulation, deltaTime);
+            const AZStd::string& solverName = solver->GetName();
 
-            if (m_solver->beginSimulation(deltaTime))
-            {
-                const int simChunkCount = m_solver->getSimulationChunkCount();
-                for (int i = 0; i < simChunkCount; ++i)
+            auto solverIt = AZStd::find_if(m_solvers.begin(), m_solvers.end(),
+                [&solverName](const auto& solverInstance)
                 {
-                    m_solver->simulateChunk(i);
-                }
+                    return solverInstance->GetName() == solverName;
+                });
 
-                m_solver->endSimulation(); // Cloth inter collisions are performed here (when applicable)
+            if (solverIt != m_solvers.end())
+            {
+                // The solver will remove all its remaining cloths from it when destroyed
+                m_solvers.erase(solverIt);
+                solver = nullptr;
+            }
+        }
+    }
+
+    ISolver* SystemComponent::GetSolver(const AZStd::string& name)
+    {
+        auto solverIt = AZStd::find_if(m_solvers.begin(), m_solvers.end(),
+            [&name](const auto& solverInstance)
+            {
+                return solverInstance->GetName() == name;
+            });
+
+        if (solverIt != m_solvers.end())
+        {
+            return solverIt->get();
+        }
+
+        return nullptr;
+    }
+
+    FabricId SystemComponent::FindOrCreateFabric(const FabricCookedData& fabricCookedData)
+    {
+        if (m_fabrics.count(fabricCookedData.m_id) != 0)
+        {
+            return fabricCookedData.m_id;
+        }
+
+        if (AZStd::unique_ptr<Fabric> newFabric = m_factory->CreateFabric(fabricCookedData))
+        {
+            m_fabrics[fabricCookedData.m_id] = AZStd::move(newFabric);
+            return fabricCookedData.m_id;
+        }
+
+        return {}; // Returns invalid fabric id
+    }
+
+    void SystemComponent::DestroyFabric(FabricId fabricId)
+    {
+        if (auto fabricIt = m_fabrics.find(fabricId);
+            fabricIt != m_fabrics.end())
+        {
+            // Destroy the fabric only if not used by any cloth
+            if (fabricIt->second->m_numClothsUsingFabric <= 0)
+            {
+                m_fabrics.erase(fabricIt);
+            }
+        }
+    }
+
+    ICloth* SystemComponent::CreateCloth(
+        const AZStd::vector<SimParticleFormat>& initialParticles,
+        const FabricCookedData& fabricCookedData)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Cloth);
+
+        FabricId fabricId = FindOrCreateFabric(fabricCookedData);
+        if (!fabricId.IsValid())
+        {
+            AZ_Warning("NvCloth", false, "Failed to create cloth because it couldn't create the fabric.");
+            return nullptr;
+        }
+
+        if (auto newCloth = m_factory->CreateCloth(initialParticles, m_fabrics[fabricId].get()))
+        {
+            ClothId newClothId = newCloth->GetId();
+            auto newClothIt = m_cloths.insert({ newClothId, AZStd::move(newCloth) }).first;
+            return newClothIt->second.get();
+        }
+        else
+        {
+            DestroyFabric(fabricId);
+        }
+
+        return nullptr;
+    }
+
+    void SystemComponent::DestroyCloth(ICloth*& cloth)
+    {
+        if (cloth)
+        {
+            FabricId fabricId = cloth->GetFabricCookedData().m_id;
+
+            // Cloth will decrement its fabric's counter on destruction.
+            // In addition, if the cloth still remains added into a solver, it will remove itself from it.
+            m_cloths.erase(cloth->GetId());
+            cloth = nullptr;
+
+            DestroyFabric(fabricId);
+        }
+    }
+
+    ICloth* SystemComponent::GetCloth(ClothId clothId)
+    {
+        if (auto clothIt = m_cloths.find(clothId);
+            clothIt != m_cloths.end())
+        {
+            return clothIt->second.get();
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+
+    bool SystemComponent::AddCloth(ICloth* cloth, const AZStd::string& solverName)
+    {
+        if (cloth)
+        {
+            ISolver* solver = GetSolver(solverName);
+            if (!solver)
+            {
+                return false;
             }
 
-            ClothInstanceNotificationsBus::Broadcast(&ClothInstanceNotificationsBus::Events::UpdateClothInstance, deltaTime);
+            Cloth* clothInstance = azdynamic_cast<Cloth*>(cloth);
+            AZ_Assert(clothInstance, "Dynamic casting from ICloth to Cloth failed.");
 
-            SystemNotificationsBus::Broadcast(&SystemNotificationsBus::Events::OnPostUpdateClothSimulation, deltaTime);
+            Solver* solverInstance = azdynamic_cast<Solver*>(solver);
+            AZ_Assert(solverInstance, "Dynamic casting from ISolver to Solver failed.");
+
+            solverInstance->AddCloth(clothInstance);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    void SystemComponent::RemoveCloth(ICloth* cloth)
+    {
+        if (cloth)
+        {
+            Cloth* clothInstance = azdynamic_cast<Cloth*>(cloth);
+            AZ_Assert(clothInstance, "Dynamic casting from ICloth to Cloth failed.");
+
+            Solver* solverInstance = clothInstance->GetSolver();
+            if (solverInstance)
+            {
+                solverInstance->RemoveCloth(clothInstance);
+            }
+        }
+    }
+
+    void SystemComponent::OnTick(
+        float deltaTime,
+        [[maybe_unused]] AZ::ScriptTimePoint time)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Cloth);
+
+        for (auto& solverIt : m_solvers)
+        {
+            if (!solverIt->IsUserSimulated())
+            {
+                solverIt->StartSimulation(deltaTime);
+                solverIt->FinishSimulation();
+            }
         }
     }
 
     int SystemComponent::GetTickOrder()
     {
-        // Using Physics tick order which guarantees to happen after the animation tick,
-        // this is necessary for actor cloth colliders to be updated with the current pose.
         return AZ::TICK_PHYSICS;
     }
 
-    void SystemComponent::InitializeNvClothLibrary()
+    void SystemComponent::InitializeSystem()
     {
-        AZ::AllocatorInstance<AzClothAllocator>::Create();
-
-        ClothAllocatorCallback = AZStd::make_unique<AzClothAllocatorCallback>();
-        ClothErrorCallback = AZStd::make_unique<AzClothErrorCallback>();
-        ClothAssertHandler = AZStd::make_unique<AzClothAssertHandler>();
-
-        nv::cloth::InitializeNvCloth(
-            ClothAllocatorCallback.get(), 
-            ClothErrorCallback.get(), 
-            ClothAssertHandler.get(), 
-            nullptr/*profilerCallback*/);
-        AZ_Assert(ClothErrorCallback->GetLastError() == physx::PxErrorCode::eNO_ERROR, "Failed to initialize NvCloth library");
-
         // Create Factory
-        CreateNvClothFactory();
+        m_factory = (ClothEnableCuda)
+            ? AZStd::make_unique<FactoryCUDA>()
+            : AZStd::make_unique<Factory>();
+        m_factory->Init();
 
-        // Create NvCloth Solver
-        m_solver = SolverUniquePtr(m_factory->createSolver());
-        AZ_Assert(m_solver, "Failed to create cloth solver");
+        // Create Default Solver
+        ISolver* solver = FindOrCreateSolver(DefaultSolverName);
+        AZ_Assert(solver, "Error: Default solver failed to be created");
+
+        AZ::Interface<IClothSystem>::Register(this);
+        AZ::TickBus::Handler::BusConnect();
     }
 
-    void SystemComponent::TearDownNvClothLibrary()
+    void SystemComponent::DestroySystem()
     {
-        // Destroy NvCloth Solver
-        m_solver.reset();
+        AZ::TickBus::Handler::BusDisconnect();
+        AZ::Interface<IClothSystem>::Unregister(this);
+
+        // Destroy Cloths
+        m_cloths.clear();
+
+        // Destroy Fabrics
+        m_fabrics.clear();
+
+        // Destroy Solvers
+        m_solvers.clear();
 
         // Destroy Factory
-        DestroyNvClothFactory();
-
-        // NvCloth library doesn't need any destruction
-
-        ClothAssertHandler.reset();
-        ClothErrorCallback.reset();
-        ClothAllocatorCallback.reset();
-
-        AZ::AllocatorInstance<AzClothAllocator>::Destroy();
-    }
-    void SystemComponent::CreateNvClothFactory()
-    {
-#ifdef CUDA_ENABLED
-        // Try to create a GPU(CUDA) NvCloth Factory
-        if (g_clothEnableCuda)
-        {
-            ClothCudaContextManager = CudaContextManager::Create();
-            if (ClothCudaContextManager)
-            {
-                m_factory = FactoryUniquePtr(NvClothCreateFactoryCUDA(ClothCudaContextManager->GetContext()));
-                AZ_Assert(m_factory, "Failed to create CUDA cloth factory");
-
-                if (ClothErrorCallback->GetLastError() != physx::PxErrorCode::eNO_ERROR)
-                {
-                    m_factory.reset(); // Destroy this CUDA factory that was initialized with errors
-                    ClothCudaContextManager.reset(); // Destroy CUDA Context Manager
-                    ClothErrorCallback->ResetLastError(); // Reset error to give way to create a different type of factory
-                    AZ_Warning("Cloth", false,
-                        "NvCloth library failed to create CUDA factory. "
-                        "Please check CUDA is installed, the GPU has CUDA support and its drivers are up to date.");
-                }
-                else
-                {
-                    AZ_Printf("Cloth", "NVIDIA NvCloth Gem using GPU (CUDA) for cloth simulation.\n");
-                }
-            }
-        }
-#endif //CUDA_ENABLED
-
-        // Create a CPU NvCloth Factory
-        if (!m_factory)
-        {
-            m_factory = FactoryUniquePtr(NvClothCreateFactoryCPU());
-            AZ_Assert(m_factory, "Failed to create CPU cloth factory");
-
-            if (ClothErrorCallback->GetLastError() != physx::PxErrorCode::eNO_ERROR)
-            {
-                AZ_Error("Cloth", false, "NvCloth library failed to create CPU factory.");
-            }
-            else
-            {
-                AZ_Printf("Cloth", "NVIDIA NvCloth Gem using CPU for cloth simulation.\n");
-            }
-        }
-    }
-
-    void SystemComponent::DestroyNvClothFactory()
-    {
+        m_factory->Destroy();
         m_factory.reset();
-
-#ifdef CUDA_ENABLED
-        ClothCudaContextManager.reset();
-#endif
     }
+
 } // namespace NvCloth

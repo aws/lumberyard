@@ -14,6 +14,12 @@
 #include <AzCore/StringFunc/StringFunc.h>
 #include <AzCore/UnitTest/TestTypes.h>
 
+#include <AzToolsFramework/Component/EditorComponentAPIComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityModelComponent.h>
+#include <AzToolsFramework/Entity/EditorEntitySearchComponent.h>
+#include <AzToolsFramework/Slice/SliceMetadataEntityContextComponent.h>
+
 namespace AssetBuilder
 {
     using namespace UnitTest;
@@ -152,4 +158,24 @@ namespace AssetBuilder
         auto output = testing::internal::GetCapturedStderr();
         VerifyOutput(output.c_str());
     }
+
+
+    TEST_F(AssetBuilderAppTest, AssetBuilder_EditorScriptingComponents_Exists)
+    {
+        AssetBuilderApplication app(nullptr, nullptr);
+        AZ::ComponentTypeList systemComponents = app.GetRequiredSystemComponents();
+
+        auto searchFor = [&systemComponents](const AZ::Uuid& typeId) -> bool
+        {
+            auto entry = AZStd::find(systemComponents.begin(), systemComponents.end(), typeId);
+            return systemComponents.end() != entry;
+        };
+
+        EXPECT_TRUE(searchFor(azrtti_typeid<AzToolsFramework::SliceMetadataEntityContextComponent>()));
+        EXPECT_TRUE(searchFor(azrtti_typeid<AzToolsFramework::Components::EditorComponentAPIComponent>()));
+        EXPECT_TRUE(searchFor(azrtti_typeid<AzToolsFramework::Components::EditorEntitySearchComponent>()));
+        EXPECT_TRUE(searchFor(azrtti_typeid<AzToolsFramework::Components::EditorEntityModelComponent>()));
+        EXPECT_TRUE(searchFor(azrtti_typeid<AzToolsFramework::EditorEntityContextComponent>()));
+    }
+
 } // namespace AssetBuilder

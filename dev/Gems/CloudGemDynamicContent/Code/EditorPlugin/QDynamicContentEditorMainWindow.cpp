@@ -109,7 +109,7 @@ namespace DynamicContent
         AZStd::string fullPathToAssets = AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@");
         QString fullPath = fullPathToAssets.c_str();
         fullPath.replace("\\", "/");
-        QStringList pathList = fullPath.split("/", QString::SkipEmptyParts);
+        QStringList pathList = fullPath.split("/", Qt::SkipEmptyParts);
 
         //Check whether the folder for the platform exists
         if (pathList.size() >= 2)
@@ -381,8 +381,6 @@ namespace DynamicContent
         connect(tableFileWatcher->selectionModel(), &QItemSelectionModel::selectionChanged, this, &QDynamicContentEditorMainWindow::OnFileWatcherSelectionChanged);
         connect(treePackages->selectionModel(), &QItemSelectionModel::selectionChanged, this, &QDynamicContentEditorMainWindow::OnPakTreeSelectionChanged);     
 
-        btnUpload->setProperty("class", "Primary");
-
         cbManifestSelection->setEditText("Choose / create a manifest");
 
         PythonExecute(COMMAND_LIST_MANIFESTS);
@@ -403,8 +401,6 @@ namespace DynamicContent
     QCreateNewManifestDialog::QCreateNewManifestDialog(QWidget* parent) : QDialog(parent)
     {
         setupUi(this);
-
-        buttonBox->button(QDialogButtonBox::Ok)->setProperty("class", "Primary");
 
         QMap<QString, QDynamicContentEditorMainWindow::PlatformInfo> platformMap = QDynamicContentEditorMainWindow::PlatformMap();
         QList<QCheckBox*> checkBoxList = findChildren<QCheckBox*>();
@@ -549,8 +545,6 @@ namespace DynamicContent
     {
         setupUi(this);
 
-        buttonBox->button(QDialogButtonBox::Ok)->setProperty("class", "Primary");
-
         QMap<QString, QDynamicContentEditorMainWindow::PlatformInfo> platformMap = QDynamicContentEditorMainWindow::PlatformMap();
         QList<QCheckBox*> checkBoxList = findChildren<QCheckBox*>();
         for (auto checkBox : checkBoxList)
@@ -629,7 +623,6 @@ namespace DynamicContent
     QUploadPackagesDialog::QUploadPackagesDialog(QWidget* parent) : QDialog(parent)
     {
         setupUi(this);
-        uploadButton->setProperty("class", "Primary");
         SetUploadButtonCurrentStatus(UploadButtonStatus::Upload);
         SetCancelButtonCurrentStatus(CancelButtonStatus::Cancel);
         generateKeyConfirmation->hide();
@@ -960,7 +953,6 @@ namespace DynamicContent
     QPlatformWarningDialog::QPlatformWarningDialog(QWidget* parent) : QDialog(parent)
     {
         setupUi(this);
-        buttonBox->button(QDialogButtonBox::Ok)->setProperty("class", "Primary");
     }
 
     void QPlatformWarningDialog::setAddFileWarningMessage(int status)
@@ -1037,7 +1029,7 @@ namespace DynamicContent
 
         QString trimmedName = fileName.left(fileName.length() - localName.length());
         trimmedName.replace("\\", "/");
-        QStringList pathList = trimmedName.split("/", QString::SkipEmptyParts);
+        QStringList pathList = trimmedName.split("/", Qt::SkipEmptyParts);
 
         // Our final directory is our game name, our second to last is our platform path
         if (pathList.size() >= 2)
@@ -1151,7 +1143,6 @@ namespace DynamicContent
     {
         setupUi(this);
 
-        buttonBox->button(QDialogButtonBox::Ok)->setProperty("class", "Primary");
         packageName->setToolTip("Valid characters are 0-9a-zA-Z!_. and the maximum length is 100");
         SetPlatformButtons();
     }
@@ -1344,7 +1335,7 @@ namespace DynamicContent
 
                 QFontMetrics fm(font);
                 QString text = QFileInfo(fileName).completeBaseName();
-                if (fm.width(text) > manifestName->maximumWidth())
+                if (fm.horizontalAdvance(text) > manifestName->maximumWidth())
                 {
                     text = fm.elidedText(text, Qt::ElideRight, manifestName->maximumWidth() - 2);
                 }
@@ -1593,8 +1584,6 @@ namespace DynamicContent
     QIncompatibleFilesDialog::QIncompatibleFilesDialog(QWidget* parent) : QDialog(parent)
     {
         setupUi(this);
-
-        buttonBox->button(QDialogButtonBox::Ok)->setProperty("class", "Primary");
     }
 
     void QIncompatibleFilesDialog::AddIncompatibleFile(const QString& imcompatibleFileName)
@@ -1851,7 +1840,7 @@ namespace DynamicContent
             m_fileWatcherProxyModel->setSortRole(Qt::DisplayRole);
         }
 
-        tableFileWatcher->sortByColumn(column);
+        tableFileWatcher->sortByColumn(column, tableFileWatcher->horizontalHeader()->sortIndicatorOrder());
     }
 
     void QDynamicContentEditorMainWindow::OnSortingRightPaneByColumn(int column)
@@ -1869,7 +1858,7 @@ namespace DynamicContent
             m_packagesProxyModel->setSortRole(Qt::DisplayRole);
         }
 
-        treePackages->sortByColumn(column);
+        treePackages->sortByColumn(column, treePackages->header()->sortIndicatorOrder());
     }
 
     void QDynamicContentEditorMainWindow::SetPakStatusOutdated(QString pakName)

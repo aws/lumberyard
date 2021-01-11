@@ -39,7 +39,7 @@ namespace AzToolsFramework
         m_pSpinBox->setFixedHeight(PropertyQTConstant_DefaultHeight);
 
         pLayout->setSpacing(4);
-        pLayout->setContentsMargins(1, 0, 1, 0);
+        pLayout->setContentsMargins(0, 0, 0, 0);
 
         pLayout->addWidget(m_pSpinBox);
 

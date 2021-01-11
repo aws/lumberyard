@@ -596,11 +596,7 @@ void QtViewport::mouseMoveEvent(QMouseEvent* event)
 
 void QtViewport::wheelEvent(QWheelEvent* event)
 {
-    // ignore uncommon mice with horizontal scrollwheels for now
-    if (event->orientation() == Qt::Vertical)
-    {
-        OnMouseWheel(event->modifiers(), event->delta(), event->pos());
-    }
+    OnMouseWheel(event->modifiers(), event->angleDelta().y(), event->position().toPoint());
 }
 
 void QtViewport::keyPressEvent(QKeyEvent* event)

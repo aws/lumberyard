@@ -1,6 +1,8 @@
 <RCC>
     <qresource prefix="/StartupLogoDialog">
+        <file>lumberyard_logo.svg</file>
         <file>splashscreen_1_26.png</file>
         <file>splashscreen_1_26@2x.png</file>
+        <file>splashscreen_1_27.png</file>
     </qresource>
 </RCC>

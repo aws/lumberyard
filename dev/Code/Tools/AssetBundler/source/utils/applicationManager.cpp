@@ -327,6 +327,7 @@ namespace AssetBundler
             ComparePrintArg,
             IntersectionCountArg,
             AllowOverwritesFlag,
+            PlatformArg,
             VerboseFlag
         };
 
@@ -952,6 +953,14 @@ namespace AssetBundler
 
         ComparisonParams params;
 
+        // Read in Platform arg
+        auto platformOutcome = GetPlatformArg(parser);
+        if (!platformOutcome.IsSuccess())
+        {
+            return AZ::Failure(platformOutcome.GetError());
+        }
+        params.m_platformFlags = GetInputPlatformFlagsOrEnabledPlatformFlags(platformOutcome.GetValue());
+
         AZStd::string inferredPlatform;
         // read in input files (first and second)
         for (size_t idx = 0; idx < parser->GetNumSwitchValues(CompareFirstFileArg); idx++)
@@ -1453,6 +1462,11 @@ namespace AssetBundler
         return skipList;
     }
 
+    bool ApplicationManager::SeedsOperationRequiresCatalog(const SeedsParams& params)
+    {
+        return params.m_addSeedList.size() || params.m_addPlatformToAllSeeds || params.m_updateSeedPathHint || params.m_print;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////
     // Run Commands
     ////////////////////////////////////////////////////////////////////////////////////////////
@@ -1469,13 +1483,16 @@ namespace AssetBundler
 
         SeedsParams params = paramsOutcome.GetValue();
 
-        // Asset Catalog
-        auto catalogOutcome = InitAssetCatalog(params.m_platformFlags, params.m_assetCatalogFile.AbsolutePath());
-        if (!catalogOutcome.IsSuccess())
+        if (SeedsOperationRequiresCatalog(params))
         {
-            // Metric event has already been sent
-            AZ_Error(AppWindowName, false, catalogOutcome.GetError().c_str());
-            return false;
+            // Asset Catalog
+            auto catalogOutcome = InitAssetCatalog(params.m_platformFlags, params.m_assetCatalogFile.AbsolutePath());
+            if (!catalogOutcome.IsSuccess())
+            {
+                // Metric event has already been sent
+                AZ_Error(AppWindowName, false, catalogOutcome.GetError().c_str());
+                return false;
+            }
         }
 
         // Seed List File
@@ -1845,150 +1862,195 @@ namespace AssetBundler
             return false;
         }
 
-        ComparisonParams params = paramsOutcome.GetValue();
-        AssetFileInfoListComparison comparisonOperations;
+        AssetFileInfoListComparison rulesFileComparisonOperations;
 
         // Load comparison rules from file if one was provided
-        if (!params.m_comparisonRulesFile.AbsolutePath().empty())
+        if (!paramsOutcome.GetValue().m_comparisonRulesFile.AbsolutePath().empty())
         {
 
-            auto rulesFileLoadResult = AssetFileInfoListComparison::Load(params.m_comparisonRulesFile.AbsolutePath());
+            auto rulesFileLoadResult = AssetFileInfoListComparison::Load(paramsOutcome.GetValue().m_comparisonRulesFile.AbsolutePath());
             if (!rulesFileLoadResult.IsSuccess())
             {
                 SendErrorMetricEvent("Failed to load comparison rules file.");
                 AZ_Error(AppWindowName, false, rulesFileLoadResult.GetError().c_str());
                 return false;
             }
-            comparisonOperations = rulesFileLoadResult.GetValue();
+            rulesFileComparisonOperations = rulesFileLoadResult.GetValue();
         }
 
-        // generate comparisons from additional commands and add it to comparisonOperations
-        ConvertRulesParamsToComparisonData(params.m_comparisonRulesParams, comparisonOperations, comparisonOperations.GetNumComparisonSteps());
+        bool hasError = false;
 
-        if (params.m_comparisonRulesParams.m_intersectionCount)
+        for (const AZStd::string& platformName : AzFramework::PlatformHelper::GetPlatformsInterpreted(paramsOutcome.GetValue().m_platformFlags))
         {
-            if ((comparisonOperations.GetComparisonList().size() == 1) && comparisonOperations.GetComparisonList()[0].m_comparisonType != AssetFileInfoListComparison::ComparisonType::IntersectionCount)
-            {
-                SendErrorMetricEvent("Invalid arguement provided for IntersectionCount operation.");
-                AZ_Error(AppWindowName, false, "Invalid arguement detected. Command ( --%s ) is incompatible with compare operation of type (%s).",
-                    IntersectionCountArg, AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(comparisonOperations.GetComparisonList()[0].m_comparisonType)]);
-                return false;
-            }
-            // Since IntersectionCount Operation cannot be combined with other operation Comparison List should be 1
-            else if (comparisonOperations.GetComparisonList().size() > 1)
-            {
-                SendErrorMetricEvent("Intersection operation cannot be combined with other comparison operations.");
-                AZ_Error(AppWindowName, false, "Compare operation of type ( %s ) cannot be combined with other comparison operations. Number of comparison operation detected (%d).",
-                    AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AssetFileInfoListComparison::ComparisonType::IntersectionCount)], comparisonOperations.GetComparisonList().size());
-                return false;
-            }
+            AZ_TracePrintf(AssetBundler::AppWindowName, "Running Compare command for the %s platform...\n", platformName.c_str());
 
-            if (params.m_outputs.size())
+            ComparisonParams params = paramsOutcome.GetValue();
+            AddPlatformToAllComparisonParams(params, platformName);
+
+            AssetFileInfoListComparison comparisonOperations = rulesFileComparisonOperations;
+
+            // generate comparisons from additional commands and add it to comparisonOperations
+            ConvertRulesParamsToComparisonData(params.m_comparisonRulesParams, comparisonOperations, comparisonOperations.GetNumComparisonSteps());
+
+            if (params.m_comparisonRulesParams.m_intersectionCount)
             {
-                comparisonOperations.SetOutput(0, params.m_outputs[0]);
-            }
-        }
-        else
-        {
-            //Store input and output values alongside the Comparison Steps they relate to
-            size_t secondInputIdx = 0;
-            for (size_t idx = 0; idx < comparisonOperations.GetComparisonList().size(); ++idx)
-            {
-                if (idx >= params.m_firstCompareFile.size())
+                if ((comparisonOperations.GetComparisonList().size() == 1) && comparisonOperations.GetComparisonList()[0].m_comparisonType != AssetFileInfoListComparison::ComparisonType::IntersectionCount)
                 {
-                    AZ_Error(AppWindowName, false,
-                        "Invalid command: The number of \"--%s\" inputs ( %i ) must match the number of Comparison Steps ( %i ).",
-                        CompareFirstFileArg, params.m_firstCompareFile.size(), comparisonOperations.GetComparisonList().size());
+                    SendErrorMetricEvent("Invalid arguement provided for IntersectionCount operation.");
+                    AZ_Error(AppWindowName, false, "Invalid arguement detected. Command ( --%s ) is incompatible with compare operation of type (%s).",
+                        IntersectionCountArg, AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(comparisonOperations.GetComparisonList()[0].m_comparisonType)]);
+                    return false;
+                }
+                // Since IntersectionCount Operation cannot be combined with other operation Comparison List should be 1
+                else if (comparisonOperations.GetComparisonList().size() > 1)
+                {
+                    SendErrorMetricEvent("Intersection operation cannot be combined with other comparison operations.");
+                    AZ_Error(AppWindowName, false, "Compare operation of type ( %s ) cannot be combined with other comparison operations. Number of comparison operation detected (%d).",
+                        AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AssetFileInfoListComparison::ComparisonType::IntersectionCount)], comparisonOperations.GetComparisonList().size());
                     return false;
                 }
 
-                // Set the first input
-                if (!IsDefaultToken(params.m_firstCompareFile.at(idx)))
+                if (params.m_outputs.size())
                 {
-                    comparisonOperations.SetFirstInput(idx, params.m_firstCompareFile.at(idx));
+                    comparisonOperations.SetOutput(0, params.m_outputs[0]);
                 }
-
-                // Set the second input (if needed)
-                if (comparisonOperations.GetComparisonList().at(idx).m_comparisonType != AssetFileInfoListComparison::ComparisonType::FilePattern)
+            }
+            else
+            {
+                //Store input and output values alongside the Comparison Steps they relate to
+                size_t secondInputIdx = 0;
+                for (size_t idx = 0; idx < comparisonOperations.GetComparisonList().size(); ++idx)
                 {
-                    if (secondInputIdx >= params.m_secondCompareFile.size())
+                    if (idx >= params.m_firstCompareFile.size())
                     {
                         AZ_Error(AppWindowName, false,
-                            "Invalid command: The number of \"--%s\" inputs ( %i ) must match the number of Comparison Steps that take two inputs.",
-                            CompareSecondFileArg, params.m_secondCompareFile.size());
+                            "Invalid command: The number of \"--%s\" inputs ( %i ) must match the number of Comparison Steps ( %i ).",
+                            CompareFirstFileArg, params.m_firstCompareFile.size(), comparisonOperations.GetComparisonList().size());
                         return false;
                     }
 
-                    if (!IsDefaultToken(params.m_secondCompareFile.at(secondInputIdx)))
+                    // Set the first input
+                    if (!IsDefaultToken(params.m_firstCompareFile.at(idx)))
                     {
-                        comparisonOperations.SetSecondInput(idx, params.m_secondCompareFile.at(secondInputIdx));
+                        comparisonOperations.SetFirstInput(idx, params.m_firstCompareFile.at(idx));
                     }
 
-                    ++secondInputIdx;
-                }
+                    // Set the second input (if needed)
+                    if (comparisonOperations.GetComparisonList().at(idx).m_comparisonType != AssetFileInfoListComparison::ComparisonType::FilePattern)
+                    {
+                        if (secondInputIdx >= params.m_secondCompareFile.size())
+                        {
+                            AZ_Error(AppWindowName, false,
+                                "Invalid command: The number of \"--%s\" inputs ( %i ) must match the number of Comparison Steps that take two inputs.",
+                                CompareSecondFileArg, params.m_secondCompareFile.size());
+                            return false;
+                        }
 
-                // Set the output
-                if (idx >= params.m_outputs.size())
-                {
-                    AZ_Error(AppWindowName, false,
-                        "Invalid command: The number of \"--%s\" values ( %i ) must match the number of Comparison Steps ( %i ).",
-                        CompareOutputFileArg, params.m_outputs.size(), comparisonOperations.GetComparisonList().size());
-                    return false;
-                }
+                        if (!IsDefaultToken(params.m_secondCompareFile.at(secondInputIdx)))
+                        {
+                            comparisonOperations.SetSecondInput(idx, params.m_secondCompareFile.at(secondInputIdx));
+                        }
 
-                if (!IsDefaultToken(params.m_outputs.at(idx)))
-                {
-                    comparisonOperations.SetOutput(idx, params.m_outputs.at(idx));
+                        ++secondInputIdx;
+                    }
+
+                    // Set the output
+                    if (idx >= params.m_outputs.size())
+                    {
+                        AZ_Error(AppWindowName, false,
+                            "Invalid command: The number of \"--%s\" values ( %i ) must match the number of Comparison Steps ( %i ).",
+                            CompareOutputFileArg, params.m_outputs.size(), comparisonOperations.GetComparisonList().size());
+                        return false;
+                    }
+
+                    if (!IsDefaultToken(params.m_outputs.at(idx)))
+                    {
+                        comparisonOperations.SetOutput(idx, params.m_outputs.at(idx));
+                    }
                 }
             }
-        }
 
 
-        AZ::Outcome<AssetFileInfoList, AZStd::string> compareOutcome = comparisonOperations.Compare(params.m_firstCompareFile);
-        if (!compareOutcome.IsSuccess())
-        {
-            SendErrorMetricEvent("Comparison operation failed");
-            AZ_Error(AppWindowName, false, compareOutcome.GetError().c_str());
-            return false;
-        }
-
-        if (params.m_printLast)
-        {
-            PrintComparisonAssetList(compareOutcome.GetValue(), params.m_outputs.size() ? params.m_outputs.back() : "");
-        }
-
-        // Check if we are performing a destructive overwrite that the user did not approve 
-        if (!params.m_allowOverwrites)
-        {
-            AZStd::vector<AZStd::string> destructiveOverwriteFilePaths = comparisonOperations.GetDestructiveOverwriteFilePaths();
-            if (!destructiveOverwriteFilePaths.empty())
+            AZ::Outcome<AssetFileInfoList, AZStd::string> compareOutcome = comparisonOperations.Compare(params.m_firstCompareFile);
+            if (!compareOutcome.IsSuccess())
             {
-                SendErrorMetricEvent("Unapproved destructive overwrite on an Asset List file (Comparison).");
-                for (const AZStd::string& path : destructiveOverwriteFilePaths)
+                SendErrorMetricEvent("Comparison operation failed");
+                AZ_Error(AppWindowName, false, compareOutcome.GetError().c_str());
+                hasError = true;
+                continue;
+            }
+
+            if (params.m_printLast)
+            {
+                PrintComparisonAssetList(compareOutcome.GetValue(), params.m_outputs.size() ? params.m_outputs.back() : "");
+            }
+
+            // Check if we are performing a destructive overwrite that the user did not approve 
+            if (!params.m_allowOverwrites)
+            {
+                AZStd::vector<AZStd::string> destructiveOverwriteFilePaths = comparisonOperations.GetDestructiveOverwriteFilePaths();
+                if (!destructiveOverwriteFilePaths.empty())
                 {
-                    AZ_Error(AssetBundler::AppWindowName, false, "Asset List file ( %s ) already exists, running this command would perform a destructive overwrite.", path.c_str());
+                    SendErrorMetricEvent("Unapproved destructive overwrite on an Asset List file (Comparison).");
+                    for (const AZStd::string& path : destructiveOverwriteFilePaths)
+                    {
+                        AZ_Error(AssetBundler::AppWindowName, false, "Asset List file ( %s ) already exists, running this command would perform a destructive overwrite.", path.c_str());
+                    }
+                    AZ_Printf(AssetBundler::AppWindowName, "\nRun your command again with the ( --%s ) arg if you want to save over the existing file.\n\n", AllowOverwritesFlag)
+                    hasError = true;
+                    continue;
                 }
-                AZ_Printf(AssetBundler::AppWindowName, "\nRun your command again with the ( --%s ) arg if you want to save over the existing file.\n\n", AllowOverwritesFlag)
-                return false;
+            }
+
+            AZ_Printf(AssetBundler::AppWindowName, "Saving results of comparison operation...\n");
+            auto saveOutcome = comparisonOperations.SaveResults();
+            if (!saveOutcome.IsSuccess())
+            {
+                SendErrorMetricEvent(saveOutcome.GetError().c_str());
+                AZ_Error(AppWindowName, false, saveOutcome.GetError().c_str());
+                hasError = true;
+                continue;
+            }
+            AZ_Printf(AssetBundler::AppWindowName, "Save successful!\n");
+
+            for (const AZStd::string& comparisonKey : params.m_printComparisons)
+            {
+                PrintComparisonAssetList(comparisonOperations.GetComparisonResults(comparisonKey), comparisonKey);
             }
         }
 
-        AZ_Printf(AssetBundler::AppWindowName, "Saving results of comparison operation...\n");
-        auto saveOutcome = comparisonOperations.SaveResults();
-        if (!saveOutcome.IsSuccess())
-        {
-            SendErrorMetricEvent(saveOutcome.GetError().c_str());
-            AZ_Error(AppWindowName, false, saveOutcome.GetError().c_str());
-            return false;
-        }
-        AZ_Printf(AssetBundler::AppWindowName, "Save successful!\n");
+        return !hasError;
+    }
 
-        for (const AZStd::string& comparisonKey : params.m_printComparisons)
+    void ApplicationManager::AddPlatformToAllComparisonParams(ComparisonParams& params, const AZStd::string& platformName)
+    {
+        for (size_t i = 0; i < params.m_firstCompareFile.size(); ++i)
         {
-            PrintComparisonAssetList(comparisonOperations.GetComparisonResults(comparisonKey), comparisonKey);
+            AddPlatformToComparisonParam(params.m_firstCompareFile[i], platformName);
         }
 
-        return true;
+        for (size_t i = 0; i < params.m_secondCompareFile.size(); ++i)
+        {
+            AddPlatformToComparisonParam(params.m_secondCompareFile[i], platformName);
+        }
+
+        for (size_t i = 0; i < params.m_outputs.size(); ++i)
+        {
+            AddPlatformToComparisonParam(params.m_outputs[i], platformName);
+        }
+    }
+
+    void ApplicationManager::AddPlatformToComparisonParam(AZStd::string& inOut, const AZStd::string& platformName)
+    {
+        // Tokens don't have platforms
+        if (AzToolsFramework::AssetFileInfoListComparison::IsTokenFile(inOut))
+        {
+            return;
+        }
+
+        AzToolsFramework::RemovePlatformIdentifier(inOut);
+        FilePath tempPath(inOut, platformName);
+        inOut = tempPath.AbsolutePath();
     }
 
     void ApplicationManager::PrintComparisonAssetList(const AzToolsFramework::AssetFileInfoList& infoList, const AZStd::string& resultName)
@@ -2800,7 +2862,7 @@ namespace AssetBundler
         AZ_Printf(AppWindowName, "\n%-25s-Subcommand for performing comparisons between asset list files.\n", CompareCommand);
         AZ_Printf(AppWindowName, "    --%-25s-Specifies the Comparison Rules file to load rules from.\n", ComparisonRulesFileArg);
         AZ_Printf(AppWindowName, "%-31s---When entering input and output values, input the single '$' character to use the default values defined in the file.\n", "");
-        AZ_Printf(AppWindowName, "%-31s---All additional comparison rules specified in this command will be done after the comparison operations loaded from the rules file.", "");
+        AZ_Printf(AppWindowName, "%-31s---All additional comparison rules specified in this command will be done after the comparison operations loaded from the rules file.\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of comparison types.\n", ComparisonTypeArg);
         AZ_Printf(AppWindowName, "%-31s---Valid inputs: 0 (Delta), 1 (Union), 2 (Intersection), 3 (Complement), 4 (FilePattern), 5 (IntersectionCount).\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of file pattern matching types.\n", ComparisonFilePatternTypeArg);
@@ -2819,6 +2881,9 @@ namespace AssetBundler
         AZ_Printf(AppWindowName, "%-31s---Variables are specified by the prefix %c.\n", "", compareVariablePrefix);
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of paths or variables to print to console after comparison operations complete.\n", ComparePrintArg);
         AZ_Printf(AppWindowName, "%-31s---Leave list blank to just print the final comparison result.\n", "");
+        AZ_Printf(AppWindowName, "    --%-25s-Specifies the platform(s) referenced when determining which Asset List files to compare.\n", PlatformArg);
+        AZ_Printf(AppWindowName, "%-31s---All input Asset List files must exist for all specified platforms\n", "");
+        AZ_Printf(AppWindowName, "%-31s---Defaults to all enabled platforms. Platforms can be changed by modifying AssetProcessorPlatformConfig.ini.\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-Allow destructive overwrites of files. Include this arg in automation.\n", AllowOverwritesFlag);
     }
 

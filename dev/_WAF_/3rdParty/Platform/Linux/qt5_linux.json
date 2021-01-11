@@ -29,8 +29,8 @@
             "Qt5Core/includes": [
                 "gcc_64/include",
                 "gcc_64/include/QtCore",
-                "gcc_64/include/QtCore/5.12.4",
-                "gcc_64/include/QtCore/5.12.4/QtCore"
+                "gcc_64/include/QtCore/5.15.1",
+                "gcc_64/include/QtCore/5.15.1/QtCore"
             ],
             "Qt5Core/shared": [
                 "libQt5Core.so"
@@ -75,8 +75,8 @@
             "Qt5Gui/includes": [
                 "gcc_64/include",
                 "gcc_64/include/QtGui",
-                "gcc_64/include/QtGui/5.12.4",
-                "gcc_64/include/QtGui/5.12.4/QtGui"
+                "gcc_64/include/QtGui/5.15.1",
+                "gcc_64/include/QtGui/5.15.1/QtGui"
             ],
             "Qt5Gui/shared": [
                 "libQt5Gui.so"
@@ -123,6 +123,17 @@
             ],
             "Qt5Qml/shared": [
                 "libQt5Qml.so"
+            ],
+
+            "Qt5QmlModels/defines": [
+                "QT_QML_MODELS_LIB"
+            ],
+            "Qt5QmlModels/includes": [
+                "gcc_64/include",
+                "gcc_64/include/QtQmlModels"
+            ],
+            "Qt5QmlModels/shared": [
+                "libQt5QmlModels.so"
             ],
 
             "Qt5Quick/defines": [
@@ -198,8 +209,8 @@
             "Qt5Widgets/includes": [
                 "gcc_64/include",
                 "gcc_64/include/QtWidgets",
-                "gcc_64/include/QtWidgets/5.12.4",
-                "gcc_64/include/QtWidgets/5.12.4/QtWidgets"
+                "gcc_64/include/QtWidgets/5.15.1",
+                "gcc_64/include/QtWidgets/5.15.1/QtWidgets"
             ],
             "Qt5Widgets/shared": [
                 "libQt5Widgets.so"
@@ -220,7 +231,10 @@
             ],
             "Qt5WebEngine/shared": [
                 "libQt5WebEngine.so",
-                "libQt5Quick.so"
+                "libQt5Quick.so",
+                "libQt5QmlModels.so",
+                "libQt5Positioning.so",
+                "libQt5WebChannel.so"
             ],
             "Qt5WebEngine/includes": [
                 "gcc_64/include/QtWebEngine"
@@ -244,6 +258,7 @@
                 "libQt5WebEngineWidgets.so",
                 "libQt5Quick.so",
                 "libQt5QuickWidgets.so",
+                "libQt5QmlModels.so",
                 "libQt5PrintSupport.so"
             ]
         }

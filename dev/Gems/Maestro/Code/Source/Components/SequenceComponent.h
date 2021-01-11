@@ -76,6 +76,8 @@ namespace Maestro
         //! so Track View can query the duration of an asset (like a motion) without having any knowledge of that that asset is.
         void GetAssetDuration(AnimatedValue& returnValue, const AZ::EntityId& animatedEntityId, AZ::ComponentId componentId, const AZ::Data::AssetId& assetId)  override;
 
+        void GetAssetTypeName(AZStd::string& returnValue, const AZ::EntityId& animatedEntityId, const AnimatablePropertyAddress& animatableAddress) override;
+
         /////////////////////////////////////////
         // Behaviors
         void Play() override;

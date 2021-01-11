@@ -84,7 +84,11 @@ namespace AzToolsFramework
 
         void CancelQueuedRefresh(); // Cancels any pending property refreshes
 
-        void PreventRefresh(bool shouldPrevent);    // Set to true to prevent refreshes from happening, false to allow them.
+        //! When set, disables data access for this property editor.
+        //! This prevents any value refreshes from the inspected values from occurring as well as disabling user input.
+        void PreventDataAccess(bool shouldPrevent);
+        // LUMBERYARD_DEPRECATED(LY-120821)
+        void PreventRefresh(bool shouldPrevent){PreventDataAccess(shouldPrevent);}
 
         void SetAutoResizeLabels(bool autoResizeLabels);
 

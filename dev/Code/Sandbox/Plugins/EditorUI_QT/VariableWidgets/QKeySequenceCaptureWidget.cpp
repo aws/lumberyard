@@ -123,9 +123,9 @@ QKeySequenceCaptureWidget::QKeySequenceCaptureWidget(QWidget* parent, QString pa
     setProperty("HotkeyLabel", "Standard");
     updateStyle();
     setFocusPolicy(Qt::FocusPolicy::StrongFocus);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
-    setFixedWidth(160);
-    setAlignment(Qt::AlignRight);
+    setAlignment(Qt::AlignLeft);
     m_menu = new ContextMenu(this);
     QAction* action = m_menu->addAction("Clear");
     connect(action, &QAction::triggered, this, [=]() { SetSequence(QKeySequence(), false);  });
@@ -143,7 +143,7 @@ QKeySequenceCaptureWidget::QKeySequenceCaptureWidget(QWidget* parent, QString pa
     setFocusPolicy(Qt::FocusPolicy::StrongFocus);
 
     setFixedWidth(160);
-    setAlignment(Qt::AlignRight);
+    setAlignment(Qt::AlignLeft);
 }
 
 void QKeySequenceCaptureWidget::SetSequence(QKeySequence sequence, bool asDefault)

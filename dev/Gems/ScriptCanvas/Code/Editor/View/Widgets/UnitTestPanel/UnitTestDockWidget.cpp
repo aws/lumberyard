@@ -89,7 +89,7 @@ namespace ScriptCanvasEditor
     {
         QStyledItemDelegate::paint(painter, option, index);
 
-        if (!index.child(0, 0).isValid() && (option.state & QStyle::State_MouseOver))
+        if (!index.model()->index(0, 0, index).isValid() && (option.state & QStyle::State_MouseOver))
         {
             painter->drawPixmap(GetEditPosition(option), m_editIcon);
         }
@@ -97,7 +97,7 @@ namespace ScriptCanvasEditor
 
     bool ItemButtonsDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index)
     {
-        if (!index.child(0, 0).isValid() && event->type() == QEvent::MouseButtonRelease)
+        if (!index.model()->index(0, 0, index).isValid() && event->type() == QEvent::MouseButtonRelease)
         {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
 

@@ -186,8 +186,8 @@ namespace EMStudio
             // Check if row should be selected
             if (AZStd::find(selectedRows.begin(), selectedRows.end(), i) != selectedRows.end())
             {
-                mTableWidget->setItemSelected(tableItemColor, true);
-                mTableWidget->setItemSelected(tableItemPresetName, true);
+                tableItemColor->setSelected(true);
+                tableItemPresetName->setSelected(true);
             }
         }
 

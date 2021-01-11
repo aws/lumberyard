@@ -19,6 +19,7 @@
 #include <QWheelEvent>
 #include <QPainter>
 #include <Terrain/ui_GenerationParam.h>
+#include <AzQtComponents/Components/Widgets/SliderCombo.h>
 
 /////////////////////////////////////////////////////////////////////////////
 // CGenerationParam dialog
@@ -34,52 +35,45 @@ CGenerationParam::CGenerationParam(QWidget* pParent /*=NULL*/)
 {
     ui->setupUi(this);
 
-    connect(ui->m_sldPasses, &QSlider::valueChanged, this, [this](int value)
+    connect(ui->m_sldPasses, &AzQtComponents::SliderCombo::valueChanged, this, [this]()
         {
             // Passes
-            ui->m_labelPasses->setText(QString::number(value));
             UpdatePreview();
         });
 
-    connect(ui->m_sldFrequency, &QSlider::valueChanged, this, [this](int value)
+    connect(ui->m_sldFrequency, &AzQtComponents::SliderDoubleCombo::valueChanged, this, [this]()
         {
             // Frequency
-            ui->m_labelFrequency->setText(QString::number(static_cast<double>(value) / 10.0f, 'f'));
             UpdatePreview();
         });
 
-    connect(ui->m_sldFrequencyStep, &QSlider::valueChanged, this, [this](int value)
+    connect(ui->m_sldFrequencyStep, &AzQtComponents::SliderDoubleCombo::valueChanged, this, [this]()
         {
             // Frequency step
-            ui->m_labelFrequencyStep->setText(QString::number(static_cast<double>(value) / 10.0f, 'f'));
             UpdatePreview();
         });
 
-    connect(ui->m_sldFade, &QSlider::valueChanged, this, [this](int value)
+    connect(ui->m_sldFade, &AzQtComponents::SliderDoubleCombo::valueChanged, this, [this]()
         {
             // Fade
-            ui->m_labelFade->setText(QString::number(static_cast<double>(value) / 10.0f, 'f'));
             UpdatePreview();
         });
 
-    connect(ui->m_sldRandomBase, &QSlider::valueChanged, this, [this](int value)
+    connect(ui->m_sldRandomBase, &AzQtComponents::SliderCombo::valueChanged, this, [this]()
         {
             // Random base
-            ui->m_labelRandomBase->setText(QString::number(value));
             UpdatePreview();
         });
 
-    connect(ui->m_sldSharpness, &QSlider::valueChanged, this, [this](int value)
+    connect(ui->m_sldSharpness, &AzQtComponents::SliderDoubleCombo::valueChanged, this, [this]()
         {
             // Sharpness
-            ui->m_labelSharpness->setText(QString::number(static_cast<double>(value) / 1000.0f, 'f'));
             UpdatePreview();
         });
 
-    connect(ui->m_sldBlur, &QSlider::valueChanged, this, [this](int value)
+    connect(ui->m_sldBlur, &AzQtComponents::SliderCombo::valueChanged, this, [this]()
         {
             // Blurring
-            ui->m_labelBlur->setText(QString::number(value));
             UpdatePreview();
         });
 
@@ -194,22 +188,22 @@ void CGenerationParam::OnShowPreviewChanged()
 void CGenerationParam::FillParam(SNoiseParams& pParam) const
 {
     pParam.iPasses = ui->m_sldPasses->value();
-    pParam.fFrequencyStep = ui->m_sldFrequencyStep->value() / 10.0f;
-    pParam.fFrequency = ui->m_sldFrequency->value() / 10.0f;
+    pParam.fFrequencyStep = ui->m_sldFrequencyStep->value();
+    pParam.fFrequency = ui->m_sldFrequency->value();
     pParam.iSmoothness = ui->m_sldBlur->value();
     pParam.iRandom = ui->m_sldRandomBase->value();
-    pParam.fFade = ui->m_sldFade->value() / 10.0f;
-    pParam.iSharpness = ui->m_sldSharpness->value() / 1000.0f;
+    pParam.fFade = ui->m_sldFade->value();
+    pParam.iSharpness = ui->m_sldSharpness->value();
 }
 
 void CGenerationParam::LoadParam(const SNoiseParams& pParam)
 {
-    ui->m_sldFade->setValue(static_cast<int>(pParam.fFade * 10.0f));
-    ui->m_sldFrequency->setValue(static_cast<int>(pParam.fFrequency * 10.0f));
-    ui->m_sldFrequencyStep->setValue(static_cast<int>(pParam.fFrequencyStep * 10.0f));
+    ui->m_sldFade->setValue(pParam.fFade);
+    ui->m_sldFrequency->setValue(pParam.fFrequency);
+    ui->m_sldFrequencyStep->setValue(pParam.fFrequencyStep);
     ui->m_sldPasses->setValue(pParam.iPasses);
     ui->m_sldRandomBase->setValue(pParam.iRandom);
-    ui->m_sldSharpness->setValue(static_cast<int>(pParam.iSharpness * 1000.0f));
+    ui->m_sldSharpness->setValue(pParam.iSharpness);
     ui->m_sldBlur->setValue(pParam.iSmoothness);
 }
 

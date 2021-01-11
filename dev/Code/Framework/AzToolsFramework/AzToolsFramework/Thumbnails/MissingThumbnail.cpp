@@ -16,12 +16,12 @@ namespace AzToolsFramework
 {
     namespace Thumbnailer
     {
-        static const char* MISSING_ICON_PATH = "Editor/Icons/AssetBrowser/Default_16.png";
+        static const char* MISSING_ICON_PATH = "Editor/Icons/AssetBrowser/Default_16.svg";
 
         MissingThumbnail::MissingThumbnail(int thumbnailSize)
             : Thumbnail(MAKE_TKEY(ThumbnailKey), thumbnailSize)
         {
-            m_pixmap = QPixmap(MISSING_ICON_PATH);
+            m_icon = QIcon(MISSING_ICON_PATH);
             m_state = State::Ready;
         }
     } // namespace Thumbnailer

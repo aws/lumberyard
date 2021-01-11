@@ -191,11 +191,11 @@ namespace AzQtComponents
     {
         const auto lhsVal = GetEntryData(lhs, column);
         const auto rhsVal = GetEntryData(rhs, column);
-        if (lhsVal < rhsVal)
+        if (lhsVal.toString() < rhsVal.toString())
         {
             return order == Qt::AscendingOrder;
         }
-        if (lhsVal > rhsVal)
+        if (lhsVal.toString() > rhsVal.toString())
         {
             return order == Qt::DescendingOrder;
         }

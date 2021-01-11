@@ -7,7 +7,7 @@
     },
     "auto": {
         "Include": [
-            "Include/LegacyTerrain/LegacyTerrainUtil.h"
+            "include/LegacyTerrain/LegacyTerrainUtil.h"
         ],
         "Source": [
             "Source/LegacyTerrainModule.h",

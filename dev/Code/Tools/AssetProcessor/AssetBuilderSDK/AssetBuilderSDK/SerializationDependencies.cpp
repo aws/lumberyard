@@ -130,7 +130,7 @@ namespace AssetBuilderSDK
             {
                 productDependencySet[asset.GetId()] = AZ::Data::ProductDependencyInfo::CreateFlags(&asset);
             }
-            return true;
+            return false;
         });
 
         if (!AZ::ObjectStream::LoadBlocking(&fileStream, serializeContext, [&productDependencySet, &productPathDependencySet](void* instancePointer, const AZ::Uuid& classId, const AZ::SerializeContext* callbackSerializeContext)

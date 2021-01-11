@@ -18,6 +18,7 @@ AZ_PUSH_DISABLE_WARNING(4127 4251 4800, "-Wunknown-warning-option") // 4127: con
                                                                     // 4800: 'int': forcing value to bool 'true' or 'false' (performance warning)
 #include <QObject>
 #include <QPixmap>
+#include <QIcon>
 #include <QFutureWatcher>
 AZ_POP_DISABLE_WARNING
 
@@ -84,6 +85,7 @@ Q_SIGNALS:
             bool operator == (const Thumbnail& other) const;
             void Load();
             virtual QPixmap GetPixmap() const;
+            virtual QPixmap GetPixmap(const QSize& size) const;
             virtual void UpdateTime(float /*deltaTime*/) {}
             SharedThumbnailKey GetKey() const;
             State GetState() const;
@@ -100,6 +102,7 @@ Q_SIGNALS:
             int m_thumbnailSize;
             SharedThumbnailKey m_key;
             QPixmap m_pixmap;
+            QIcon m_icon;
 
             virtual void LoadThread() {}
         };

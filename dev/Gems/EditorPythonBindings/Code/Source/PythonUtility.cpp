@@ -10,6 +10,7 @@
  *
  */
 
+#include <EditorPythonBindings/CustomTypeBindingBus.h>
 #include <Source/PythonUtility.h>
 #include <Source/PythonProxyObject.h>
 #include <Source/PythonTypeCasters.h>
@@ -101,21 +102,125 @@ namespace EditorPythonBindings
                 if (genericClassInfo)
                 {
                     info += " generic:true";
-                    info += AZStd::string::format(" specialized typeId: %d",
+                    info += AZStd::string::format(" specialized typeId: %s",
                                 genericClassInfo->GetSpecializedTypeId().ToString<AZStd::string>().c_str());
-                    info += AZStd::string::format(" generic typeId: %d",
+                    info += AZStd::string::format(" generic typeId: %s",
                                 genericClassInfo->GetGenericTypeId().ToString<AZStd::string>().c_str());
                     size_t numTemplatedArguments = genericClassInfo->GetNumTemplatedArguments();
-                    info += AZStd::string::format(" template arguments %d", genericClassInfo->GetNumTemplatedArguments());
+                    info += AZStd::string::format(" template arguments %zu", genericClassInfo->GetNumTemplatedArguments());
                     for (size_t index = 0; index < numTemplatedArguments; ++index)
                     {
-                        info += AZStd::string::format(" [%d] template type: %s",
+                        info += AZStd::string::format(" [%zu] template type: %s",
+                            index,
                             genericClassInfo->GetTemplatedTypeId(index).ToString<AZStd::string>().c_str());
                     }
                 }
             }
             info += ")";
             AZ_Warning("python", false, "Serialize generic class info %s", info.c_str());
+        }
+
+        AZStd::optional<AZ::TypeId> IsEnumClass(const AZ::BehaviorParameter& behaviorParameter)
+        {
+            if (behaviorParameter.m_azRtti)
+            {
+                // If the underlying type of the supplied type is different, then T is an enum
+                const AZ::TypeId& underlyingTypeId = AZ::Internal::GetUnderlyingTypeId(*behaviorParameter.m_azRtti);
+                if (underlyingTypeId != behaviorParameter.m_typeId)
+                {
+                    return AZStd::make_optional(underlyingTypeId);
+                }
+            }
+            return AZStd::nullopt;
+        }
+
+        template <typename T>
+        bool ConvertPythonFromEnumClass(const AZ::TypeId& underlyingTypeId, AZ::BehaviorValueParameter& behaviorValue, AZ::s64& outboundPythonValue)
+        {
+            if (underlyingTypeId == AZ::AzTypeInfo<T>::Uuid())
+            {
+                outboundPythonValue = aznumeric_cast<AZ::s64>(*behaviorValue.GetAsUnsafe<T>());
+                return true;
+            }
+            return false;
+        }
+
+        AZStd::optional<pybind11::object> ConvertFromEnumClass(AZ::BehaviorValueParameter& behaviorValue)
+        {
+            if (!behaviorValue.m_azRtti)
+            {
+                return AZStd::nullopt;
+            }
+            const AZ::TypeId& underlyingTypeId = AZ::Internal::GetUnderlyingTypeId(*behaviorValue.m_azRtti);
+            if (underlyingTypeId != behaviorValue.m_typeId)
+            {
+                AZ::s64 outboundPythonValue = 0;
+
+                bool converted =
+                    ConvertPythonFromEnumClass<AZ::u8>(underlyingTypeId, behaviorValue, outboundPythonValue)  ||
+                    ConvertPythonFromEnumClass<AZ::u16>(underlyingTypeId, behaviorValue, outboundPythonValue) ||
+                    ConvertPythonFromEnumClass<AZ::u32>(underlyingTypeId, behaviorValue, outboundPythonValue) ||
+                    ConvertPythonFromEnumClass<AZ::u64>(underlyingTypeId, behaviorValue, outboundPythonValue) ||
+                    ConvertPythonFromEnumClass<AZ::s8>(underlyingTypeId, behaviorValue, outboundPythonValue)  ||
+                    ConvertPythonFromEnumClass<AZ::s16>(underlyingTypeId, behaviorValue, outboundPythonValue) ||
+                    ConvertPythonFromEnumClass<AZ::s32>(underlyingTypeId, behaviorValue, outboundPythonValue) ||
+                    ConvertPythonFromEnumClass<AZ::s64>(underlyingTypeId, behaviorValue, outboundPythonValue);
+
+                AZ_Error("python", converted, "Enumeration backed by a non-numeric integer type.");
+                return converted ? AZStd::make_optional(pybind11::cast<AZ::s64>(outboundPythonValue)) : AZStd::nullopt;
+            }
+            return AZStd::nullopt;
+        }
+
+        template <typename T>
+        bool ConvertBehaviorParameterEnum(pybind11::object obj, const AZ::TypeId& underlyingTypeId, AZ::BehaviorValueParameter& parameter)
+        {
+            if (underlyingTypeId == AZ::AzTypeInfo<T>::Uuid())
+            {
+                void* value = parameter.m_tempData.allocate(sizeof(T), AZStd::alignment_of<T>::value, 0);
+                *reinterpret_cast<T*>(value) = pybind11::cast<T>(obj);
+
+                if (parameter.m_traits & AZ::BehaviorParameter::TR_POINTER)
+                {
+                    *reinterpret_cast<void**>(parameter.m_value) = reinterpret_cast<T*>(&value);
+                }
+                else
+                {
+                    parameter.m_value = value;
+                }
+                return true;
+            }
+            return false;
+        }
+
+        bool ConvertEnumClassFromPython(pybind11::object obj, const AZ::BehaviorParameter& behaviorArgument, AZ::BehaviorValueParameter& parameter)
+        {
+            if (behaviorArgument.m_azRtti)
+            {
+                // If the underlying type of the supplied type is different, then T is an enum
+                const AZ::TypeId underlyingTypeId = AZ::Internal::GetUnderlyingTypeId(*behaviorArgument.m_azRtti);
+                if (underlyingTypeId != behaviorArgument.m_typeId)
+                {
+                    parameter.m_name = behaviorArgument.m_name;
+                    parameter.m_azRtti = behaviorArgument.m_azRtti;
+                    parameter.m_traits = behaviorArgument.m_traits;
+                    parameter.m_typeId = behaviorArgument.m_typeId;
+
+                    bool handled =
+                        ConvertBehaviorParameterEnum<AZ::u8>(obj, underlyingTypeId, parameter)  ||
+                        ConvertBehaviorParameterEnum<AZ::u16>(obj, underlyingTypeId, parameter) ||
+                        ConvertBehaviorParameterEnum<AZ::u32>(obj, underlyingTypeId, parameter) ||
+                        ConvertBehaviorParameterEnum<AZ::u64>(obj, underlyingTypeId, parameter) ||
+                        ConvertBehaviorParameterEnum<AZ::s8>(obj, underlyingTypeId, parameter)  ||
+                        ConvertBehaviorParameterEnum<AZ::s16>(obj, underlyingTypeId, parameter) ||
+                        ConvertBehaviorParameterEnum<AZ::s32>(obj, underlyingTypeId, parameter) ||
+                        ConvertBehaviorParameterEnum<AZ::s64>(obj, underlyingTypeId, parameter) ;
+
+                    AZ_Error("python", handled, "Enumeration backed by a non-numeric integer type.");
+                    return handled;
+                }
+            }
+            return false;
         }
 
         // type checks
@@ -181,12 +286,32 @@ namespace EditorPythonBindings
         {
             return AllocateBehaviorObjectByTypeId(AZ::AzTypeInfo<T>::Uuid(), tempAllocator, behaviorObject);
         }
-    
+
+        void StoreVariableCustomTypeDeleter(
+            CustomTypeBindingNotifications::ValueHandle handle,
+            AZ::TypeId typeId,
+            Convert::StackVariableAllocator& stackVariableAllocator)
+        {
+            auto deallocateValue = [typeId = std::move(typeId), handle]() mutable
+            {
+                CustomTypeBindingNotificationBus::Event(
+                    typeId,
+                    &CustomTypeBindingNotificationBus::Events::CleanUpValue,
+                    handle);
+            };
+            stackVariableAllocator.StoreVariableDeleter(deallocateValue);
+        }
+
         bool AllocateBehaviorValueParameter(const AZ::BehaviorMethod* behaviorMethod, AZ::BehaviorValueParameter& result, Convert::StackVariableAllocator& stackVariableAllocator)
         {
             if (const AZ::BehaviorParameter* resultType = behaviorMethod->GetResult())
             {
                 result.Set(*resultType);
+
+                if (auto underlyingTypeId = Internal::IsEnumClass(result); underlyingTypeId)
+                {
+                    result.m_typeId = underlyingTypeId.value();
+                }
 
                 if (resultType->m_traits & AZ::BehaviorParameter::TR_POINTER)
                 {
@@ -236,6 +361,22 @@ namespace EditorPythonBindings
                 }
                 else
                 {
+                    CustomTypeBindingNotifications::AllocationHandle allocationHandleResult;
+                    CustomTypeBindingNotificationBus::EventResult(
+                        allocationHandleResult,
+                        result.m_typeId,
+                        &CustomTypeBindingNotificationBus::Events::AllocateDefault);
+
+                    if (allocationHandleResult)
+                    {
+                        CustomTypeBindingNotifications::ValueHandle handle = allocationHandleResult.value().first;
+                        const AZ::BehaviorObject& behaviorObject = allocationHandleResult.value().second;
+                        StoreVariableCustomTypeDeleter(handle, behaviorObject.m_typeId, stackVariableAllocator);
+                        result.m_value = behaviorObject.m_address;
+                        result.m_typeId = behaviorObject.m_typeId;
+                        return true;
+                    }
+
                     // So far no allocation scheme has been found for this typeId, but the SerializeContext might have more information
                     // so this code tries to pull out more type information about the typeId so that the user can get more human readable
                     // information than a UUID
@@ -263,13 +404,9 @@ namespace EditorPythonBindings
             }
 
             const AZ::BehaviorClass* behaviorClass = AZ::BehaviorContextHelper::GetClass(behaviorContext, valueParameter.m_typeId);
-            AZ_Error("python", behaviorClass, "Missing AZ::BehaviorClass for typeId:%s", valueParameter.m_typeId.ToString<AZStd::string>().c_str());
-            if (behaviorClass)
+            if (behaviorClass && behaviorClass->m_destructor)
             {
-                if (behaviorClass->m_destructor)
-                {
-                    behaviorClass->m_destructor(valueParameter.m_value, nullptr);
-                }
+                behaviorClass->m_destructor(valueParameter.m_value, nullptr);
             }
         }
     }
@@ -336,6 +473,33 @@ namespace EditorPythonBindings
             return false;
         }
 
+        bool CustomPythonToBehavior(
+            const AZ::BehaviorParameter& behaviorArgument,
+            pybind11::object pyObj,
+            AZ::BehaviorValueParameter& outBehavior,
+            StackVariableAllocator& stackVariableAllocator)
+        {
+            AZStd::optional<CustomTypeBindingNotifications::ValueHandle> handle;
+            CustomTypeBindingNotificationBus::EventResult(
+                handle,
+                behaviorArgument.m_typeId,
+                &CustomTypeBindingNotificationBus::Events::PythonToBehavior,
+                pyObj.ptr(),
+                static_cast<AZ::BehaviorParameter::Traits>(behaviorArgument.m_traits),
+                outBehavior);
+
+            if (handle)
+            {
+                Internal::StoreVariableCustomTypeDeleter(handle.value(), behaviorArgument.m_typeId, stackVariableAllocator);
+                outBehavior.m_typeId = behaviorArgument.m_typeId;
+                outBehavior.m_traits = behaviorArgument.m_traits;
+                outBehavior.m_name = behaviorArgument.m_name;
+                outBehavior.m_azRtti = behaviorArgument.m_azRtti;
+                return true;
+            }
+            return false;
+        }
+
         bool PythonToBehaviorValueParameter(const AZ::BehaviorParameter& behaviorArgument, pybind11::object pyObj, AZ::BehaviorValueParameter& parameter, Convert::StackVariableAllocator& stackVariableAllocator)
         {
             AZStd::optional<PythonMarshalTypeRequests::BehaviorValueResult> result;
@@ -354,17 +518,60 @@ namespace EditorPythonBindings
                 parameter.m_azRtti = behaviorArgument.m_azRtti;
                 return true;
             }
+            else if (auto underlyingTypeId = Internal::IsEnumClass(behaviorArgument); underlyingTypeId)
+            {
+                AZ::BehaviorParameter tempArg;
+                tempArg.m_azRtti = behaviorArgument.m_azRtti;
+                tempArg.m_traits = behaviorArgument.m_traits;
+                tempArg.m_name = behaviorArgument.m_name;
+                tempArg.m_typeId = underlyingTypeId.value();
+                if (PythonToBehaviorValueParameter(tempArg, pyObj, parameter, stackVariableAllocator))
+                {
+                    parameter.m_typeId = behaviorArgument.m_typeId;
+                    return true;
+                }
+            }
             else if (pybind11::isinstance<EditorPythonBindings::PythonProxyObject>(pyObj))
             {
                 return PythonProxyObjectToBehaviorValueParameter(behaviorArgument, pyObj, parameter);
+            }
+            else if (CustomPythonToBehavior(behaviorArgument, pyObj, parameter, stackVariableAllocator))
+            {
+                return true;
             }
             return false;
         }
 
         // from BehaviorValueParameter to Python
 
+        AZStd::optional<pybind11::object> CustomBehaviorToPython(AZ::BehaviorValueParameter& behaviorValue, Convert::StackVariableAllocator& stackVariableAllocator)
+        {
+            AZStd::optional<CustomTypeBindingNotifications::ValueHandle> handle;
+            PyObject* outPyObj = nullptr;
+            CustomTypeBindingNotificationBus::EventResult(
+                handle,
+                behaviorValue.m_typeId,
+                &CustomTypeBindingNotificationBus::Events::BehaviorToPython,
+                behaviorValue,
+                outPyObj);
+
+            if (outPyObj != nullptr && handle)
+            {
+                Internal::StoreVariableCustomTypeDeleter(handle.value(), behaviorValue.m_typeId, stackVariableAllocator);
+                return { pybind11::reinterpret_borrow<pybind11::object>(outPyObj) };
+            }
+
+            return AZStd::nullopt;
+        }
+
         pybind11::object BehaviorValueParameterToPython(AZ::BehaviorValueParameter& behaviorValue, Convert::StackVariableAllocator& stackVariableAllocator)
         {
+            auto pyValue = Internal::ConvertFromEnumClass(behaviorValue);
+            if (pyValue.has_value())
+            {
+                return pyValue.value();
+            }
+
             AZStd::optional<PythonMarshalTypeRequests::PythonValueResult> result;
             PythonMarshalTypeRequestBus::EventResult(result, behaviorValue.m_typeId, &PythonMarshalTypeRequestBus::Events::BehaviorValueParameterToPython, behaviorValue);
             if (result.has_value())
@@ -376,11 +583,16 @@ namespace EditorPythonBindings
                 }
                 return result.value().first;
             }
-            else if (behaviorValue.m_typeId != AZ::Uuid::CreateNull())
+            else if (auto customResult = CustomBehaviorToPython(behaviorValue, stackVariableAllocator); customResult)
+            {
+                return customResult.value();
+            }
+            else if (behaviorValue.m_typeId != AZ::Uuid::CreateNull() && behaviorValue.GetValueAddress())
             {
                 return PythonProxyObjectManagement::CreatePythonProxyObject(behaviorValue.m_typeId, behaviorValue.GetValueAddress());
             }
-            AZ_Warning("python", false, "Cannot convert type %s", behaviorValue.m_name ? behaviorValue.m_name : behaviorValue.m_typeId.ToString<AZStd::string>().c_str());
+            AZ_Warning("python", false, "Cannot convert type %s",
+                behaviorValue.m_name ? behaviorValue.m_name : behaviorValue.m_typeId.ToString<AZStd::string>().c_str());
             return pybind11::cast<pybind11::none>(Py_None);
         }
 
@@ -480,6 +692,9 @@ namespace EditorPythonBindings
                 {
                     if (behaviorMethod->Call(parameters.begin(), static_cast<unsigned int>(totalPythonArgs), &result))
                     {
+                        result.m_azRtti = behaviorMethod->GetResult()->m_azRtti;
+                        result.m_typeId = behaviorMethod->GetResult()->m_typeId;
+                        result.m_traits = behaviorMethod->GetResult()->m_traits;
                         return Convert::BehaviorValueParameterToPython(result, stackVariableAllocator);
                     }
                     else

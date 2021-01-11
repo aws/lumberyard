@@ -19,11 +19,13 @@
 #include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
 #include <AzToolsFramework/MaterialBrowser/MaterialBrowserComponent.h>
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzFramework/Asset/AssetSystemBus.h>
 
 #include <ParseEngineConfig.h>
 #include <Crates/Crates.h>
 #include <Engines/EnginesAPI.h> // For LyzardSDK
 #include <QMessageBox>
+#include <QDir>
 
 #include <CryEdit.h>
 #include <CryEditDoc.h>
@@ -36,6 +38,7 @@
 #include <VegetationTool.h>
 #include <ViewPane.h>
 #include <ViewportTitleDlg.h>
+#include <LmbrCentral/FileSystem/AliasConfiguration.h>
 #ifdef LY_TERRAIN_EDITOR
 #include <TerrainModifyTool.h>
 #include <Terrain/PythonTerrainFuncs.h>
@@ -102,6 +105,7 @@ namespace EditorInternal
         RegisterComponentDescriptor(AzToolsFramework::ModellingModeFuncsHandler::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::ObjectManagerFuncsHandler::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::MaterialPythonFuncsHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::PythonEditorComponent::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::PythonEditorFuncsHandler::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::DisplaySettingsComponent::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::TrackViewComponent::CreateDescriptor());
@@ -131,6 +135,7 @@ namespace EditorInternal
 
         // Add new Bus-based Python Bindings
         components.emplace_back(azrtti_typeid<AzToolsFramework::DisplaySettingsComponent>());
+        components.emplace_back(azrtti_typeid<AzToolsFramework::PythonEditorComponent>());
         components.emplace_back(azrtti_typeid<AzToolsFramework::TrackViewComponent>());
 
         return components;
@@ -149,6 +154,47 @@ namespace EditorInternal
         AZ::ModuleManagerRequestBus::Broadcast(&AZ::ModuleManagerRequestBus::Events::LoadDynamicModule, "LyzardEngines", AZ::ModuleInitializationSteps::ActivateEntity, true);
         AZ::ModuleManagerRequestBus::Broadcast(&AZ::ModuleManagerRequestBus::Events::LoadDynamicModule, "LyzardGems", AZ::ModuleInitializationSteps::ActivateEntity, true);
         AZ::ModuleManagerRequestBus::Broadcast(&AZ::ModuleManagerRequestBus::Events::LoadDynamicModule, "LyzardProjects", AZ::ModuleInitializationSteps::ActivateEntity, true);
+    }
+
+    void EditorToolsApplication::SetupAliasConfigStorage(SSystemInitParams initParams)
+    {
+        LmbrCentral::AliasConfiguration config;
+
+        AzFramework::AssetSystem::AssetStatus assetStatus = AzFramework::AssetSystem::AssetStatus_Unknown;
+        AzFramework::AssetSystemRequestBus::BroadcastResult(assetStatus, &AzFramework::AssetSystemRequestBus::Events::CompileAssetSync, "engine.json");
+
+        bool usingAssetCache = initParams.WillAssetCacheExist();
+        const char* rootPath = usingAssetCache ? initParams.rootPathCache : initParams.rootPath;
+        const char* assetsPath = usingAssetCache ? initParams.assetsPathCache : initParams.assetsPath;
+
+        config.m_rootPath = rootPath;
+        config.m_assetsPath = assetsPath;
+        config.m_userPath = "@root@/user";
+        config.m_logPath = "@user@/log";
+        config.m_cachePath = "@user@/cache";
+
+        if (initParams.userPath[0] != 0)
+        {
+            config.m_userPath = initParams.userPath;
+        }
+
+        if (initParams.logPath[0] != 0)
+        {
+            config.m_logPath = initParams.logPath;
+        }
+
+        if (initParams.cachePath[0] != 0)
+        {
+            config.m_cachePath = initParams.cachePath;
+        }
+
+        config.m_devRootPath = initParams.rootPath;
+        QDir devAssetDir(initParams.rootPath);
+        config.m_devAssetsPath = devAssetDir.absoluteFilePath(initParams.gameFolderName).toUtf8().data();
+        config.m_engineRootPath = initParams.rootPath;
+        config.m_allowedRemoteIo = !initParams.bTestMode && initParams.remoteFileIO && !initParams.bEditor;
+
+        LmbrCentral::AliasConfigurationStorage::SetConfig(config);
     }
 
     bool EditorToolsApplication::Start()
@@ -188,6 +234,9 @@ namespace EditorInternal
                 azstrcat(descriptorPath, AZ_MAX_PATH_LEN, "/Config/Editor.xml");
 
                 azstrncpy(appRootOverride, AZ_ARRAY_SIZE(appRootOverride), currentRoot.toUtf8().data(), currentRoot.length());
+                SSystemInitParams initParams;
+                engineCfg.CopyToStartupParams(initParams);
+                SetupAliasConfigStorage(initParams);
             }
             else
             {
@@ -197,6 +246,10 @@ namespace EditorInternal
                 azstrcat(descriptorPath, AZ_MAX_PATH_LEN, AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING);
                 azstrcat(descriptorPath, AZ_MAX_PATH_LEN, engineCfg.m_gameFolder);
                 azstrcat(descriptorPath, AZ_MAX_PATH_LEN, AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "Config" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING  "Editor.xml");
+
+                SSystemInitParams initParams;
+                engineCfg.CopyToStartupParams(initParams);
+                SetupAliasConfigStorage(initParams);
             }
 
             params.m_appRootOverride = appRootOverride;
@@ -276,6 +329,23 @@ namespace EditorInternal
                 ->Event("Exit", &EditorToolsApplicationRequests::Exit)
                 ->Event("ExitNoPrompt", &EditorToolsApplicationRequests::ExitNoPrompt)
                 ;
+        }
+    }
+
+    void EditorToolsApplication::CalculateAppRoot(const char* appRootOverride)
+    {
+        ToolsApplication::CalculateAppRoot(appRootOverride);
+
+        LmbrCentral::AliasConfiguration config;
+
+        const char* engineRoot = nullptr;
+        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(engineRoot, &AzToolsFramework::ToolsApplicationRequests::GetEngineRootPath);
+
+        if (engineRoot != nullptr)
+        {
+            config.m_engineRootPath = engineRoot;
+
+            LmbrCentral::AliasConfigurationStorage::SetConfig(config);
         }
     }
 

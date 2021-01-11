@@ -36,6 +36,14 @@ namespace CloudCanvas
     {
         const int fileDownloadRetryMax = 1; // How many times will we retry the download for a file
         const char presignedUrlLifeTimeKey[] = "X-Amz-Expires";
+        const char cloudfrontPresignedUrlLifeTimeKey[] = "Expires";
+
+        struct DynamicContentRequest
+        {
+            AZStd::string WriteFile;
+            AZStd::string VersionId;
+        };
+        using DynamicContentRequestMap = AZStd::unordered_map<AZStd::string, DynamicContentRequest>;
 
         class DynamicContentTransferManager : 
             public DynamicContentRequestBus::Handler, 
@@ -67,12 +75,16 @@ namespace CloudCanvas
 
             // DynamicContentBus handlers
             virtual bool RequestManifest(const char* manifestName) override;
+            virtual bool RequestVersionedManifest(const char* manifestName, const char* versionId = "") override;
 
             // Convenience call for a single request
-            virtual bool RequestFileStatus(const char* fileName, const char* writeFile) override;
+            virtual bool RequestFileStatus(const char* fileName, const char* outputFile) override;
+            virtual bool RequestVersionedFileStatus(const char* fileName, const char* writeFile, const char* versionId = "") override;
 
-            virtual bool UpdateFileStatusList(const AZStd::vector<AZStd::string>& requestList, bool autoDownload = false) override;
-            virtual bool UpdateFileStatus(const char* fileName, bool autoDownload = false);
+            virtual bool UpdateFileStatusList(const AZStd::vector<AZStd::string>& uploadRequests, bool autoDownload = false) override;
+            virtual bool UpdateVersionedFileStatusList(const AZStd::unordered_map<AZStd::string, AZStd::string>& requestMap, bool autoDownload = false) override;
+            virtual bool UpdateFileStatus(const char* fileName, bool autoDownload = false) override;
+            virtual bool UpdateVersionedFileStatus(const char* fileName, bool autoDownload = false, const char* versionId = "") override;;
 
             virtual bool RequestDownload(const AZStd::string& fileName, bool forceDownload) override;
             bool RequestUrlExpired(const AZStd::string& fileName);
@@ -109,8 +121,8 @@ namespace CloudCanvas
             // Intended for messages from CloudGemWebCommunicator
             virtual void HandleWebCommunicatorUpdate(const AZStd::string& messageData) override;
 
-            bool RequestFileStatus(const char* fileName, const char* writeFile, bool manifestRequest);
-            bool RequestFileStatus(FileTransferSupport::FileRequestMap& requestVec, bool manifestRequest);
+            bool RequestFileStatus(const char* fileName, const char* writeFile, bool manifestRequest, const char* versionId = "");
+            bool RequestFileStatus(DynamicContentRequestMap& requestVec, bool manifestRequest);
 
             virtual void GotPresignedURLResult(const AZStd::string& fileRequest, int responseCode, const AZStd::string& resultString, const AZStd::string& outputFile) override;
 
@@ -145,7 +157,7 @@ namespace CloudCanvas
             DynamicContentTransferManager(const DynamicContentTransferManager&) = delete;
             bool ShouldLoadManifestEntry(const rapidjson::Value& thisFileEntry) const;
             void ParseManifestFileList(const rapidjson::Value& docFileList, const AZStd::string& manifestPath);
-            void UpdateManifest(const AZStd::string& manifestName, const AZStd::string& outputFile);
+            void UpdateManifest(const AZStd::string& manifestName, const AZStd::string& outputFile, const char* versionId = "");
             bool LoadManifestData(const AZStd::string& manifestPath);
             int CheckFileList(const char* bucketName);
             bool IsManifestEntry(const rapidjson::Value& thisFileEntry) const;
@@ -155,6 +167,7 @@ namespace CloudCanvas
             // To reduce the number of lookups this condenses the above 3 calls into one call - If this entry is from a pak which is currently pending, return the pak's
             // entry
             DynamicContentTransferManager::DynamicFileInfoPtr GetPendingPakEntry(const rapidjson::Value& thisFileEntry) const;
+            AZStd::string GetDownloadablePakVersionId(const AZStd::string& fileName) const;
 
             // Hold onto the request while it's out
             void AddPresignedURLRequest(const AZStd::string& requestURL, DynamicFileInfoPtr fileInfo);
@@ -192,7 +205,7 @@ namespace CloudCanvas
 
             mutable AZStd::mutex m_completedDownloadMutex;
 
-            mutable AZStd::mutex m_fileListMutex;
+            mutable AZStd::recursive_mutex m_fileListMutex;
             mutable AZStd::mutex m_pakFileMountMutex;
             AZStd::mutex m_presignedURLMutex;
 

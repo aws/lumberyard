@@ -312,79 +312,108 @@ sys.version
         EXPECT_EQ(m_testSink.m_evaluationMap[(int)LogTypes::Arg3Correct], 1);
     }
 
-
-    struct ProxyCommandRegistrationBusHandler final
-        : public AzFramework::CommandRegistrationBus::Handler
+    //
+    // Tests that makes sure that basic Python libraries can be loaded
+    //
+    class EditorPythonBindingsLibraryTest
+        : public PythonTestingFixture
     {
-        ProxyCommandRegistrationBusHandler()
+    public:
+        PythonTraceMessageSink m_testSink;
+        EditorPythonBindingsNotificationBusSink m_notificationSink;
+
+        void SetUp() override
         {
-            BusConnect();
+            PythonTestingFixture::SetUp();
+            m_app.RegisterComponentDescriptor(EditorPythonBindings::PythonSystemComponent::CreateDescriptor());
         }
 
-        ~ProxyCommandRegistrationBusHandler()
+        void TearDown() override
         {
-            BusDisconnect();
+            // clearing up memory
+            m_notificationSink = EditorPythonBindingsNotificationBusSink();
+            m_testSink = PythonTraceMessageSink();
+
+            // shutdown time!
+            PythonTestingFixture::TearDown();
         }
 
-        AzFramework::CommandFunction m_pyRunFileCallback;
-
-        bool RegisterCommand(AZStd::string_view identifier, AZStd::string_view helpText, AZ::u32 commandFlags, AzFramework::CommandFunction callback) override
+        void DoLibraryTest(const char* libName)
         {
-            if (identifier == "pyRunFile")
+            bool executedLine = false;
+
+            m_testSink.m_evaluateMessage = [&executedLine](const char* window, const char* message)
             {
-                m_pyRunFileCallback = callback;
-                return true;
-            }
-            return false;
-        }
+                if (AzFramework::StringFunc::Equal(window, "python"))
+                {
+                    if (AzFramework::StringFunc::Equal(message, "python_vm_loaded_lib"))
+                    {
+                        executedLine = true;
+                    }
+                }
+                return false;
+            };
 
-        bool UnregisterCommand(AZStd::string_view identifier) override
-        {
-            if (identifier == "pyRunFile")
+            AZ::Entity e;
+            e.CreateComponent<EditorPythonBindings::PythonSystemComponent>();
+            e.Init();
+            e.Activate();
+
+            try
             {
-                m_pyRunFileCallback = {};
-                return true;
+                SimulateEditorBecomingInitialized();
+
+                const bool printResult = false;
+                AZStd::string script(AZStd::string::format("import %s\nprint ('python_vm_loaded_lib')", libName));
+                AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(
+                    &AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByString,
+                    script.c_str(),
+                    printResult);
             }
-            return false;
+            catch (const std::exception& e)
+            {
+                AZ_Error("UnitTest", false, "Failed on with Python exception: %s", e.what());
+            }
+            e.Deactivate();
+
+            EXPECT_TRUE(executedLine);
         }
     };
 
-    TEST_F(EditorPythonBindingsTest, RunRegisteredFunctionByFile)
+    TEST_F(EditorPythonBindingsLibraryTest, PythonVMLoads_sys_Works)
     {
-        ProxyCommandRegistrationBusHandler proxyCommandRegistrationBusHandler;
-        bool bExecutedFile = false;
-
-        m_testSink.m_evaluateMessage = [&bExecutedFile](const char* window, const char* message)
-        {
-            if (AzFramework::StringFunc::Equal(window, "python"))
-            {
-                if (AzFramework::StringFunc::Equal(message, "EditorPythonBindingsTest_RunScriptFile"))
-                {
-                    bExecutedFile = true;
-                }
-            }
-            return false;
-        };
-
-        AZ::Entity e;
-        e.CreateComponent<EditorPythonBindings::PythonSystemComponent>();
-        e.Init();
-        e.Activate();
-
-        // starting SimulateEditorBecomingInitialized() without the default CommandRegistrationBus connected
-        SimulateEditorBecomingInitialized(false);
-
-        // file running test
-        ASSERT_TRUE(proxyCommandRegistrationBusHandler.m_pyRunFileCallback);
-        AZStd::string filename;
-        AzFramework::StringFunc::Path::ConstructFull(m_engineRoot, "Gems/EditorPythonBindings/Code/Tests", "EditorPythonBindingsTest", "py", filename);
-        EXPECT_EQ(AzFramework::CommandResult::Success, proxyCommandRegistrationBusHandler.m_pyRunFileCallback({ "pyRunFile", filename.c_str() }));
-        EXPECT_EQ(AzFramework::CommandResult::ErrorWrongNumberOfArguments, proxyCommandRegistrationBusHandler.m_pyRunFileCallback({ "pyRunFile" }));
-        EXPECT_TRUE(bExecutedFile);
-
-        e.Deactivate();
+        DoLibraryTest("sys");
     }
 
+    TEST_F(EditorPythonBindingsLibraryTest, PythonVMLoads_ctypes_Works)
+    {
+        DoLibraryTest("ctypes");
+    }
+
+    TEST_F(EditorPythonBindingsLibraryTest, PythonVMLoads_bz2_Works)
+    {
+        DoLibraryTest("bz2");
+    }
+
+    TEST_F(EditorPythonBindingsLibraryTest, PythonVMLoads_lzma_Works)
+    {
+        DoLibraryTest("lzma");
+    }
+
+    TEST_F(EditorPythonBindingsLibraryTest, PythonVMLoads_socket_Works)
+    {
+        DoLibraryTest("socket");
+    }
+
+    TEST_F(EditorPythonBindingsLibraryTest, PythonVMLoads_sqlite3_Works)
+    {
+        DoLibraryTest("sqlite3");
+    }
+
+    TEST_F(EditorPythonBindingsLibraryTest, PythonVMLoads_ssl_Works)
+    {
+        DoLibraryTest("ssl");
+    }
 }
 
 

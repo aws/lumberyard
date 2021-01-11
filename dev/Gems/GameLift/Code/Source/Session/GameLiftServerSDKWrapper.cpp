@@ -41,11 +41,6 @@ namespace GridMate
         return Aws::GameLift::Server::ActivateGameSession();
     }
 
-    Aws::GameLift::GenericOutcome GameLiftServerSDKWrapper::TerminateGameSession()
-    {
-        return Aws::GameLift::Server::TerminateGameSession();
-    }
-
     Aws::GameLift::GenericOutcome GameLiftServerSDKWrapper::AcceptPlayerSession(const std::string& playerSessionId)
     {
         return Aws::GameLift::Server::AcceptPlayerSession(playerSessionId);

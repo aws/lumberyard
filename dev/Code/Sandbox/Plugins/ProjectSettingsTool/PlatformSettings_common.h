@@ -40,6 +40,7 @@ namespace ProjectSettingsTool
         static const AZ::Crc32 LinkedLineEdit = AZ_CRC("LinkedLineEdit");
         static const AZ::Crc32 FileSelect = AZ_CRC("FileSelect");
         static const AZ::Crc32 QValidatedLineEdit = AZ_CRC("QValLineEdit");
+        static const AZ::Crc32 QValidatedBrowseEdit = AZ_CRC("QValBrowseEdit");
     } // namespace Handlers
 
     namespace Identfiers

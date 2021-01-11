@@ -74,16 +74,20 @@ end
 
 function DynamicContentTest:OnAction(entityId, actionName)
 
+    local manifestVersionId = ""
+    local userRequestPakVersionId = ""
+    local outputFile = ""
+
     if actionName == "RequestManifest" then
         Debug.Log("Requesting manifest..")
         if DynamicContentRequestBus.Event == nil then
             Debug.Log("No Content Request Events found")
             return
         end
-        DynamicContentRequestBus.Event.RequestManifest(DynamicContent.ModuleEntity,"DynamicContentTest.json")
+        DynamicContentRequestBus.Event.RequestVersionedManifest(DynamicContent.ModuleEntity,"DynamicContentTest.json", manifestVersionId)
         self:UpdateText()
     elseif actionName == "RequestPak" then
-        DynamicContentRequestBus.Event.RequestFileStatus(DynamicContent.ModuleEntity,self.Properties.UserRequestedPak, "")
+        DynamicContentRequestBus.Event.RequestVersionedFileStatus(DynamicContent.ModuleEntity, self.Properties.UserRequestedPak, outputFile, userRequestPakVersionId)
     elseif actionName == "ClearContent" then
         DynamicContentRequestBus.Event.ClearAllContent(DynamicContent.ModuleEntity)
         self:RefreshStatus()
@@ -91,7 +95,7 @@ function DynamicContentTest:OnAction(entityId, actionName)
         DynamicContentRequestBus.Event.DeletePak(DynamicContent.ModuleEntity,self.Properties.UserRequestedPak)
         self:RefreshStatus()
     elseif actionName == "RequestPakStatusList" then
-        DynamicContentRequestBus.Event.UpdateFileStatus(DynamicContent.ModuleEntity, self.Properties.UserRequestedPak, false)
+        DynamicContentRequestBus.Event.UpdateVersionedFileStatus(DynamicContent.ModuleEntity, self.Properties.UserRequestedPak, false, userRequestPakVersionId)
     elseif actionName == "RequestDownload" then
         DynamicContentRequestBus.Event.RequestDownload(DynamicContent.ModuleEntity, self.Properties.UserRequestedPak, false)
     end

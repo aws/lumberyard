@@ -230,39 +230,15 @@ namespace AzToolsFramework
         return entity->GetId();
     }
 
-    AZ::Entity* EditorEntityContextComponent::CreateEditorEntity(const char* name)
-    {
-        AZ::Entity* entity = CreateEntity(name);
-        FinalizeEditorEntity(entity);
-        return entity;
-    }
-
-    // Temporarily disable warnings while calling CreateEditorEntityWithId until
-    // the code can be moved directly to CreateNewEditorEntityWithId
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     //=========================================================================
     // EditorEntityContextRequestBus::CreateEditorEntityWithId
     //=========================================================================
     AZ::EntityId EditorEntityContextComponent::CreateNewEditorEntityWithId(const char* name, const AZ::EntityId& entityId)
     {
-        AZ::EntityId newEntityId;
-
-        AZ::Entity* entity = CreateEditorEntityWithId(name, entityId);
-        if (entity)
-        {
-            newEntityId = entity->GetId();
-        }
-
-        return newEntityId;
-    }
-    AZ_POP_DISABLE_WARNING
-
-    AZ::Entity* EditorEntityContextComponent::CreateEditorEntityWithId(const char* name, const AZ::EntityId& entityId)
-    {
         if (!entityId.IsValid())
         {
             AZ_Warning("EditorEntityContextComponent", false, "Cannot create an entity with an invalid ID.");
-            return nullptr;
+            return AZ::EntityId();
         }
         // Make sure this ID is not already in use.
         AZ::SliceComponent::EntityList existingEntities;
@@ -276,13 +252,16 @@ namespace AzToolsFramework
                     false,
                     "An entity already exists with ID %s, a new entity will not be created.",
                     entityId.ToString().c_str());
-                return nullptr;
+
+                return AZ::EntityId();
             }
         }
+
         AZ::Entity* entity = aznew AZ::Entity(entityId, name);
         AddEntity(entity);
         FinalizeEditorEntity(entity);
-        return entity;
+
+        return entity->GetId();
     }
 
     //=========================================================================

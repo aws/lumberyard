@@ -1,0 +1,20 @@
+{
+  "none": {
+    "Include": [
+      "Include/PythonAssetBuilder/PythonAssetBuilderBus.h",
+      "Include/PythonAssetBuilder/PythonBuilderNotificationBus.h",
+      "Include/PythonAssetBuilder/PythonBuilderRequestBus.h"
+    ],
+    "Source": [
+      "Source/PythonAssetBuilderModule.cpp",
+      "Source/PythonAssetBuilderSystemComponent.cpp",
+      "Source/PythonAssetBuilderSystemComponent.h",
+      "Source/PythonBuilderMessageSink.cpp",
+      "Source/PythonBuilderMessageSink.h",
+      "Source/PythonBuilderNotificationHandler.cpp",
+      "Source/PythonBuilderNotificationHandler.h",
+      "Source/PythonBuilderWorker.cpp",
+      "Source/PythonBuilderWorker.h"
+    ]
+  }
+}

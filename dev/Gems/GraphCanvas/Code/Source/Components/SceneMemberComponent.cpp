@@ -31,12 +31,19 @@ namespace GraphCanvas
         {
             serializeContext->Class<SceneMemberComponent, AZ::Component>()
                 ->Version(1)
+                ->Field("IsGroupable", &SceneMemberComponent::m_isGroupable)
             ;
         }
     }
 
 
     SceneMemberComponent::SceneMemberComponent()
+        : m_isGroupable(false)
+    {
+    }
+
+    SceneMemberComponent::SceneMemberComponent(bool isGroupable)
+        : m_isGroupable(isGroupable)
     {
     }
 
@@ -48,10 +55,16 @@ namespace GraphCanvas
     void SceneMemberComponent::Activate()
     {
         SceneMemberRequestBus::Handler::BusConnect(GetEntityId());
+
+        if (m_isGroupable)
+        {
+            GroupableSceneMemberRequestBus::Handler::BusConnect(GetEntityId());
+        }
     }
 
     void SceneMemberComponent::Deactivate()
     {
+        GroupableSceneMemberRequestBus::Handler::BusDisconnect();
         SceneMemberRequestBus::Handler::BusDisconnect();
         AZ::EntityBus::Handler::BusDisconnect();
     }
@@ -93,26 +106,6 @@ namespace GraphCanvas
         return m_sceneId;
     }
 
-    bool SceneMemberComponent::LockForExternalMovement(const AZ::EntityId& sceneMemberId)
-    {
-        // Idea on doing anchoring and the like. Register to the OnSceneMemberPosition changed bus for this id.
-        // And then you can just calculate the movement and move yourself by the correct amount.
-        if (!m_lockedSceneMember.IsValid())
-        {
-            m_lockedSceneMember = sceneMemberId;
-        }
-
-        return m_lockedSceneMember == sceneMemberId;
-    }
-
-    void SceneMemberComponent::UnlockForExternalMovement(const AZ::EntityId& sceneMemberId)
-    {
-        if (m_lockedSceneMember == sceneMemberId)
-        {
-            m_lockedSceneMember.SetInvalid();
-        }
-    }
-
     void SceneMemberComponent::OnEntityExists(const AZ::EntityId& entityId)
     {
         AZ::EntityBus::Handler::BusDisconnect();
@@ -126,6 +119,46 @@ namespace GraphCanvas
             {
                 selfEntity->CreateComponent<PersistentIdComponent>();
             }
+        }
+    }
+
+    bool SceneMemberComponent::IsGrouped() const
+    {
+        return m_groupId.IsValid();
+    }
+
+    const AZ::EntityId& SceneMemberComponent::GetGroupId() const
+    {
+        return m_groupId;
+    }
+
+    void SceneMemberComponent::RegisterToGroup(const AZ::EntityId& groupId)
+    {
+        if (m_groupId.IsValid())
+        {
+            AZ_Assert(false, "Trying to register an element to two groups at the same time.");
+        }
+        else
+        {
+            m_groupId = groupId;
+            GroupableSceneMemberNotificationBus::Event(GetEntityId(), &GroupableSceneMemberNotifications::OnGroupChanged);
+        }
+    }
+
+    void SceneMemberComponent::UnregisterFromGroup(const AZ::EntityId& groupId)
+    {
+        if (m_groupId == groupId)
+        {
+            m_groupId.SetInvalid();
+            GroupableSceneMemberNotificationBus::Event(GetEntityId(), &GroupableSceneMemberNotifications::OnGroupChanged);
+        }
+    }
+
+    void SceneMemberComponent::RemoveFromGroup()
+    {
+        if (m_groupId.IsValid())
+        {
+            NodeGroupRequestBus::Event(m_groupId, &NodeGroupRequests::RemoveElementFromGroup, GetEntityId());
         }
     }
 }

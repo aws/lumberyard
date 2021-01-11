@@ -65,6 +65,7 @@ namespace AZ
             ScriptCanvas,
             LegacyTerrain,
             Terrain,
+            Cloth,
             // Add new major categories here (and add names to the parallel position in ProfileCategoryNames) - these categories are enabled by default
 
             FirstDetailedCategory,
@@ -73,6 +74,7 @@ namespace AZ
             JobManagerDetailed,
 
             AzRenderDetailed,
+            ClothDetailed,
             // Add new detailed categories here (and add names to the parallel position in ProfileCategoryNames) -- these categories are disabled by default
             
             // Internal reserved categories, not for use with performance events
@@ -124,11 +126,13 @@ namespace AZ
             "ScriptCanvas",
             "LegacyTerrain",
             "Terrain",
+            "Cloth",
 
             "RendererDetailed",
             "3DEngineDetailed",
             "JobManagerDetailed",
             "AzRenderDetailed",
+            "ClothDetailed",
 
             "MemoryReserved",
             "Global"

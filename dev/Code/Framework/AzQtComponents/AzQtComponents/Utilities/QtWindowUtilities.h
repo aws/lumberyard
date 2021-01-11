@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
+#include <QOperatingSystemVersion>
 #include <QRect>
 
 class QWidget;
@@ -24,6 +25,7 @@ namespace AzQtComponents
 
     AZ_QT_COMPONENTS_API QRect GetTotalScreenGeometry();
     AZ_QT_COMPONENTS_API void EnsureWindowWithinScreenGeometry(QWidget* widget);
+    AZ_QT_COMPONENTS_API void EnsureGeometryWithinScreenTop(QRect& geometry);
 
     AZ_QT_COMPONENTS_API void SetClipRegionForDockingWidgets(QWidget* widget, QPainter& painter, QMainWindow* mainWindow);
     
@@ -45,7 +47,7 @@ namespace AzQtComponents
 
     inline bool isWin10()
     {
-        return QSysInfo::windowsVersion() == QSysInfo::WV_WINDOWS10;
+        return QOperatingSystemVersion::current() >= QOperatingSystemVersion(QOperatingSystemVersion::Windows, 10);
     }
 } // namespace AzQtComponents
 

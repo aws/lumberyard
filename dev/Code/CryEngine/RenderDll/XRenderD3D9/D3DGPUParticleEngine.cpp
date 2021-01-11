@@ -3202,7 +3202,7 @@ void CD3DGPUParticleEngine::Render(EmitterTypePtr emitter, EGPUParticlePass pass
     }
 }
 
-void CD3DGPUParticleEngine::UpdateFrame()
+void CD3DGPUParticleEngine::DeleteQueuedItems()
 {
     AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
 
@@ -3250,6 +3250,13 @@ void CD3DGPUParticleEngine::UpdateFrame()
         renderElement->Release();
     }
     m_impl->renderElementsToRelease.clear();
+}
+
+void CD3DGPUParticleEngine::UpdateFrame()
+{
+    DeleteQueuedItems();
+
+    AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
 
     if (m_impl->emittersQueuedForUpdate.empty())
     {
@@ -3435,6 +3442,10 @@ void CD3DGPUParticleEngine::QueueEmitterNextFrame(EmitterTypePtr pEmitter, bool 
 
 void CD3DGPUParticleEngine::Release()
 {
+    // Normally, these are deleted during the next UpdateFrame(), but during level unload, they must be released immediately
+    // or resources may be leaked (or at least won't be deleted until the next level is loaded and begins ticking)
+    DeleteQueuedItems();
+
     m_impl->initialized = false;
 
     SAFE_RELEASE(m_impl->shrGpuBegin);

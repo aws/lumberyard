@@ -54,6 +54,12 @@ namespace ScriptCanvas
                 StopTimer();
             }
 
+            void BaseTimerNode::OnActivate()
+            {
+                ExecutionTimingNotificationsBus::EventResult(m_latentStartTimerEvent, this->GetOwningScriptCanvasId(), &ExecutionTimingNotifications::GetLatentStartTimerEvent);
+                ExecutionTimingNotificationsBus::EventResult(m_latentStopTimerEvent, this->GetOwningScriptCanvasId(), &ExecutionTimingNotifications::GetLatentStopTimerEvent);
+            }
+
             void BaseTimerNode::OnInit()
             {
                 AZStd::string slotName = GetTimeSlotName();
@@ -297,7 +303,7 @@ namespace ScriptCanvas
 
             bool BaseTimerNode::IsActive() const
             {
-                return false;
+                return m_isActive;
             }
 
             bool BaseTimerNode::AllowInstantResponse() const

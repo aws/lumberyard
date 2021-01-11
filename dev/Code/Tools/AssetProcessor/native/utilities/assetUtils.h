@@ -138,6 +138,9 @@ namespace AssetUtilities
     //! This function will try deleting the outputFile first,if it exists, before doing the move operation
     bool MoveFileWithTimeout(QString sourceFile, QString outputFile, unsigned int waitTimeinSeconds = 0);
 
+    //! Create directory with retries, returns true if the create operation succeeds otherwise return false
+    bool CreateDirectoryWithTimeout(QDir dir, unsigned int waitTimeinSeconds = 0);
+
     //! Normalize and removes any alias from the path
     QString NormalizeAndRemoveAlias(QString path);
 

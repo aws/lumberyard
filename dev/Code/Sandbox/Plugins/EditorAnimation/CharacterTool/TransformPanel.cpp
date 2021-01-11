@@ -170,17 +170,17 @@ namespace CharacterTool
 
         if (m_mode == Manip::MODE_TRANSLATE)
         {
-            x.sprintf("%.3f", m_transform.t.x);
-            y.sprintf("%.3f", m_transform.t.y);
-            z.sprintf("%.3f", m_transform.t.z);
+            x.asprintf("%.3f", m_transform.t.x);
+            y.asprintf("%.3f", m_transform.t.y);
+            z.asprintf("%.3f", m_transform.t.z);
         }
         else if (m_mode == Manip::MODE_ROTATE)
         {
             m_rotationAngles = Ang3::GetAnglesXYZ(m_transform.q);
 
-            x.sprintf("%.2f", RAD2DEG(m_rotationAngles.x));
-            y.sprintf("%.2f", RAD2DEG(m_rotationAngles.y));
-            z.sprintf("%.2f", RAD2DEG(m_rotationAngles.z));
+            x.asprintf("%.2f", RAD2DEG(m_rotationAngles.x));
+            y.asprintf("%.2f", RAD2DEG(m_rotationAngles.y));
+            z.asprintf("%.2f", RAD2DEG(m_rotationAngles.z));
         }
 
         m_editX->setText(FixLeadingMinus(x));

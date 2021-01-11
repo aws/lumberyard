@@ -41,6 +41,7 @@ namespace AZ
     namespace Data
     {
         class AssetData;
+        struct AssetId;
     }
 }
 
@@ -464,6 +465,7 @@ struct IAnimTrack
     virtual void GetValue(float time, Quat& value) = 0;
     virtual void GetValue(float time, bool& value) = 0;
     virtual void GetValue(float time, Maestro::AssetBlends<AZ::Data::AssetData>& value) = 0;
+    virtual void GetValue(float time, AZ::Data::AssetId& value) = 0;
 
     // support for AZ:: vector types - re-route to legacy types
     void GetValue(float time, AZ::Vector3& value, bool applyMultiplier = false)
@@ -489,6 +491,7 @@ struct IAnimTrack
     virtual void SetValue(float time, const Quat& value, bool bDefault = false) = 0;
     virtual void SetValue(float time, const bool& value, bool bDefault = false) = 0;
     virtual void SetValue(float time, const Maestro::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) = 0;
+    virtual void SetValue(float time, const AZ::Data::AssetId& value, bool bDefault = false) = 0;
 
     // support for AZ:: vector types - re-route to legacy types
     void SetValue(float time, AZ::Vector3& value, bool bDefault = false, bool applyMultiplier = false)
@@ -565,6 +568,9 @@ struct IAnimTrack
 
     virtual unsigned int GetId() const = 0;
     virtual void SetId(unsigned int id) = 0;
+
+    //! Sets an asset type for a specific track
+    virtual void SetAssetTypeName(const AZStd::string& assetTypeName) {};
 
     // </interfuscator:shuffle>
 };

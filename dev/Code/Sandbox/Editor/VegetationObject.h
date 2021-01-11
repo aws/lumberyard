@@ -22,6 +22,7 @@
 #define VEGETATION_SLOPE_MIN "SlopeMin"
 #define VEGETATION_SLOPE_MAX "SlopeMax"
 
+#include <StatObjBus.h>
 
 class CMaterial;
 class CVegetationMap;
@@ -85,7 +86,9 @@ using VegetationObjectBus = AZ::EBus<VegetationObjectEvents>;
 /** Description of vegetation object which can be place on the map.
 */
 class CVegetationObject
-    : public CVarObject, public VegetationObjectBus::Handler
+    : public CVarObject 
+    , public VegetationObjectBus::Handler
+    , public StatObjEventBus::Handler
 {
     Q_OBJECT
 public:
@@ -231,6 +234,10 @@ protected:
     // --------------- VegetationObjectEvents ---------------
     void OnStatObjVegetationDataChanged() override;
     // ------------------------------------------------------
+
+    // --------------- StatObjBus ---------------
+    void OnStatObjReloaded() override;
+    // ------------------------------------------
 
     GUID m_guid;
 

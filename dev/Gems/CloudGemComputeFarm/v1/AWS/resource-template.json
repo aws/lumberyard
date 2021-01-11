@@ -454,7 +454,10 @@
                 "CloudCanvas": {
                     "Permissions": [
                         {
-                            "Action": ["iam:PassRole"],
+                            "Action": [
+                                "iam:PassRole",
+                                "iam:CreateServiceLinkedRole"
+                            ],
                             "AbstractRole": "ServiceLambda"
                         }
                     ]
@@ -680,7 +683,14 @@
                                 "autoscaling:UpdateAutoScalingGroup",
                                 "autoscaling:DeleteAutoScalingGroup",
                                 "autoscaling:DescribeAutoScalingGroups",
-                                "ec2:DescribeKeyPairs"
+                                "ec2:DescribeKeyPairs",
+                                "ec2:DescribeImages",
+                                "ec2:DescribeVolumes",
+                                "ec2:DescribeInstances",
+                                "ec2:DescribeInstanceAttribute",
+                                "ec2:DescribeSecurityGroups",
+                                "ec2:DescribeVpcs",
+                                "ec2:DescribeSubnets"
                             ]
                         },
                         {

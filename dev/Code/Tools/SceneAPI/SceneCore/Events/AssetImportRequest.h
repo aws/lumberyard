@@ -69,6 +69,7 @@ namespace AZ
                 };
 
                 static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+                using MutexType = AZStd::recursive_mutex;
 
                 virtual ~AssetImportRequest() = 0;
 

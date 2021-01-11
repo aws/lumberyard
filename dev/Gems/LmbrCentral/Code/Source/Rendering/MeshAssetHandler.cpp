@@ -16,6 +16,7 @@
 #include <AzFramework/Asset/SimpleAsset.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzCore/std/parallel/binary_semaphore.h>
 
 #include <LmbrCentral/Rendering/MeshAsset.h>
@@ -27,6 +28,9 @@ namespace LmbrCentral
 {   
     //////////////////////////////////////////////////////////////////////////
     const AZStd::string MeshAssetHandlerHelper::s_assetAliasToken = "@assets@/";
+
+    // what mesh do we use as a placeholder when its currently busy compiling?
+    static const char* g_meshCompilingSubstituteAsset = "engineassets/objects/default.cgf";
 
     MeshAssetHandlerHelper::MeshAssetHandlerHelper()
         : m_asyncLoadCvar(nullptr)
@@ -85,6 +89,49 @@ namespace LmbrCentral
 
         return aznew MeshAsset();
     }
+
+    AZ::Data::AssetId MeshAssetHandler::AssetMissingInCatalog(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
+    {
+        // if tracing is disabled, we are likely in a situation where we specifically don't want any diagnostic information or "errors" to appear
+        // so in that case, don't load anything, don't substitute anything, don't escalate anything, just let the empty blank asset return.
+#if defined(AZ_ENABLE_TRACING)
+        if (asset.GetId().IsValid())
+        {
+            // find out whether its still compiling or it will never be available because its source file is missing.
+            // this also escalates it, if found, to the top of the build queue:
+            AzFramework::AssetSystem::AssetStatus statusResult = AzFramework::AssetSystem::AssetStatus_Unknown;
+            AzFramework::AssetSystemRequestBus::BroadcastResult(statusResult, &AzFramework::AssetSystem::AssetSystemRequests::GetAssetStatusById, asset.GetId());
+
+            if ((statusResult == AzFramework::AssetSystem::AssetStatus_Compiling) || (statusResult == AzFramework::AssetSystem::AssetStatus_Queued))
+            {
+                // note that we can also check other codes and substitute other meshes if we want, here...
+                // its currently compiling and will finish soon.
+                // substitute a placeholder mesh:
+
+                if (!m_missingMeshAssetId.IsValid())
+                {
+                    // substitute the missing mesh assetId so that there's at least something to render that indicates a problem
+                    // in builds where there is no diagnostics or tracing, don't substitute anything, to prefer that there's no visual indication that
+                    // something is wrong in shipped games.
+                    AZ::Data::AssetCatalogRequestBus::BroadcastResult(m_missingMeshAssetId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath, g_meshCompilingSubstituteAsset, azrtti_typeid<MeshAsset>(), false);
+                    AZ_Error("Mesh Asset Handler", m_missingMeshAssetId.IsValid(), "Attempted to substitute %s for a missing asset, but it is also missing!", g_meshCompilingSubstituteAsset);
+                }
+
+                if (m_missingMeshAssetId.IsValid())
+                {
+                    AZ_TracePrintf("MeshAssetHandler", "   - substituting with default asset ID %s\n", m_missingMeshAssetId.ToString<AZStd::string>().c_str());
+                    // substitute the missing mesh asset.
+                    return m_missingMeshAssetId;
+                }
+            }
+        }
+#endif // defined(AZ_ENABLE_TRACING)
+
+        // otherwise, if we get here, it means that either it was truly missing, in which case let an error occur, or the missing default substitute asset
+        // is also itself missing!
+        return AZ::Data::AssetId();
+    }
+
 
     bool MeshAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& /*asset*/, AZ::IO::GenericStream* /*stream*/, const AZ::Data::AssetFilterCB& /*assetLoadFilterCB*/)
     {
@@ -199,7 +246,7 @@ namespace LmbrCentral
 
     const char* MeshAssetHandler::GetBrowserIcon() const
     {
-        return "Editor/Icons/Components/StaticMesh.png";
+        return "Editor/Icons/Components/StaticMesh.svg";
     }
 
     AZ::Uuid MeshAssetHandler::GetComponentTypeId() const

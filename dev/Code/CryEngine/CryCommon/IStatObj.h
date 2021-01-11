@@ -218,6 +218,7 @@ struct IStreamable
 
 struct SMeshBoneMapping_uint8;
 struct SSpine;
+struct SMeshColor;
 
 // Summary:
 //     Interface to hold static object data
@@ -822,5 +823,5 @@ struct IStatObj
     virtual void SetSubObjectMeshCount(int count) = 0;
     virtual void CleanUnusedLods() = 0;
 
-    virtual AZStd::vector<float>& GetClothInverseMasses() = 0;
+    virtual AZStd::vector<SMeshColor>& GetClothData() = 0;
 };

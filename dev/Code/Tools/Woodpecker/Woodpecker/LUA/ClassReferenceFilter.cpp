@@ -78,7 +78,7 @@ bool ClassReferenceFilterModel::TraverseChildren(const QModelIndex& indexParent,
 
     for (int i = 0; i < rowCount; ++i)
     {
-        const QModelIndex rowIndex = indexParent.child(i, indexParent.column());
+        const QModelIndex rowIndex = indexParent.model()->index(i, indexParent.column(), indexParent);
         if (rowIndex.isValid())
         {
             bool rowMatches = false;

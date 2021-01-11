@@ -122,6 +122,33 @@ protected:
 Q_GLOBAL_STATIC(QtViewPaneManager, s_instance)
 
 
+QWidget* QtViewPane::CreateWidget()
+{
+    QWidget* w = nullptr;
+
+    if (m_factoryFunc)
+    {
+        // Although all the factory lambdas do have a default nullptr argument, this information
+        // doesn't get retained when they are converted to std::function<QWidget*(QWidget*)>,
+        // thus we need to set the parent explicitly.
+        // At the same time, adding a default argument to the lambdas will allow for them to be
+        // called exactly as before in all other places where they are not converted, so we get
+        // to explicitly pass an argument only if strictly necessary.
+        w = m_factoryFunc(nullptr);
+    }
+    else
+    {
+        // If a view pane was registered using RegisterCustomViewPane, then instead of a factory function, we rely
+        // on ViewPaneCallbackBus::CreateViewPaneWidget to create the widget for us and then pass back the Qt windowId
+        // so that we can retrieve it.
+        AZ::u64 createdWidgetWinId;
+        AzToolsFramework::ViewPaneCallbackBus::EventResult(createdWidgetWinId, m_name.toUtf8().constData(), &AzToolsFramework::ViewPaneCallbacks::CreateViewPaneWidget);
+        w = QWidget::find(createdWidgetWinId);
+    }
+
+    return w;
+}
+
 bool QtViewPane::Close(QtViewPane::CloseModes closeModes)
 {
     if (!IsConstructed())
@@ -355,7 +382,7 @@ void DockWidget::RestoreState(bool forceDefault)
         static const int verticalCascadeAmount = 20;
         static const int lowerScreenEdgeBuffer = 50;
 
-        QRect screenRect = QApplication::desktop()->screenGeometry();
+        QRect screenRect = QApplication::primaryScreen()->geometry();
         int screenHeight = screenRect.height();
         int screenWidth = screenRect.width();
 
@@ -636,13 +663,13 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
     {
         if (!pane->IsConstructed() || isMultiPane)
         {
-            // Although all the factory lambdas do have a default nullptr argument, this information
-            // doesn't get retained when they are converted to std::function<QWidget*(QWidget*)>,
-            // thus we need to set the parent explicitly.
-            // At the same time, adding a default argument to the lambdas will allow for them to be
-            // called exactly as before in all other places where they are not converted, so we get
-            // to explicitly pass an argument only if strictly necessary.
-            QWidget* w = pane->m_factoryFunc(nullptr);
+            QWidget* w = pane->CreateWidget();
+            if (!w)
+            {
+                qWarning() << Q_FUNC_INFO << "Unable to create widget for pane with name" << name;
+                return nullptr;
+            }
+
             w->setProperty("restored", (modes & QtViewPane::OpenMode::RestoreLayout) != 0);
             newDockWidget = new DockWidget(w, pane, m_settings, m_mainWindow, m_advancedDockManager);
             AzQtComponents::StyleManager::repolishStyleSheet(newDockWidget);
@@ -888,10 +915,14 @@ QWidget* QtViewPaneManager::CreateWidget(const QString& paneName)
         return nullptr;
     }
 
-    QWidget* w = pane->m_factoryFunc(nullptr);
-    w->setWindowTitle(paneName);
+    QWidget* w = pane->CreateWidget();
+    if (w)
+    {
+        w->setWindowTitle(paneName);
+        return w;
+    }
 
-    return w;
+    return nullptr;
 }
 
 void QtViewPaneManager::SaveLayout()

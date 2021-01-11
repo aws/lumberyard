@@ -69,7 +69,7 @@ namespace ImageProcessingEditor
         if (presetSetting)
         {
             m_ui->presetComboBox->setCurrentText(presetSetting->m_name.c_str());
-            QObject::connect(m_ui->presetComboBox, static_cast<void(QComboBox::*)(const QString&)>(&QComboBox::currentIndexChanged), this, &TexturePresetSelectionWidget::OnChangePreset);
+            QObject::connect(m_ui->presetComboBox, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &TexturePresetSelectionWidget::OnChangePreset);
 
             // Suppress engine reduction checkbox
             m_ui->serCheckBox->setCheckState(m_textureSetting->GetMultiplatformTextureSetting().m_suppressEngineReduce ? Qt::CheckState::Checked : Qt::CheckState::Unchecked);
@@ -118,8 +118,9 @@ namespace ImageProcessingEditor
         EditorInternalNotificationBus::Broadcast(&EditorInternalNotificationBus::Events::OnEditorSettingsChanged, true, BuilderSettingManager::s_defaultPlatform);
     }
 
-    void TexturePresetSelectionWidget::OnChangePreset(const QString& text)
+    void TexturePresetSelectionWidget::OnChangePreset(int index)
     {
+        QString text = m_ui->presetComboBox->itemText(index);
         m_textureSetting->SetToPreset(AZStd::string(text.toUtf8().data()));
         EditorInternalNotificationBus::Broadcast(&EditorInternalNotificationBus::Events::OnEditorSettingsChanged, true, BuilderSettingManager::s_defaultPlatform);
     }

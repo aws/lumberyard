@@ -263,15 +263,21 @@ namespace NCryMetal
                     //iOS/tvOS 12.0 or newer - running on macOS 10.15 or newer
                     //However, on older OSs (and in macOS case, older GPUs) you are still required to set the flag.
 #if defined(AZ_COMPILER_CLANG) && AZ_COMPILER_CLANG >= 9    //@available was added in Xcode 9
-                    if (@available(macOS 10.15, iOS 12.0, *))
+#if defined(AZ_PLATFORM_MAC)
+                    if (@available(macOS 10.15, *))
+#else
+                    // There is a bug that causes @available to always return true in devices running iOS 11.
+                    // Using alternative method to check if the device is running iOS/tvOS 12.0 or newer.
+                    if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 12.0f)
+#endif
                     {
                         //No need to do anything but if we want to add non sRGB view related flags it would go here.
                     }
                     else
+#endif
                     {
                         Desc.usage |= MTLTextureUsagePixelFormatView;
                     }
-#endif
                 }
 
                 pTexture->m_Texture = [mtlDevice newTextureWithDescriptor:Desc];

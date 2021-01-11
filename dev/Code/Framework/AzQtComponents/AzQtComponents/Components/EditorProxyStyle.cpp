@@ -15,38 +15,39 @@
 # pragma warning(disable: 4127) // warning C4127: conditional expression is constant in qvector.h when including qpainter.h
 #endif
 
-#include <AzQtComponents/Components/DockBar.h>
-#include <AzQtComponents/Components/DockTabBar.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
-#include <AzQtComponents/Components/SearchLineEdit.h>
-#include <AzQtComponents/Components/Style.h>
-#include <AzQtComponents/Components/StyledDetailsTableView.h>
-#include <AzQtComponents/Components/StyledDockWidget.h>
-#include <AzQtComponents/Components/StyledLineEdit.h>
 #include <AzQtComponents/Components/StyledSpinBox.h>
+#include <AzQtComponents/Components/ToolButtonComboBox.h>
+#include <AzQtComponents/Components/SearchLineEdit.h>
+#include <AzQtComponents/Components/StyledLineEdit.h>
+#include <AzQtComponents/Components/StyledDetailsTableView.h>
+#include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/StyleHelpers.h>
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
-#include <AzQtComponents/Components/ToolButtonComboBox.h>
+#include <AzQtComponents/Components/DockBar.h>
+#include <AzQtComponents/Components/DockTabBar.h>
+#include <AzQtComponents/Components/StyledDockWidget.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
-#include <AzQtComponents/Components/Widgets/ToolBar.h>
 #include <AzQtComponents/Utilities/TextUtilities.h>
 
-#include <QAbstractItemView>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
 #include <QAbstractNativeEventFilter>
+#include <QAbstractItemView>
 #include <QApplication>
 #include <QComboBox>
 #include <QDebug>
 #include <QDockWidget>
 #include <QFile>
+#include <QGuiApplication>
 #include <QHeaderView>
 #include <QIcon>
 #include <QLineEdit>
 #include <QMainWindow>
 #include <QMenu>
+#include <QOperatingSystemVersion>
 #include <QPainter>
 #include <QPushButton>
-#include <QGuiApplication>
 #include <QSpinBox>
 #include <QStyledItemDelegate>
 #include <QStyleOption>
@@ -55,11 +56,12 @@
 #include <QTableView>
 #include <QTimeEdit>
 #include <QTimer>
-#include <QTreeView>
 #include <QToolBar>
 #include <QToolButton>
+#include <QTreeView>
 #include <QVector>
 #include <QWindow>
+AZ_POP_DISABLE_WARNING
 
 #include <AzQtComponents/Components/Widgets/ColorPicker.h>
 #include <AzQtComponents/Components/Widgets/LineEdit.h>
@@ -524,7 +526,7 @@ namespace AzQtComponents
         else if (QMenu* menu = qobject_cast<QMenu*>(widget))
         {
 #ifdef Q_OS_WIN
-            if (QSysInfo::windowsVersion() >= QSysInfo::WV_WINDOWS10)
+            if(QOperatingSystemVersion::current() >= QOperatingSystemVersion(QOperatingSystemVersion::Windows, 10))
             {
                 new EditorProxyStylePrivate::Win10MultiScreenMenuHelper(menu);
 

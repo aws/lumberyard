@@ -31,7 +31,6 @@ namespace GridMate
         virtual Aws::GameLift::GenericOutcome Destroy();
 
         virtual Aws::GameLift::GenericOutcome ActivateGameSession();
-        virtual Aws::GameLift::GenericOutcome TerminateGameSession();
 
         virtual Aws::GameLift::GenericOutcome AcceptPlayerSession(const std::string& playerSessionId);
         virtual Aws::GameLift::GenericOutcome RemovePlayerSession(const char* playerSessionId);

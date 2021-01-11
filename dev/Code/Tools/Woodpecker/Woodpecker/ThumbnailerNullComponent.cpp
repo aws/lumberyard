@@ -75,5 +75,10 @@ namespace LUAEditor
         {
             return m_nullThumbnail;
         }
+
+        bool ThumbnailerNullComponent::IsLoading(AzToolsFramework::Thumbnailer::SharedThumbnailKey /*thumbnailKey*/, const char* /*contextName*/)
+        {
+            return false;
+        }
     } // namespace Thumbnailer
 } // namespace AzToolsFramework

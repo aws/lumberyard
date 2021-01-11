@@ -74,7 +74,7 @@ private:
     SCurveEditorCurve m_defaultCurve;
     SCurveEditorCurve m_defaultCurve1;
     QMenu* m_menu;
-    QToolTipWidget* m_tooltip;
+    QToolTipWrapper* m_tooltip;
     QGradientStops m_stops;
     SCurveEditorContent* m_content;
 };

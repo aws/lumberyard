@@ -39,6 +39,7 @@ namespace AzToolsFramework
                 ->Event("SetSliceDynamic", &SliceRequests::SetSliceDynamic)
                 ->Event("InstantiateSliceFromAssetId", &SliceRequests::InstantiateSliceFromAssetId)
                 ->Event("CreateNewSlice", &SliceRequests::CreateNewSlice)
+                ->Event("ShowPushDialog", &SliceRequests::ShowPushDialog)
                 ;
         }
     }
@@ -100,5 +101,12 @@ namespace AzToolsFramework
             true  /*silenceWarningPopups*/);
 
         return success;
+    }
+
+    void SliceRequestComponent::ShowPushDialog(const EntityIdList& entityIds)
+    {
+        QWidget* mainWindow = nullptr;
+        EditorRequests::Bus::BroadcastResult(mainWindow, &EditorRequests::Bus::Events::GetMainWindow);
+        SliceUtilities::PushEntitiesModal(mainWindow, entityIds, nullptr);
     }
 } // namespace AzToolsFramework

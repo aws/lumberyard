@@ -72,7 +72,7 @@ namespace EMotionFX
             ATTRIB_ORGVTXNUMBERS    = 5,    /**< Original vertex numbers. Typecast to uint32. Original vertex numbers always exist. */
             ATTRIB_COLORS128        = 6,    /**< Vertex colors in 128-bits. */
             ATTRIB_BITANGENTS       = 7,    /**< Vertex bitangents (aka binormal). Typecast to AZ::Vector3. When tangents exists bitangents may still not exist! */
-            ATTRIB_CLOTH_INVMASSES  = 8     /**< Cloth per vertex inverse mass values stored as AZ::u32, packed using four 8 bit values, similar to a 32 bit vertex color. */
+            ATTRIB_CLOTH_DATA       = 8     /**< Vertex cloth data stored as AZ::u32, packed using four 8 bit values, similar to a 32 bit vertex color. */
         };
 
         /**

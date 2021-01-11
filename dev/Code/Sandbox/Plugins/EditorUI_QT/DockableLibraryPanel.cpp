@@ -59,8 +59,8 @@
 #define QTUI_EDITOR_ACTIONADDITEM_FUNCTIONNAME "ActionAddItem"
 #define QTUI_EDITOR_ACTIONADDFOLDER_FUNCTIONNAME "ActionAddFolder"
 
-DockableLibraryPanel::DockableLibraryPanel(QWidget* parent)
-    : FloatableDockPanel("", parent)
+DockableLibraryPanel::DockableLibraryPanel(QWidget* parent, bool maximized)
+    : FloatableDockPanel("", parent, Qt::WindowFlags(), maximized)
     , m_libraryManager(nullptr)
     , m_libraryTitleBar(nullptr)
     , m_panelName("")
@@ -329,7 +329,6 @@ QAction* DockableLibraryPanel::GetMenuAction(LibraryActions action, QString disp
     CRY_ASSERT(GetIEditor());
     CRY_ASSERT(GetIEditor()->GetParticleUtils());
 #define SET_SHORTCUT(x) act->setShortcut(GetIEditor()->GetParticleUtils()->HotKey_GetShortcut(x))
-#define SET_ICON(x) act->setIcon(QIcon(x))
     QAction* act = nullptr;
     if (owner)
     {
@@ -349,7 +348,6 @@ QAction* DockableLibraryPanel::GetMenuAction(LibraryActions action, QString disp
         {
             AddLibrary();
         }, connection);
-        SET_ICON("Editor/UI/Icons/toolbar/libraryAdd.png");
         SET_SHORTCUT("File Menu.Create new library");
         break;
     }
@@ -359,7 +357,6 @@ QAction* DockableLibraryPanel::GetMenuAction(LibraryActions action, QString disp
             {
                 ImportLibrary(PromptImportLibrary());
             }, connection);
-        SET_ICON("Editor/UI/Icons/toolbar/libraryLoad.png");
         SET_SHORTCUT("File Menu.Import");
         break;
     }
@@ -388,7 +385,6 @@ QAction* DockableLibraryPanel::GetMenuAction(LibraryActions action, QString disp
                 QMessageBox::warning(this, "Level Library", "No level library present.");
             }
         }, connection);
-        SET_ICON("Editor/UI/Icons/toolbar/libraryLoad.png");
         SET_SHORTCUT("File Menu.Import level library");
         break;
     }
@@ -422,7 +418,6 @@ QAction* DockableLibraryPanel::GetMenuAction(LibraryActions action, QString disp
                 m_libraryManager->SaveAllLibs();
                 emit SignalSaveAllLibs();
             }, connection);
-        SET_ICON("Editor/UI/Icons/toolbar/librarySave.png");
         SET_SHORTCUT("File Menu.Save");
         break;
     }
@@ -466,7 +461,6 @@ QAction* DockableLibraryPanel::GetMenuAction(LibraryActions action, QString disp
             {
                 RemoveLibrary(currentLib);
             }, connection);
-        SET_ICON("Editor/UI/Icons/toolbar/itemRemove.png");
         act->setEnabled(isLibSelected);
         break;
     }
@@ -497,7 +491,6 @@ QAction* DockableLibraryPanel::GetMenuAction(LibraryActions action, QString disp
     }
     }
 #undef SET_SHORTCUT
-#undef SET_ICON
     return act;
 }
 
@@ -521,7 +514,6 @@ QAction* DockableLibraryPanel::GetMenuAction(ItemActions action, QString fullNam
         act = new QAction(displayAlias, this);
     }
 #define SET_SHORTCUT(x) act->setShortcut(GetIEditor()->GetParticleUtils()->HotKey_GetShortcut(x))
-#define SET_ICON(x) act->setIcon(QIcon(x))
     switch (action)
     {
     case DockableLibraryPanel::ItemActions::OPEN_IN_NEW_TAB:
@@ -652,7 +644,6 @@ QAction* DockableLibraryPanel::GetMenuAction(ItemActions action, QString fullNam
     }
     }
 #undef SET_SHORTCUT
-#undef SET_ICON
     return act;
 }
 
@@ -669,7 +660,6 @@ QAction* DockableLibraryPanel::GetMenuAction(TreeActions action, QString display
     }
 
 #define SET_SHORTCUT(x) act->setShortcut(GetIEditor()->GetParticleUtils()->HotKey_GetShortcut(x))
-#define SET_ICON(x) act->setIcon(QIcon(x))
     switch (action)
     {
     case DockableLibraryPanel::TreeActions::EXPAND_ALL:
@@ -713,7 +703,6 @@ QAction* DockableLibraryPanel::GetMenuAction(TreeActions action, QString display
     }
     }
 #undef SET_SHORTCUT
-#undef SET_ICON
     return act;
 }
 
@@ -860,6 +849,11 @@ void DockableLibraryPanel::UpdateLibSelectionStyle()
 
 void DockableLibraryPanel::SelectSingleLibrary(const QString& libName)
 {
+    if (libName == m_selectedLibraryKey)
+    {
+        return;
+    }
+
     if (m_libraryTreeViews.contains(QString(libName)))
     {
         m_selectedLibraryKey = libName;

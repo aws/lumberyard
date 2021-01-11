@@ -53,7 +53,7 @@ namespace AZ
                 LockGuard lockGuard(m_conditionLock);
 
                 AZ_Assert(!m_postJob, "Post already set");
-                AZ_Assert(m_jobCount == 0, "LegacyJobExecutor::SetPostJob() must be called before starting any jobs");
+                AZ_Assert(!m_running, "LegacyJobExecutor::SetPostJob() must be called before starting any jobs");
                 m_postJob = std::move(postJob);
                 // Note: m_jobCount is not incremented until we push the post job
             }
@@ -74,10 +74,10 @@ namespace AZ
         {
             AZStd::unique_lock<decltype(m_conditionLock)> uniqueLock(m_conditionLock);
 
-            while (m_jobCount)
+            while (m_running)
             {
                 AZ_PROFILE_FUNCTION_STALL(AZ::Debug::ProfileCategory::AzCore);
-                m_completionCondition.wait(uniqueLock, [this] { return this->m_jobCount == 0; });
+                m_completionCondition.wait(uniqueLock, [this] { return !this->m_running; });
             }
         }
 
@@ -85,8 +85,7 @@ namespace AZ
         // Note: this does NOT fence execution of jobs in relation to each other
         inline void PushCompletionFence()
         {
-            LockGuard lockGuard(m_conditionLock);
-            ++m_jobCount;
+            IncJobCount();
         }
 
         // Pop a logical completion fence.  Analogue to the legacy API SJobState::SetStopped()
@@ -98,31 +97,30 @@ namespace AZ
         // Are there presently jobs in-flight (queued or running)?
         inline bool IsRunning()
         {
-            LockGuard lockGuard(m_conditionLock);
-            return m_jobCount != 0;
+            return m_running;
         }
 
     private:
         void JobCompleteUpdate()
         {
-            AZ::u32 postCount;
-            JobExecutorHelper* postJob = nullptr;
+            AZ_Assert(m_jobCount, "Invalid LegacyJobExecutor::m_jobCount.");
+            if (--m_jobCount == 0) // note: m_jobCount is atomic, so only the last completing job will take the count to zero
             {
-                LockGuard lockGuard(m_conditionLock);
-
-                AZ_Assert(m_jobCount, "Invalid LegacyJobExecutor::m_jobCount.");
-                postCount = --m_jobCount;
-
-                if (!postCount)
+                JobExecutorHelper* postJob = nullptr;
                 {
-                    postJob = m_postJob.release();
-                    m_completionCondition.notify_all();
-                }
-            }
+                    // All state transitions to and from running must be serialized through the condition lock
+                    LockGuard lockGuard(m_conditionLock);
 
-            // outside the lock...
-            if (!postCount)
-            {
+                    // Test count again as another job may have started before we got the lock
+                    if (!m_jobCount)
+                    {
+                        m_running = false;
+                        postJob = m_postJob.release();
+                        m_completionCondition.notify_all();
+                    }                    
+                }
+
+                // outside the lock (this pointer is no longer valid)...
                 if (postJob)
                 {
                     postJob->StartOnExecutor();
@@ -130,14 +128,20 @@ namespace AZ
             }
         }
 
-        inline void StartJobInternal(Job * job)
+        void StartJobInternal(Job * job)
         {
-            {
-                LockGuard lockGuard(m_conditionLock);
-                ++m_jobCount;
-            }
-
+            IncJobCount();
             job->Start();
+        }
+
+        void IncJobCount()
+        {
+            if (m_jobCount++ == 0)
+            {
+                // All state transitions to and from running must be serialized through the condition lock (Even though m_running is atomic)
+                LockGuard lockGuard(m_conditionLock);
+                m_running = true;
+            }
         }
 
         class JobExecutorHelper
@@ -188,7 +192,9 @@ namespace AZ
         AZStd::condition_variable m_completionCondition;
         Lock m_conditionLock;
         AZStd::unique_ptr<JobExecutorHelper> m_postJob;
-        AZ::u32 m_jobCount = 0;
+
+        AZStd::atomic_uint m_jobCount{0};
+        AZStd::atomic_bool m_running{false};
     };
 }
 

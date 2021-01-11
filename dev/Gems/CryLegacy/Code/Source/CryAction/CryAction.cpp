@@ -1763,6 +1763,11 @@ bool CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
             m_pItemSystem->Update();
         }
 
+        if (m_pPersistentDebug)
+        {
+            m_pPersistentDebug->Update(frameTime);
+        }
+
         if (m_pMaterialEffects)
         {
             m_pMaterialEffects->Update(frameTime);
@@ -2244,7 +2249,11 @@ void CCryAction::EndGameContext(bool loadEmptyLevel)
     AZ::TickBus::ExecuteQueuedEvents();
     AZ::MainThreadRenderRequestBus::ExecuteQueuedEvents();
 
-    m_contextBridge->OnEndGameContext();
+    if (m_contextBridge)
+    {
+        m_contextBridge->OnEndGameContext();
+    }
+
     m_pGame = 0;
     pGame = 0;
 

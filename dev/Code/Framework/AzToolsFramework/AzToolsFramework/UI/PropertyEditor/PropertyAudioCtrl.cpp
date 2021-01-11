@@ -26,7 +26,8 @@ AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
-
+#include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
+#include <AzQtComponents/Components/Widgets/BrowseEdit.h>
 
 namespace AzToolsFramework
 {
@@ -36,9 +37,7 @@ namespace AzToolsFramework
 
     AudioControlSelectorWidget::AudioControlSelectorWidget(QWidget* parent)
         : QWidget(parent)
-        , m_controlEdit(nullptr)
-        , m_browseButton(nullptr)
-        , m_clearButton(nullptr)
+        , m_browseEdit(nullptr)
         , m_mainLayout(nullptr)
         , m_propertyType(AudioPropertyType::Invalid)
     {
@@ -48,47 +47,30 @@ namespace AzToolsFramework
 
         setFixedHeight(AzToolsFramework::PropertyQTConstant_DefaultHeight);
 
-        m_controlEdit = new QLineEdit(this);
-        m_controlEdit->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
-        m_controlEdit->setMinimumWidth(AzToolsFramework::PropertyQTConstant_MinimumWidth);
-        m_controlEdit->setFixedHeight(AzToolsFramework::PropertyQTConstant_DefaultHeight);
-        m_controlEdit->setMouseTracking(true);
-        m_controlEdit->setContentsMargins(0, 0, 0, 0);
-        m_controlEdit->setFocusPolicy(Qt::StrongFocus);
+        m_browseEdit = new AzQtComponents::BrowseEdit(this);
+        m_browseEdit->setClearButtonEnabled(true);
+        m_browseEdit->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+        m_browseEdit->setMinimumWidth(AzToolsFramework::PropertyQTConstant_MinimumWidth);
+        m_browseEdit->setFixedHeight(AzToolsFramework::PropertyQTConstant_DefaultHeight);
+        m_browseEdit->setMouseTracking(true);
+        m_browseEdit->setContentsMargins(0, 0, 0, 0);
+        m_browseEdit->setFocusPolicy(Qt::StrongFocus);
 
-        m_browseButton = new QPushButton(this);
-        m_browseButton->setFlat(true);
-        m_browseButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        m_browseButton->setFixedSize(QSize(16, 16));
-        m_browseButton->setText("...");
-        m_browseButton->setMouseTracking(true);
-        m_browseButton->setContentsMargins(0, 0, 0, 0);
-        m_browseButton->setToolTip("Browse for ATL control...");
-
-        m_clearButton = new QPushButton(this);
-        m_clearButton->setFlat(true);
-        m_clearButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        m_clearButton->setFixedSize(QSize(16, 16));
-        m_clearButton->setMouseTracking(true);
-        m_clearButton->setIcon(QIcon(":/PropertyEditor/Resources/cross-small.png"));
-        m_clearButton->setContentsMargins(0, 0, 0, 0);
-        m_clearButton->setToolTip("Clear ATL control");
-
-        connect(m_controlEdit, &QLineEdit::editingFinished, this,
-            [this] ()
+        connect(m_browseEdit, &AzQtComponents::BrowseEdit::attachedButtonTriggered, this, &AudioControlSelectorWidget::OnOpenAudioControlSelector);
+        connect(m_browseEdit, &AzQtComponents::BrowseEdit::returnPressed, this,
+            [this]()
             {
-                SetControlName(m_controlEdit->text());
+                SetControlName(m_browseEdit->text());
             }
         );
-        connect(m_browseButton, &QPushButton::clicked, this, &AudioControlSelectorWidget::OnOpenAudioControlSelector);
-        connect(m_clearButton, &QPushButton::clicked, this, &AudioControlSelectorWidget::OnClearControl);
+        QToolButton* clearButton = AzQtComponents::LineEdit::getClearButton(m_browseEdit->lineEdit());
+        assert(clearButton);
+        connect(clearButton, &QToolButton::clicked, this, &AudioControlSelectorWidget::OnClearControl);
 
-        m_mainLayout->addWidget(m_controlEdit);
-        m_mainLayout->addWidget(m_browseButton);
-        m_mainLayout->addWidget(m_clearButton);
+        m_mainLayout->addWidget(m_browseEdit);
 
-        setFocusProxy(m_controlEdit);
-        setFocusPolicy(m_controlEdit->focusPolicy());
+        setFocusProxy(m_browseEdit);
+        setFocusPolicy(m_browseEdit->focusPolicy());
 
         setLayout(m_mainLayout);
 
@@ -123,22 +105,6 @@ namespace AzToolsFramework
         {
             m_propertyType = type;
         }
-    }
-
-    QWidget* AudioControlSelectorWidget::GetFirstInTabOrder()
-    {
-        return m_controlEdit;
-    }
-
-    QWidget* AudioControlSelectorWidget::GetLastInTabOrder()
-    {
-        return m_clearButton;
-    }
-
-    void AudioControlSelectorWidget::UpdateTabOrder()
-    {
-        setTabOrder(m_controlEdit, m_browseButton);
-        setTabOrder(m_browseButton, m_clearButton);
     }
 
     bool AudioControlSelectorWidget::eventFilter(QObject* object, QEvent* event)
@@ -191,13 +157,13 @@ namespace AzToolsFramework
 
     void AudioControlSelectorWidget::focusInEvent(QFocusEvent* event)
     {
-        m_controlEdit->event(event);
-        m_controlEdit->selectAll();
+        m_browseEdit->lineEdit()->event(event);
+        m_browseEdit->lineEdit()->selectAll();
     }
 
     void AudioControlSelectorWidget::UpdateWidget()
     {
-        m_controlEdit->setText(m_controlName);
+        m_browseEdit->setText(m_controlName);
     }
 
     AZStd::string AudioControlSelectorWidget::GetResourceSelectorNameFromType(AudioPropertyType propertyType)

@@ -114,7 +114,7 @@ namespace GraphCanvas
 
     ContextMenuAction::SceneReaction UngroupNodeGroupMenuAction::TriggerAction(const AZ::Vector2& scenePos)
     {
-        const GraphId& graphId = GetGraphId();        
+        const GraphId& graphId = GetGraphId();
         AZ::EntityId groupTarget = GetTargetId();
 
         if (GraphUtils::IsCollapsedNodeGroup(groupTarget))
@@ -126,7 +126,24 @@ namespace GraphCanvas
 
         if (groupTarget.IsValid())
         {
+            AZ::EntityId parentGroup;
+            GroupableSceneMemberRequestBus::EventResult(parentGroup, groupTarget, &GroupableSceneMemberRequests::GetGroupId);
+
+            // Collect our grouped elements, if we have any to assign to our parent group when we ungroup.
+            AZStd::vector< AZ::EntityId > groupedElements;
+
+            if (parentGroup.IsValid())
+            {
+                NodeGroupRequestBus::Event(groupTarget, &NodeGroupRequests::FindGroupedElements, groupedElements);
+            }
+
             NodeGroupRequestBus::Event(groupTarget, &NodeGroupRequests::UngroupGroup);
+
+            if (parentGroup.IsValid() && !groupedElements.empty())
+            {
+                NodeGroupRequestBus::Event(parentGroup, &NodeGroupRequests::AddElementsVectorToGroup, groupedElements);
+            }
+
             reaction = SceneReaction::PostUndo;
         }
 

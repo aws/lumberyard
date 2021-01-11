@@ -720,11 +720,14 @@ namespace EMStudio
             const uint32 numSelectedNodes = selectionList->GetNumSelectedNodes();
             for (uint32 n = 0; n < numSelectedNodes; ++n)
             {
-                // add the node to the selected nodes
-                SelectionItem selectionItem;
-                selectionItem.mActorInstanceID = actorInstanceID;
-                selectionItem.SetNodeName(selectionList->GetNode(n)->GetName());
-                m_selectedNodes.emplace_back(selectionItem);
+                const EMotionFX::Node* joint = selectionList->GetNode(n);
+                if (joint)
+                {
+                    SelectionItem selectionItem;
+                    selectionItem.mActorInstanceID = actorInstanceID;
+                    selectionItem.SetNodeName(joint->GetName());
+                    m_selectedNodes.emplace_back(selectionItem);
+                }
             }
         }
     }

@@ -1150,7 +1150,7 @@ namespace CharacterTool {
         string fullPath = GetFilePathForEntry(entry);
         QString commandLineArgs = QStringLiteral("/n,/select,\"%1\"").arg(fullPath.c_str());
         QString commandLine = "explorer " + commandLineArgs;
-        QProcess::startDetached(commandLine);
+        QProcess::startDetached(commandLine, QStringList());
     }
 
     void Explorer::RemoveEntry(ExplorerEntry* entry)

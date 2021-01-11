@@ -1344,7 +1344,8 @@ bool BatchApplicationManager::Activate()
 
     InitAssetProcessorManager();
     AssetBuilderSDK::InitializeSerializationContext();
-    
+    AssetBuilderSDK::InitializeBehaviorContext();
+
     InitFileStateCache();
     InitFileProcessor();
 
@@ -1437,7 +1438,9 @@ bool BatchApplicationManager::Activate()
                     AzToolsFramework::Logging::LogLine::ParseLog(response.m_jobLog.c_str(), response.m_jobLog.size(),
                         [](AzToolsFramework::Logging::LogLine& target)
                         {
-                            if ((target.GetLogType() == AzToolsFramework::Logging::LogLine::TYPE_WARNING) || (target.GetLogType() == AzToolsFramework::Logging::LogLine::TYPE_ERROR))
+                            if ((target.GetLogType() == AzToolsFramework::Logging::LogLine::TYPE_WARNING) || (target.GetLogType() == AzToolsFramework::Logging::LogLine::TYPE_ERROR)
+                                 || (target.GetLogType() == AzToolsFramework::Logging::LogLine::TYPE_MESSAGE
+                                 && (AZ::StringFunc::Equal("Error", target.GetLogWindow().c_str()) || AZ::StringFunc::Equal("Warning", target.GetLogWindow().c_str()))))
                             {
                                 AZStd::string logString = target.ToString();
                                 AZ_TracePrintf(AssetProcessor::ConsoleChannel, "JOB LOG: %s", logString.c_str());

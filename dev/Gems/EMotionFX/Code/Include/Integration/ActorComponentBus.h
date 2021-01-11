@@ -45,6 +45,12 @@ namespace EMotionFX
             WorldSpace          ///< Relative to the world origin.
         };
 
+        enum class SkinningMethod : AZ::u32
+        {
+            DualQuat = 0,       ///< Dual Quaternions will be used to blend joints during skinning.
+            Linear              ///< Matrices will be used to blend joints during skinning.
+        };
+
         /**
         * EMotion FX Actor Component Request Bus
         * Used for making requests to EMotion FX Actor Components.
@@ -53,6 +59,7 @@ namespace EMotionFX
             : public AZ::ComponentBus
         {
         public:
+            using MutexType = AZStd::mutex;
 
             /// Retrieve component's actor instance.
             /// \return pointer to actor instance.
@@ -89,6 +96,14 @@ namespace EMotionFX
             virtual bool GetRenderCharacter() const = 0;
             virtual void SetRenderCharacter(bool enable) = 0;
 
+            /// Actor Mesh Asset
+            virtual void SetActorAsset(const AZ::Data::AssetId& id) = 0;
+            virtual AZ::Data::Asset<AZ::Data::AssetData> GetActorAsset() = 0;
+            virtual const AZ::Data::AssetId& GetActorAssetId() = 0;
+
+            /// Returns skinning method used by the actor.
+            virtual SkinningMethod GetSkinningMethod() const = 0;
+
             static const size_t s_invalidJointIndex = ~0;
         };
 
@@ -111,9 +126,9 @@ namespace EMotionFX
             struct AssetConnectionPolicy
                 : public AZ::EBusConnectionPolicy<Bus>
             {
-                static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
+                static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, typename Bus::Context::ConnectLockGuard& connectLock, const typename Bus::BusIdType& id = 0)
                 {
-                    AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
+                    AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, connectLock, id);
 
                     EMotionFX::ActorInstance* instance = nullptr;
                     ActorComponentRequestBus::EventResult(instance, id, &ActorComponentRequestBus::Events::GetActorInstance);

@@ -731,16 +731,6 @@ namespace AzToolsFramework
             return AZ::Success(AZStd::move(addComponentsResults));
         }
 
-        EditorEntityActionComponent::AddExistingComponentsOutcome EditorEntityActionComponent::AddExistingComponentsToEntity(AZ::Entity* entity, const AZStd::vector<AZ::Component*>& componentsToAdd)
-        {
-            if (!entity)
-            {
-                return AZ::Failure(AZStd::string("Null entity provided to AddExistingComponentsToEntity"));
-            }
-
-            return AddExistingComponentsToEntityById(entity->GetId(), componentsToAdd);
-        }
-
         EntityCompositionRequests::ScrubEntitiesOutcome EditorEntityActionComponent::ScrubEntities(const EntityList& entities)
         {
             // Optimization Note: We broadcast the entity's ID even if the scrubber will make no changes.
@@ -1034,6 +1024,10 @@ namespace AzToolsFramework
                     pendingComponentInfo.m_missingRequiredServices.push_back(serviceNotSatisfiedByValidComponent);
                 }
             }
+
+            //find incompatible services that we need to avoid
+            auto componentDescriptor = GetComponentDescriptor(component);
+            componentDescriptor->GetIncompatibleServices(pendingComponentInfo.m_incompatibleServices, component);
 
             // Check for incompatibility with only the entity components, we don't care about other pending components
             for (auto entityComponent : entityComponents)

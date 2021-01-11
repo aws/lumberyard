@@ -10,370 +10,606 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
-#include <AzCore/Interface/Interface.h>
-
-#include <AzFramework/Physics/World.h>
-#include <AzFramework/Physics/WindBus.h>
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Math/Quaternion.h>
 
 #include <System/Cloth.h>
-#include <System/ClothConfiguration.h>
+#include <System/Fabric.h>
+#include <System/Solver.h>
 
-#include <NvCloth/Factory.h>
-#include <NvCloth/Fabric.h>
+// NvCloth library includes
 #include <NvCloth/Cloth.h>
 #include <NvClothExt/ClothFabricCooker.h>
-
-#include <NvCloth/SystemBus.h>
-
-#include <Utils/MathConversion.h>
+#include <foundation/PxVec3.h>
+#include <foundation/PxVec4.h>
+#include <foundation/PxQuat.h>
 
 namespace NvCloth
 {
     namespace
     {
-        template <typename T>
-        nv::cloth::BoundedData ToBoundedData(const T* data, size_t stride, size_t count)
+        // Returns AZ::Vector3 as physx::PxVec3 using the same memory.
+        // It's safe to reinterpret AZ::Vector3 as physx::PxVec3 because they have the same memory layout
+        // and AZ::Vector3 has more memory alignment restrictions than physx::PxVec3.
+        // The opposite operation would NOT be safe.
+        physx::PxVec3& AsPxVec3(AZ::Vector3& azVec)
         {
-            nv::cloth::BoundedData boundedData;
-            boundedData.data = data;
-            boundedData.stride = static_cast<physx::PxU32>(stride);
-            boundedData.count = static_cast<physx::PxU32>(count);
-            return boundedData;
+            return *reinterpret_cast<physx::PxVec3*>(&azVec);
+        }
+
+        const physx::PxVec3& AsPxVec3(const AZ::Vector3& azVec)
+        {
+            return *reinterpret_cast<const physx::PxVec3*>(&azVec);
+        }
+
+        // Returns AZ::Quaternion as physx::PxQuat using the same memory.
+        // It's safe to reinterpret AZ::Quaternion as physx::PxQuat because they have the same memory layout
+        // and AZ::Quaternion has more memory alignment restrictions than physx::PxQuat.
+        // The opposite operation would NOT be safe.
+        physx::PxQuat& AsPxQuat(AZ::Quaternion& azQuat)
+        {
+            return *reinterpret_cast<physx::PxQuat*>(&azQuat);
+        }
+
+        const physx::PxQuat& AsPxQuat(const AZ::Quaternion& azQuat)
+        {
+            return *reinterpret_cast<const physx::PxQuat*>(&azQuat);
+        }
+
+        // Copies an AZ vector of AZ::Vector4 elements as a NvCloth Range of physx::PxVec4 elements.
+        //
+        // It's safe to reinterpret AZ::Vector4 as physx::PxVec4 because they have the same memory layout.
+        // Each one has its own memory with their appropriate alignments.
+        void FastCopy(const AZStd::vector<AZ::Vector4>& azVector, nv::cloth::Range<physx::PxVec4>& nvRange)
+        {
+            AZ_Assert(azVector.size() == nvRange.size(),
+                "Mismatch in number of elements. AZ vector: %zu Nv Range: %u", azVector.size(), nvRange.size());
+            static_assert(sizeof(physx::PxVec4) == sizeof(AZ::Vector4), "physx::PxVec4 and AZ::Vector4 types have different sizes");
+
+            // Reinterpret cast to floats so it does a fast copy.
+            AZStd::copy(
+                reinterpret_cast<const float*>(azVector.data()),
+                reinterpret_cast<const float*>(azVector.data() + azVector.size()),
+                reinterpret_cast<float*>(nvRange.begin()));
+        }
+
+        // Copies a NvCloth Range of physx::PxVec4 elements as an AZ vector of AZ::Vector4 elements.
+        //
+        // It's safe to reinterpret AZ::Vector4 as physx::PxVec4 because they have the same memory layout.
+        // Each one has its own memory with their appropriate alignments.
+        void FastCopy(const nv::cloth::Range<physx::PxVec4>& nvRange, AZStd::vector<AZ::Vector4>& azVector)
+        {
+            AZ_Assert(azVector.size() == nvRange.size(),
+                "Mismatch in number of elements. AZ vector: %zu Nv Range: %u", azVector.size(), nvRange.size());
+            static_assert(sizeof(physx::PxVec4) == sizeof(AZ::Vector4), "physx::PxVec4 and AZ::Vector4 types have different sizes");
+
+            // Reinterpret cast to floats so it does a fast copy.
+            AZStd::copy(
+                reinterpret_cast<const float*>(nvRange.begin()),
+                reinterpret_cast<const float*>(nvRange.end()),
+                reinterpret_cast<float*>(azVector.begin()));
+        }
+
+        // Moves an AZ vector of AZ::Vector4 elements as a NvCloth Range of physx::PxVec4 elements.
+        //
+        // It's safe to reinterpret AZ::Vector4 as physx::PxVec4 because they have the same memory layout.
+        // Each one has its own memory with their appropriate alignments.
+        void FastMove(AZStd::vector<AZ::Vector4>&& azVector, nv::cloth::Range<physx::PxVec4>& nvRange)
+        {
+            AZ_Assert(azVector.size() == nvRange.size(),
+                "Mismatch in number of elements. AZ vector: %zu Nv Range: %u", azVector.size(), nvRange.size());
+            static_assert(sizeof(physx::PxVec4) == sizeof(AZ::Vector4), "physx::PxVec4 and AZ::Vector4 types have different sizes");
+
+            // Reinterpret cast to floats so it does a fast move.
+            AZStd::move(
+                reinterpret_cast<float*>(azVector.data()),
+                reinterpret_cast<float*>(azVector.data() + azVector.size()),
+                reinterpret_cast<float*>(nvRange.begin()));
+        }
+
+        // Moves a NvCloth Range of physx::PxVec4 elements as an AZ vector of AZ::Vector4 elements.
+        //
+        // It's safe to reinterpret AZ::Vector4 as physx::PxVec4 because they have the same memory layout.
+        // Each one has its own memory with their appropriate alignments.
+        void FastMove(nv::cloth::Range<physx::PxVec4>&& nvRange, AZStd::vector<AZ::Vector4>& azVector)
+        {
+            AZ_Assert(azVector.size() == nvRange.size(),
+                "Mismatch in number of elements. AZ vector: %zu Nv Range: %u", azVector.size(), nvRange.size());
+            static_assert(sizeof(physx::PxVec4) == sizeof(AZ::Vector4), "physx::PxVec4 and AZ::Vector4 types have different sizes");
+
+            // Reinterpret cast to floats so it does a fast copy.
+            AZStd::move(
+                reinterpret_cast<float*>(nvRange.begin()),
+                reinterpret_cast<float*>(nvRange.end()),
+                reinterpret_cast<float*>(azVector.begin()));
         }
     }
 
-    Cloth::Cloth(const ClothConfiguration& config,
-        const AZStd::vector<SimParticleType>& initialParticles,
-        const AZStd::vector<SimIndexType>& initialIndices)
-        : m_initialParticles(initialParticles)
-        , m_initialIndices(initialIndices)
+    Cloth::Cloth(
+        ClothId id,
+        const AZStd::vector<SimParticleFormat>& initialParticles,
+        Fabric* fabric,
+        NvClothUniquePtr nvCloth)
+        : m_id(id)
+        , m_nvCloth(AZStd::move(nvCloth))
+        , m_fabric(fabric)
+        , m_initialParticles(initialParticles)
+        , m_initialParticlesWithMassApplied(initialParticles)
     {
-        Create(config);
+        m_simParticles = initialParticles;
+
+        // Construct the default list of phase configurations
+        const size_t numPhaseTypes = m_fabric->GetPhaseTypes().size();
+        m_nvPhaseConfigs.reserve(numPhaseTypes);
+        for (size_t phaseIndex = 0; phaseIndex < numPhaseTypes; phaseIndex++)
+        {
+            m_nvPhaseConfigs.emplace_back(static_cast<uint16_t>(phaseIndex));
+        }
+        ApplyPhaseConfigs();
+
+        // Set default gravity
+        const AZ::Vector3 gravity(0.0f, 0.0f, -9.81f);
+        SetGravity(gravity);
+
+        // One more cloth instance using the fabric
+        m_fabric->m_numClothsUsingFabric++;
     }
 
     Cloth::~Cloth()
     {
-        if (m_cloth)
+        // If cloth is still part of a solver, remove it
+        if (m_solver)
         {
-            ClothInstanceNotificationsBus::Handler::BusDisconnect();
-
-            // Remove cloth from the system
-            SystemRequestBus::Broadcast(&SystemRequestBus::Events::RemoveCloth, m_cloth.get());
-        }
-    }
-
-    void Cloth::Create(const ClothConfiguration& config)
-    {
-        // Get the cloth factory from the cloth system
-        nv::cloth::Factory* factory = nullptr;
-        SystemRequestBus::BroadcastResult(factory, &SystemRequestBus::Events::GetClothFactory);
-        AZ_Assert(factory, "Could not get cloth factory.");
-
-        // Create cloth fabric
-        {
-            // Check if all the particles are static (inverse masses are all 0)
-            const bool fullyStaticFabric = AZStd::all_of(m_initialParticles.cbegin(), m_initialParticles.cend(),
-                [](const SimParticleType& particle)
-                {
-                    return particle.w == 0.0f;
-                });
-
-            const AZStd::vector<SimParticleType>* initialInvMasses = &m_initialParticles;
-            if (fullyStaticFabric)
-            {
-                // NvCloth doesn't support cooking a fabric where all its simulation particles are static (inverse masses are all 0).
-                // In this situation we will cook the fabric with the default inverse masses (all are 1) and the cloth instance will
-                // override them by using the static particles. NvCloth does support the cloth instance to be fully static,
-                // but not the fabric.
-                initialInvMasses = new AZStd::vector<SimParticleType>(m_initialParticles.size(), SimParticleType(0.0f, 0.0f, 0.0f, 1.0f));
-            }
-
-            nv::cloth::ClothMeshDesc meshDesc;
-            meshDesc.setToDefault();
-            meshDesc.points = ToBoundedData(m_initialParticles.data(), sizeof(SimParticleType), m_initialParticles.size());
-            meshDesc.invMasses = ToBoundedData(&initialInvMasses->front().w, sizeof(SimParticleType), initialInvMasses->size());
-            meshDesc.triangles = ToBoundedData(m_initialIndices.data(), sizeof(SimIndexType) * 3, m_initialIndices.size() / 3);
-            meshDesc.flags = (sizeof(SimIndexType) == 2) ? nv::cloth::MeshFlag::e16_BIT_INDICES : 0;
-
-            // Gravity used to cook the fabric. 
-            // It's important that the gravity vector used for cooking is in the same space as the mesh.
-            // The phase constrains won't be properly created if the up vector is not the Z axis.
-            const AZ::Vector3 fabricGravity(0.0f, 0.0f, -9.81f);
-            // True to compute tether constraints (created when cooking with static particles)
-            // using geodesic distance (using triangle adjacencies), otherwise it uses linear distance.
-            const bool useGeodesicTether = true;
-
-            m_fabric = FabricUniquePtr(
-                NvClothCookFabricFromMesh(factory, meshDesc, PxMathConvert(fabricGravity), &m_fabricPhaseTypes, useGeodesicTether));
-            AZ_Assert(m_fabric, "Failed to create cloth fabric");
-
-            if (fullyStaticFabric)
-            {
-                delete initialInvMasses;
-            }
+            m_solver->RemoveCloth(this);
         }
 
-        // Create cloth
-        {
-            // Apply the mass modifier of this cloth instance
-            if (!AZ::IsClose(config.m_mass, 1.0f, std::numeric_limits<float>::epsilon()))
-            {
-                float inverseMass = (config.m_mass > 0.0f) ? (1.0f / config.m_mass) : 0.0f;
-                for (SimParticleType& particle : m_initialParticles)
-                {
-                    particle.w *= inverseMass;
-                }
-            }
-
-            m_cloth = ClothUniquePtr(factory->createCloth(
-                nv::cloth::Range<SimParticleType>(m_initialParticles.data(), m_initialParticles.data() + m_initialParticles.size()),
-                *m_fabric));
-            AZ_Assert(m_cloth, "Failed to create cloth");
-
-            SetConfiguration(config);
-
-            // Initialize simulation data
-            m_simParticles = m_initialParticles;
-        }
-
-        // Add cloth to the system
-        SystemRequestBus::Broadcast(&SystemRequestBus::Events::AddCloth, m_cloth.get());
-
-        ClothInstanceNotificationsBus::Handler::BusConnect();
+        // One less cloth instance using the fabric
+        m_fabric->m_numClothsUsingFabric--;
     }
 
-    const AZStd::vector<SimParticleType>& Cloth::GetInitialParticles() const
+    void Cloth::Update()
     {
-        return m_initialParticles;
-    }
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Cloth);
 
-    const AZStd::vector<SimIndexType>& Cloth::GetInitialIndices() const
-    {
-        return m_initialIndices;
-    }
+        ResolveStaticParticles();
 
-    const AZStd::vector<SimParticleType>& Cloth::GetParticles() const
-    {
-        return m_simParticles;
-    }
-
-    void Cloth::SetParticles(const AZStd::vector<SimParticleType>& particles)
-    {
-        if (m_simParticles.size() != particles.size())
-        {
-            AZ_Warning("Cloth", false, "Unable to set cloth particles as it doesn't match the number of elements");
-            return;
-        }
-        m_simParticles = particles;
-        CopyParticlesToCloth();
-    }
-
-    void Cloth::SetParticles(AZStd::vector<SimParticleType>&& particles)
-    {
-        if (m_simParticles.size() != particles.size())
-        {
-            AZ_Warning("Cloth", false, "Unable to set cloth particles as it doesn't match the number of elements");
-            return;
-        }
-        m_simParticles = AZStd::move(particles);
-        CopyParticlesToCloth();
-    }
-
-    void Cloth::SetTransform(const AZ::Transform& transformWorld)
-    {
-        m_cloth->setTranslation(PxMathConvert(transformWorld.GetPosition()));
-        m_cloth->setRotation(PxMathConvert(AZ::Quaternion::CreateFromTransform(transformWorld)));
-    }
-
-    void Cloth::SetSphereColliders(const AZStd::vector<physx::PxVec4>& spheres)
-    {
-        m_cloth->setSpheres(
-            nv::cloth::Range<const physx::PxVec4>(spheres.data(), spheres.data() + spheres.size()),
-            0, m_cloth->getNumSpheres());
-    }
-
-    void Cloth::SetCapsuleColliders(const AZStd::vector<uint32_t>& capsuleIndices)
-    {
-        m_cloth->setCapsules(
-            nv::cloth::Range<const uint32_t>(capsuleIndices.data(), capsuleIndices.data() + capsuleIndices.size()),
-            0, m_cloth->getNumCapsules());
-    }
-
-    void Cloth::SetWindVelocity(const AZ::Vector3& windVelocity)
-    {
-        m_cloth->setWindVelocity(PxMathConvert(windVelocity));
-    }
-
-    void Cloth::ClearInertia()
-    {
-        m_cloth->clearInertia();
-    }
-
-    void Cloth::SetConfiguration(const ClothConfiguration& config)
-    {
-        // Fabric Phases
-        SetupFabricPhases(config);
-
-        // Gravity
-        AZ::Vector3 gravity = config.m_customGravity;
-        if (!config.m_useCustomGravity)
-        {
-            // Set default value of gravity in case GetGravity call to WorldRequestBus
-            // doesn't set any value to it.
-            gravity = AZ::Vector3(0.0f, 0.0f, -9.81f);
-
-            // Obtain gravity from the default physics world
-            Physics::WorldRequestBus::EventResult(gravity, Physics::DefaultPhysicsWorldId, &Physics::WorldRequests::GetGravity);
-        }
-        gravity *= config.m_gravityScale;
-        m_cloth->setGravity(PxMathConvert(gravity));
-
-        // Stiffness Frequency
-        m_cloth->setStiffnessFrequency(config.m_stiffnessFrequency);
-
-        // Damping parameters
-        m_cloth->setDamping(PxMathConvert(config.m_damping));
-        m_cloth->setLinearDrag(PxMathConvert(config.m_linearDrag));
-        m_cloth->setAngularDrag(PxMathConvert(config.m_angularDrag));
-
-        // Inertia parameters
-        m_cloth->setLinearInertia(PxMathConvert(config.m_linearInteria));
-        m_cloth->setAngularInertia(PxMathConvert(config.m_angularInteria));
-        m_cloth->setCentrifugalInertia(PxMathConvert(config.m_centrifugalInertia));
-
-        // Wind parameters
-        AZ::Vector3 windVelocity = config.m_windVelocity;
-        if (!config.m_useCustomWindVelocity)
-        {
-            const Physics::WindRequests* windRequests = AZ::Interface<Physics::WindRequests>::Get();
-            if (windRequests)
-            {
-                const AZ::Vector3 globalWind = windRequests->GetGlobalWind();
-                const physx::PxVec3& translation = m_cloth->getTranslation();
-                const AZ::Vector3 localWind = windRequests->GetWind(PxMathConvert(translation));
-                windVelocity = globalWind + localWind;
-            }
-        }
-        m_cloth->setWindVelocity(PxMathConvert(windVelocity));
-        const float airDragMaxValue = 0.97f;
-        m_cloth->setDragCoefficient(airDragMaxValue * config.m_airDragCoefficient);
-        const float airLiftMaxValue = 0.8f;
-        m_cloth->setLiftCoefficient(airLiftMaxValue * config.m_airLiftCoefficient);
-        m_cloth->setFluidDensity(config.m_fluidDensity);
-
-        // Collision parameters
-        m_cloth->setFriction(config.m_collisionFriction);
-        m_cloth->setCollisionMassScale(config.m_collisionMassScale);
-        m_cloth->enableContinuousCollision(config.m_continuousCollisionDetection);
-
-        // Self Collision parameters
-        m_cloth->setSelfCollisionDistance(config.m_selfCollisionDistance);
-        m_cloth->setSelfCollisionStiffness(config.m_selfCollisionStiffness);
-
-        // Tether Constraints parameters
-        m_cloth->setTetherConstraintStiffness(config.m_tetherConstraintStiffness);
-        m_cloth->setTetherConstraintScale(config.m_tetherConstraintScale);
-
-        // Quality parameters
-        m_cloth->setSolverFrequency(config.m_solverFrequency);
-        m_cloth->setAcceleationFilterWidth(config.m_accelerationFilterIterations);
-    }
-
-    void Cloth::SetupFabricPhases(const ClothConfiguration& config)
-    {
-        const uint32_t phaseCount = m_fabric->getNumPhases();
-        if (phaseCount == 0)
-        {
-            return;
-        }
-
-        AZ_Assert(phaseCount == m_fabricPhaseTypes.size(), "Fabric has %d phases but %d phase types.", phaseCount, m_fabricPhaseTypes.size());
-
-        AZStd::vector<nv::cloth::PhaseConfig> phases(phaseCount);
-        for (uint32_t phaseIndex = 0; phaseIndex < phaseCount; ++phaseIndex)
-        {
-            // Set index to the corresponding set (constraint group)
-            phases[phaseIndex].mPhaseIndex = static_cast<uint16_t>(phaseIndex);
-
-            const int32_t phaseType = m_fabricPhaseTypes[phaseIndex];
-            switch (phaseType)
-            {
-            case nv::cloth::ClothFabricPhaseType::eINVALID:
-                AZ_Error("ClothComponent", false, "Phase %d of fabric with invalid phase type", phaseIndex);
-                break;
-            case nv::cloth::ClothFabricPhaseType::eVERTICAL:
-                phases[phaseIndex].mStiffness = config.m_verticalStiffness;
-                phases[phaseIndex].mStiffnessMultiplier = 1.0f - AZ::GetClamp(config.m_verticalStiffnessMultiplier, 0.0f, 1.0f);
-                phases[phaseIndex].mCompressionLimit = 1.0f + config.m_verticalCompressionLimit; // A value of 1.0f is no compression inside nvcloth
-                phases[phaseIndex].mStretchLimit = 1.0f + config.m_verticalStretchLimit; // A value of 1.0f is no stretch inside nvcloth
-                break;
-            case nv::cloth::ClothFabricPhaseType::eHORIZONTAL:
-                phases[phaseIndex].mStiffness = config.m_horizontalStiffness;
-                phases[phaseIndex].mStiffnessMultiplier = 1.0f - AZ::GetClamp(config.m_horizontalStiffnessMultiplier, 0.0f, 1.0f);
-                phases[phaseIndex].mCompressionLimit = 1.0f + config.m_horizontalCompressionLimit;
-                phases[phaseIndex].mStretchLimit = 1.0f + config.m_horizontalStretchLimit;
-                break;
-            case nv::cloth::ClothFabricPhaseType::eBENDING:
-                phases[phaseIndex].mStiffness = config.m_bendingStiffness;
-                phases[phaseIndex].mStiffnessMultiplier = 1.0f - AZ::GetClamp(config.m_bendingStiffnessMultiplier, 0.0f, 1.0f);
-                phases[phaseIndex].mCompressionLimit = 1.0f + config.m_bendingCompressionLimit;
-                phases[phaseIndex].mStretchLimit = 1.0f + config.m_bendingStretchLimit;
-                break;
-            case nv::cloth::ClothFabricPhaseType::eSHEARING:
-                phases[phaseIndex].mStiffness = config.m_shearingStiffness;
-                phases[phaseIndex].mStiffnessMultiplier = 1.0f - AZ::GetClamp(config.m_shearingStiffnessMultiplier, 0.0f, 1.0f);
-                phases[phaseIndex].mCompressionLimit = 1.0f + config.m_shearingCompressionLimit;
-                phases[phaseIndex].mStretchLimit = 1.0f + config.m_shearingStretchLimit;
-                break;
-            default:
-                AZ_Error("ClothComponent", false, "Phase %d of fabric with unknown phase type %d", phaseIndex, phaseType);
-                break;
-            }
-        }
-
-        m_cloth->setPhaseConfig(
-            nv::cloth::Range<nv::cloth::PhaseConfig>(phases.data(), phases.data() + phaseCount));
-    }
-
-    void Cloth::UpdateClothInstance(
-        [[maybe_unused]] float deltaTime)
-    {
         if (!RetrieveSimulationResults())
         {
             RestoreSimulation();
         }
     }
 
+    ClothId Cloth::GetId() const
+    {
+        return m_id;
+    }
+
+    const AZStd::vector<SimParticleFormat>& Cloth::GetInitialParticles() const
+    {
+        return m_initialParticles;
+    }
+
+    const AZStd::vector<SimIndexType>& Cloth::GetInitialIndices() const
+    {
+        return m_fabric->m_cookedData.m_indices;
+    }
+
+    const AZStd::vector<SimParticleFormat>& Cloth::GetParticles() const
+    {
+        return m_simParticles;
+    }
+
+    void Cloth::SetParticles(const AZStd::vector<SimParticleFormat>& particles)
+    {
+        if (m_simParticles.size() != particles.size())
+        {
+            AZ_Warning("Cloth", false, "Unable to set cloth particles as it doesn't match the number of elements. Number of particles passed %zu, expected %zu.",
+                particles.size(), m_simParticles.size());
+            return;
+        }
+        m_simParticles = particles;
+        CopySimParticlesToNvCloth();
+    }
+
+    void Cloth::SetParticles(AZStd::vector<SimParticleFormat>&& particles)
+    {
+        if (m_simParticles.size() != particles.size())
+        {
+            AZ_Warning("Cloth", false, "Unable to set cloth particles as it doesn't match the number of elements. Number of particles passed %zu, expected %zu.",
+                particles.size(), m_simParticles.size());
+            return;
+        }
+        m_simParticles = AZStd::move(particles);
+        CopySimParticlesToNvCloth();
+    }
+
+    void Cloth::DiscardParticleDelta()
+    {
+        const nv::cloth::MappedRange<const physx::PxVec4> currentParticles = nv::cloth::readCurrentParticles(*m_nvCloth);
+
+        nv::cloth::MappedRange<physx::PxVec4> previousParticles = m_nvCloth->getPreviousParticles();
+        // Reinterpret cast to floats so it does a fast copy.
+        AZStd::copy(
+            reinterpret_cast<const float*>(currentParticles.begin()),
+            reinterpret_cast<const float*>(currentParticles.end()),
+            reinterpret_cast<float*>(previousParticles.begin()));
+    }
+
+    const FabricCookedData& Cloth::GetFabricCookedData() const
+    {
+        return m_fabric->m_cookedData;
+    }
+
+    IClothConfigurator* Cloth::GetClothConfigurator()
+    {
+        return this;
+    }
+
+    void Cloth::SetTransform(const AZ::Transform& transformWorld)
+    {
+        m_nvCloth->setTranslation(AsPxVec3(transformWorld.GetPosition()));
+        m_nvCloth->setRotation(AsPxQuat(AZ::Quaternion::CreateFromTransform(transformWorld)));
+    }
+
+    void Cloth::ClearInertia()
+    {
+        m_nvCloth->clearInertia();
+    }
+
+    void Cloth::SetMass(float mass)
+    {
+        if (AZ::IsClose(m_mass, mass, std::numeric_limits<float>::epsilon()))
+        {
+            return;
+        }
+
+        m_mass = mass;
+
+        const float inverseMass = (m_mass > 0.0f) ? (1.0f / m_mass) : 0.0f;
+        for (size_t i = 0; i < m_simParticles.size(); ++i)
+        {
+            const float particleInvMass = m_initialParticles[i].GetW() * inverseMass;
+
+            m_simParticles[i].SetW(particleInvMass);
+            m_initialParticlesWithMassApplied[i].SetW(particleInvMass);
+        }
+
+        CopySimInverseMassesToNvCloth();
+    }
+
+    void Cloth::SetGravity(const AZ::Vector3& gravity)
+    {
+        m_nvCloth->setGravity(AsPxVec3(gravity));
+    }
+
+    void Cloth::SetStiffnessFrequency(float frequency)
+    {
+        m_nvCloth->setStiffnessFrequency(frequency);
+    }
+
+    void Cloth::SetDamping(const AZ::Vector3& damping)
+    {
+        m_nvCloth->setDamping(AsPxVec3(damping));
+    }
+
+    void Cloth::SetDampingLinearDrag(const AZ::Vector3& linearDrag)
+    {
+        m_nvCloth->setLinearDrag(AsPxVec3(linearDrag));
+    }
+
+    void Cloth::SetDampingAngularDrag(const AZ::Vector3& angularDrag)
+    {
+        m_nvCloth->setAngularDrag(AsPxVec3(angularDrag));
+    }
+
+    void Cloth::SetLinearInertia(const AZ::Vector3& linearInertia)
+    {
+        m_nvCloth->setLinearInertia(AsPxVec3(linearInertia));
+    }
+
+    void Cloth::SetAngularInertia(const AZ::Vector3& angularInertia)
+    {
+        m_nvCloth->setAngularInertia(AsPxVec3(angularInertia));
+    }
+
+    void Cloth::SetCentrifugalInertia(const AZ::Vector3& centrifugalInertia)
+    {
+        m_nvCloth->setCentrifugalInertia(AsPxVec3(centrifugalInertia));
+    }
+
+    void Cloth::SetWindVelocity(const AZ::Vector3& velocity)
+    {
+        m_nvCloth->setWindVelocity(AsPxVec3(velocity));
+    }
+
+    void Cloth::SetWindDragCoefficient(float drag)
+    {
+        const float airDragPerc = 0.97f; // To improve cloth stability
+        m_nvCloth->setDragCoefficient(airDragPerc * drag);
+    }
+
+    void Cloth::SetWindLiftCoefficient(float lift)
+    {
+        const float airLiftPerc = 0.8f; // To improve cloth stability
+        m_nvCloth->setLiftCoefficient(airLiftPerc * lift);
+    }
+
+    void Cloth::SetWindFluidDensity(float density)
+    {
+        m_nvCloth->setFluidDensity(density);
+    }
+
+    void Cloth::SetCollisionFriction(float friction)
+    {
+        m_nvCloth->setFriction(friction);
+    }
+
+    void Cloth::SetCollisionMassScale(float scale)
+    {
+        m_nvCloth->setCollisionMassScale(scale);
+    }
+
+    void Cloth::EnableContinuousCollision(bool value)
+    {
+        m_nvCloth->enableContinuousCollision(value);
+    }
+
+    void Cloth::SetCollisionAffectsStaticParticles(bool value)
+    {
+        m_collisionAffectsStaticParticles = value;
+    }
+
+    void Cloth::SetSelfCollisionDistance(float distance)
+    {
+        m_nvCloth->setSelfCollisionDistance(distance);
+    }
+
+    void Cloth::SetSelfCollisionStiffness(float stiffness)
+    {
+        m_nvCloth->setSelfCollisionStiffness(stiffness);
+    }
+
+    void Cloth::SetVerticalPhaseConfig(
+        float stiffness,
+        float stiffnessMultiplier,
+        float compressionLimit,
+        float stretchLimit)
+    {
+        SetPhaseConfig(
+            nv::cloth::ClothFabricPhaseType::eVERTICAL,
+            stiffness,
+            stiffnessMultiplier,
+            compressionLimit,
+            stretchLimit);
+    }
+
+    void Cloth::SetHorizontalPhaseConfig(
+        float stiffness,
+        float stiffnessMultiplier,
+        float compressionLimit,
+        float stretchLimit)
+    {
+        SetPhaseConfig(
+            nv::cloth::ClothFabricPhaseType::eHORIZONTAL,
+            stiffness,
+            stiffnessMultiplier,
+            compressionLimit,
+            stretchLimit);
+    }
+
+    void Cloth::SetBendingPhaseConfig(
+        float stiffness,
+        float stiffnessMultiplier,
+        float compressionLimit,
+        float stretchLimit)
+    {
+        SetPhaseConfig(
+            nv::cloth::ClothFabricPhaseType::eBENDING,
+            stiffness,
+            stiffnessMultiplier,
+            compressionLimit,
+            stretchLimit);
+    }
+
+    void Cloth::SetShearingPhaseConfig(
+        float stiffness,
+        float stiffnessMultiplier,
+        float compressionLimit,
+        float stretchLimit)
+    {
+        SetPhaseConfig(
+            nv::cloth::ClothFabricPhaseType::eSHEARING,
+            stiffness,
+            stiffnessMultiplier,
+            compressionLimit,
+            stretchLimit);
+    }
+
+    void Cloth::SetTetherConstraintStiffness(float stiffness)
+    {
+        m_nvCloth->setTetherConstraintStiffness(stiffness);
+    }
+
+    void Cloth::SetTetherConstraintScale(float scale)
+    {
+        m_nvCloth->setTetherConstraintScale(scale);
+    }
+
+    void Cloth::SetSolverFrequency(float frequency)
+    {
+        m_nvCloth->setSolverFrequency(frequency);
+    }
+
+    void Cloth::SetAcceleationFilterWidth(AZ::u32 width)
+    {
+        m_nvCloth->setAcceleationFilterWidth(width);
+    }
+
+    void Cloth::SetSphereColliders(const AZStd::vector<AZ::Vector4>& spheres)
+    {
+        m_nvCloth->setSpheres(
+            ToPxVec4NvRange(spheres),
+            0, m_nvCloth->getNumSpheres());
+    }
+
+    void Cloth::SetSphereColliders(AZStd::vector<AZ::Vector4>&& spheres)
+    {
+        SetSphereColliders(spheres); // NvCloth does not offer a move overload for setSpheres, calling the const reference one.
+    }
+
+    void Cloth::SetCapsuleColliders(const AZStd::vector<AZ::u32>& capsuleIndices)
+    {
+        m_nvCloth->setCapsules(
+            ToNvRange(capsuleIndices),
+            0, m_nvCloth->getNumCapsules());
+    }
+
+    void Cloth::SetCapsuleColliders(AZStd::vector<AZ::u32>&& capsuleIndices)
+    {
+        SetCapsuleColliders(capsuleIndices); // NvCloth does not offer a move overload for setCapsules, calling the const reference one.
+    }
+
+    void Cloth::SetMotionConstraints(const AZStd::vector<AZ::Vector4>& constraints)
+    {
+        if (m_simParticles.size() != constraints.size())
+        {
+            AZ_Warning("Cloth", false, "Unable to set motions constraints as it doesn't match the number of particles. Numbers of constraints passed %zu, expected %zu.",
+                constraints.size(), m_simParticles.size());
+            return;
+        }
+        m_motionConstraints = constraints;
+        nv::cloth::Range<physx::PxVec4> motionConstraints = m_nvCloth->getMotionConstraints();
+        FastCopy(m_motionConstraints, motionConstraints);
+    }
+
+    void Cloth::SetMotionConstraints(AZStd::vector<AZ::Vector4>&& constraints)
+    {
+        if (m_simParticles.size() != constraints.size())
+        {
+            AZ_Warning("Cloth", false, "Unable to set motions constraints as it doesn't match the number of particles. Numbers of constraints passed %zu, expected %zu.",
+                constraints.size(), m_simParticles.size());
+            return;
+        }
+        m_motionConstraints = AZStd::move(constraints);
+        nv::cloth::Range<physx::PxVec4> motionConstraints = m_nvCloth->getMotionConstraints();
+        FastCopy(m_motionConstraints, motionConstraints);
+    }
+
+    void Cloth::ClearMotionConstraints()
+    {
+        m_motionConstraints.clear();
+        m_nvCloth->clearMotionConstraints();
+    }
+
+    void Cloth::SetMotionConstraintsScale(float scale)
+    {
+        m_nvCloth->setMotionConstraintScaleBias(scale, m_nvCloth->getMotionConstraintBias());
+    }
+
+    void Cloth::SetMotionConstraintsBias(float bias)
+    {
+        m_nvCloth->setMotionConstraintScaleBias(m_nvCloth->getMotionConstraintScale(), bias);
+    }
+
+    void Cloth::SetMotionConstraintsStiffness(float stiffness)
+    {
+        m_nvCloth->setMotionConstraintStiffness(stiffness);
+    }
+
+    void Cloth::SetSeparationConstraints(const AZStd::vector<AZ::Vector4>& constraints)
+    {
+        if (m_simParticles.size() != constraints.size())
+        {
+            AZ_Warning("Cloth", false, "Unable to set separation constraints as it doesn't match the number of particles. Numbers of constraints passed %zu, expected %zu.",
+                constraints.size(), m_simParticles.size());
+            return;
+        }
+        nv::cloth::Range<physx::PxVec4> separationConstraints = m_nvCloth->getSeparationConstraints();
+        FastCopy(constraints, separationConstraints);
+    }
+
+    void Cloth::SetSeparationConstraints(AZStd::vector<AZ::Vector4>&& constraints)
+    {
+        if (m_simParticles.size() != constraints.size())
+        {
+            AZ_Warning("Cloth", false, "Unable to set separation constraints as it doesn't match the number of particles. Numbers of constraints passed %zu, expected %zu.",
+                constraints.size(), m_simParticles.size());
+            return;
+        }
+        nv::cloth::Range<physx::PxVec4> separationConstraints = m_nvCloth->getSeparationConstraints();
+        FastMove(AZStd::move(constraints), separationConstraints);
+    }
+
+    void Cloth::ClearSeparationConstraints()
+    {
+        m_nvCloth->clearSeparationConstraints();
+    }
+
+    void Cloth::ResolveStaticParticles()
+    {
+        if (m_collisionAffectsStaticParticles)
+        {
+            // Nothing to do as in NvCloth colliders affect static particles.
+            return;
+        }
+
+        // During simulation static particle are always affected by colliders and motion constraints.
+        // To remove the effect of colliders on Static Particles we will restore their positions,
+        // either with the motion constraints (if existent) or the last simulated particles.
+
+        nv::cloth::MappedRange<physx::PxVec4> particles = m_nvCloth->getCurrentParticles();
+
+        const AZStd::vector<AZ::Vector4>& positions = m_motionConstraints.empty()
+            ? m_simParticles
+            : m_motionConstraints;
+
+        for (AZ::u32 i = 0; i < particles.size(); ++i)
+        {
+            // Checking NvCloth current particles is important because their W component will
+            // have the result left by the simulation applying both inverse masses and motion constrains.
+            if (particles[i].w == 0.0f)
+            {
+                auto& particle = particles[i];
+                const auto& position = positions[i];
+                particle.x = position.GetX();
+                particle.y = position.GetY();
+                particle.z = position.GetZ();
+            }
+        }
+    }
+
     bool Cloth::RetrieveSimulationResults()
     {
-        const nv::cloth::Cloth* clothConst = m_cloth.get(); // Use a const pointer to call the read-only version of getCurrentParticles()
-        const nv::cloth::MappedRange<const SimParticleType> particles = clothConst->getCurrentParticles();
-
-        // NOTE: using type MappedRange<const SimParticleType> is important to call the read-only version of getCurrentParticles(),
-        // otherwise when MappedRange gets out of scope it will wake up the cloth to account for the possibility that particles were changed.
+        const nv::cloth::MappedRange<const physx::PxVec4> particles = nv::cloth::readCurrentParticles(*m_nvCloth);
 
         bool validCloth =
-            AZStd::all_of(particles.begin(), particles.end(), [](const SimParticleType& particle)
+            AZStd::all_of(particles.begin(), particles.end(), [](const physx::PxVec4& particle)
                 {
                     return particle.isFinite();
                 })
             &&
             // On some platforms when cloth simulation gets corrupted it puts all particles' position to (0,0,0)
-            AZStd::any_of(particles.begin(), particles.end(), [](const SimParticleType& particle)
+            AZStd::any_of(particles.begin(), particles.end(), [](const physx::PxVec4& particle)
                 {
                     return particle.x != 0.0f || particle.y != 0.0f || particle.z != 0.0f;
                 });
 
         if (validCloth)
         {
-            AZ_Assert(m_simParticles.size() == particles.size(),
-                "Mismatch in number of cloth particles. Expected: %d Updated: %d", m_simParticles.size(), particles.size());
+            for (AZ::u32 i = 0; i < particles.size(); ++i)
+            {
+                m_simParticles[i].SetX(particles[i].x);
+                m_simParticles[i].SetY(particles[i].y);
+                m_simParticles[i].SetZ(particles[i].z);
 
-            memcpy(m_simParticles.data(), &particles[0], particles.size() * sizeof(SimParticleType));
+                // Not copying inverse masses on purpose since they could be different after running the simulation.
+                // This solves a problem when using a value of zero in the motion constraints distance
+                // or scale. All inverse masses would go to zero and since we were copying them back,
+                // the original data got lost and it was not able to return to a normal state after
+                // changing the values back to values other than zero.
+            }
 
-            m_numInvalidSimulations = 0;
+            m_numInvalidSimulations = 0; // Reset counter as the results were valid
         }
 
         return validCloth;
@@ -381,63 +617,78 @@ namespace NvCloth
 
     void Cloth::RestoreSimulation()
     {
-        nv::cloth::MappedRange<SimParticleType> previousParticles = m_cloth->getPreviousParticles();
-        nv::cloth::MappedRange<SimParticleType> currentParticles = m_cloth->getCurrentParticles();
+        nv::cloth::MappedRange<physx::PxVec4> previousParticles = m_nvCloth->getPreviousParticles();
+        nv::cloth::MappedRange<physx::PxVec4> currentParticles = m_nvCloth->getCurrentParticles();
 
         const AZ::u32 maxAttemptsToRestoreCloth = 15;
 
         if (m_numInvalidSimulations <= maxAttemptsToRestoreCloth)
         {
-            // Leave the simulation particles in their last good position if
-            // the simulation has gone wrong and it has stopped providing valid vertices.
-
-            memcpy(&previousParticles[0], m_simParticles.data(), m_simParticles.size() * sizeof(SimParticleType));
-            memcpy(&currentParticles[0], m_simParticles.data(), m_simParticles.size() * sizeof(SimParticleType));
+            // Leave the NvCloth simulation particles in their last known good position.
+            FastCopy(m_simParticles, previousParticles);
+            FastCopy(m_simParticles, currentParticles);
         }
         else
         {
-            // Reset simulation particles to their initial position if after a number of
+            // Reset NvCloth simulation particles to their initial position if after a number of
             // attempts cloth has not been restored to a stable state.
-
-            memcpy(&previousParticles[0], m_initialParticles.data(), m_initialParticles.size() * sizeof(SimParticleType));
-            memcpy(&currentParticles[0], m_initialParticles.data(), m_initialParticles.size() * sizeof(SimParticleType));
+            FastCopy(m_initialParticlesWithMassApplied, previousParticles);
+            FastCopy(m_initialParticlesWithMassApplied, currentParticles);
         }
 
-        m_cloth->clearInertia();
-        m_cloth->clearInterpolation();
+        m_nvCloth->clearInertia();
+        m_nvCloth->clearInterpolation();
 
         m_numInvalidSimulations++;
     }
 
-    void Cloth::CopyParticlesToCloth()
+    void Cloth::CopySimParticlesToNvCloth()
     {
-        nv::cloth::MappedRange<physx::PxVec4> currentParticles = m_cloth->getCurrentParticles();
-        memcpy(&currentParticles[0], m_simParticles.data(), m_simParticles.size() * sizeof(SimParticleType));
+        // The positions must be copied into the current particles inside NvCloth.
+        // Note: Inverse masses are copied as well to do a fast copy,
+        //       but inverse masses copied to current particles have no effect.
+        nv::cloth::MappedRange<physx::PxVec4> currentParticles = m_nvCloth->getCurrentParticles();
+        FastCopy(m_simParticles, currentParticles);
+
+        CopySimInverseMassesToNvCloth();
     }
 
-    ClothTangentSpaces::ClothTangentSpaces(const ClothConfiguration& config,
-        const AZStd::vector<SimParticleType>& initialParticles,
-        const AZStd::vector<SimIndexType>& initialIndices,
-        const AZStd::vector<SimUVType>& initialUVs)
-        : Cloth(config, initialParticles, initialIndices)
-        , m_initialUVs(initialUVs)
+    void Cloth::CopySimInverseMassesToNvCloth()
     {
+        // The inverse masses must be copied into the previous particles inside NvCloth
+        // to take effect for the next simulation update.
+        nv::cloth::MappedRange<physx::PxVec4> previousParticles = m_nvCloth->getPreviousParticles();
+        for (AZ::u32 i = 0; i < previousParticles.size(); ++i)
+        {
+            previousParticles[i].w = m_simParticles[i].GetW();
+        }
     }
 
-    const AZStd::vector<SimUVType>& ClothTangentSpaces::GetInitialUVs() const
+    void Cloth::SetPhaseConfig(
+        int32_t phaseType,
+        float stiffness,
+        float stiffnessMultiplier,
+        float compressionLimit,
+        float stretchLimit)
     {
-        return m_initialUVs;
+        const auto& phaseTypes = m_fabric->GetPhaseTypes();
+        for (size_t i = 0; i < phaseTypes.size(); ++i)
+        {
+            if (phaseTypes[i] == phaseType)
+            {
+                m_nvPhaseConfigs[i].mStiffness = stiffness;
+                m_nvPhaseConfigs[i].mStiffnessMultiplier = 1.0f - AZ::GetClamp(stiffnessMultiplier, 0.0f, 1.0f); // Internally a value of 1 means no scale inside nvcloth.
+                m_nvPhaseConfigs[i].mCompressionLimit = 1.0f + compressionLimit; // A value of 1.0f is no compression inside nvcloth. From [0.0, INF] to [1.0, INF].
+                m_nvPhaseConfigs[i].mStretchLimit = 1.0f + stretchLimit; // A value of 1.0f is no stretch inside nvcloth. From [0.0, INF] to [1.0, INF].
+            }
+        }
+        ApplyPhaseConfigs();
     }
 
-    const TangentSpaceCalculation& ClothTangentSpaces::GetTangentSpaces() const
+    void Cloth::ApplyPhaseConfigs()
     {
-        return m_tangentSpaces;
+        m_nvCloth->setPhaseConfig(
+            ToNvRange(m_nvPhaseConfigs));
     }
 
-    void ClothTangentSpaces::UpdateClothInstance(float deltaTime)
-    {
-        Cloth::UpdateClothInstance(deltaTime);
-
-        m_tangentSpaces.Calculate(m_simParticles, m_initialIndices, m_initialUVs);
-    }
 } // namespace NvCloth

@@ -100,6 +100,11 @@ QTreeView::branch:closed:has-children
     padding: 8px 6px;
 }
 
+QTreeView::item:disabled 
+{ 
+    color: #777777; 
+}
+
 AzQtComponents--TableView::branch:open:has-children,
 AzQtComponents--TableView::branch:closed:has-children
 {

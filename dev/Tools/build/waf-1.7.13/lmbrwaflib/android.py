@@ -1965,7 +1965,16 @@ def apply_android_java(self):
     append_to_unique_list(self.srcdir, java_src_paths)
 
     jars = collect_source_paths(self, game_project_modules, 'jars')
-    append_to_unique_list(self.classpath, jars)
+
+    for jar in jars:
+        jar_path = ''
+        if isinstance(jar, Node.Node):
+            jar_path = jar.abspath()
+        else:
+            jar_path = jar
+        append_to_unique_list(self.classpath, jar_path)
+        append_to_unique_list(self.aapt_includes, jar_path)
+
 
     Logs.debug('android: -> Additional Java source paths found {}'.format(java_src_paths))
 

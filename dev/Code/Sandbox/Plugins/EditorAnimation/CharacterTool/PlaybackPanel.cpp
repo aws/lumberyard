@@ -110,7 +110,7 @@ namespace CharacterTool
                     {
                         float speed = gPlaybackSpeeds[i];
                         QString str;
-                        str.sprintf("%.2fx", speed);
+                        str.asprintf("%.2fx", speed);
                         m_speedCombo->addItem(str);
                     }
                     EXPECTED(connect(m_speedCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(OnSpeedChanged(int))));
@@ -558,11 +558,11 @@ namespace CharacterTool
                 QString str;
                 if (m_timeUnits == TIME_IN_FRAMES)
                 {
-                    str.sprintf("/ %i ", int(totalDisplay + 0.5));
+                    str.asprintf("/ %i ", int(totalDisplay + 0.5));
                 }
                 else
                 {
-                    str.sprintf("/ %.2f ", totalDisplay);
+                    str.asprintf("/ %.2f ", totalDisplay);
                 }
                 m_timeTotalLabel->setText(str);
             }

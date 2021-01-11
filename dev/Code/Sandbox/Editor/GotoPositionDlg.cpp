@@ -107,7 +107,7 @@ void CGotoPositionDlg::OnChangeEdit()
     pos.Set(0);
 
     m_sPos = m_ui->m_posEdit->text();
-    const QStringList parts = m_sPos.split(QRegularExpression("[\\s,;\\t]"), QString::SkipEmptyParts);
+    const QStringList parts = m_sPos.split(QRegularExpression("[\\s,;\\t]"), Qt::SkipEmptyParts);
     for (int k = 0; k < strNum && k < parts.count(); ++k)
     {
         pos[k] = parts[k].toDouble();

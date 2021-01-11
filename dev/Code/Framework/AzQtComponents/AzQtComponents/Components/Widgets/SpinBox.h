@@ -15,126 +15,110 @@
 
 #include <QCursor>
 #include <QDoubleSpinBox>
-#include <QPointer>
 #include <QLineEdit>
+#include <QPointer>
 
+class QAction;
 class QLineEdit;
+class QMenu;
 class QPainter;
+class QProxyStyle;
 class QSettings;
 class QStyleOption;
 class QStyleOptionComplex;
-class QAction;
-class QProxyStyle;
-class QMenu;
 
 namespace AzQtComponents
 {
-    class Style;
     class SpinBoxWatcher;
+    class Style;
 
     namespace internal
     {
         class SpinBoxLineEdit;
     }
 
-    /**
-     * Class to provide extra functionality for working with QSpinBox objects.
-     *
-     * The SpinBox class provides the ability to connect to a signal for when the
-     * value being modified is committed. Similar to how a QLineEdit control has a
-     * signal for editingFinished, you can connect to SpinBox::valueChangeEnded, which
-     * will be called consistently, regardless of if the value changes as a result of
-     * a text change by the user, the mouse wheel turning, the up and down arrow keys or
-     * the up and down buttons being clicked.
-     *
-     * This control also has signals for undo and redo, that can be overridden in the
-     * case that a global, or external, undo/redo system should be used.
-     * If the lineEdit is being edited (meaning the current text hasn't been committed
-     * and the editingFinished signal hasn't been emitted) then the lineEdit's
-     * internal undo stack will be used. If the value is committed, and the lineEdit's
-     * undo stack is clear, then the signals will be emitted for globalUndoTriggered
-     * and globalRedoTriggered.
-     * To set the enabled state of the undo and redo right click context menu items,
-     * connect to the contextMenuAboutToShow signal and set the state of the parameter
-     * actions.
-     *
-     * This control also changes the cursor to indicate, around the edges of the
-     * control, that a left mouse button press and drag to the left or right will
-     * change the value.
-     *
-     * SpinBox controls are styled in SpinBox.qss and configured in SpinBoxConfig.ini
-     *
-     */
+    //! Control for integer number selection.
+    //! Supports value editing via direct input, dragging, mouse scrollwheel and UI arrows.
     class AZ_QT_COMPONENTS_API SpinBox
         : public QSpinBox
     {
         Q_OBJECT
-    public:
-        Q_PROPERTY(bool undoAvailable READ isUndoAvailable)
-        Q_PROPERTY(bool redoAvailable READ isRedoAvailable)
 
+        //! Whether an undo value is available.
+        Q_PROPERTY(bool undoAvailable READ isUndoAvailable)
+        //! Whether a redo value is available.
+        Q_PROPERTY(bool redoAvailable READ isRedoAvailable)
+    public:
+
+        //! Style configuration for the SpinBox class.
         struct Config
         {
-            int pixelsPerStep;
-            QCursor scrollCursor;
-            QCursor scrollCursorLeft;
-            QCursor scrollCursorLeftMax;
-            QCursor scrollCursorRight;
-            QCursor scrollCursorRightMax;
-            // For VectorInput, DoubleVectorInput
-            int labelSize;
-            bool autoSelectAllOnClickFocus;
+            int pixelsPerStep;                  //!< The distance the cursor needs to be dragged to increase the value one step, in pixels.
+            QCursor scrollCursor;               //!< Default mouse cursor used on hover in draggable areas. Must be an svg file.
+            QCursor scrollCursorLeft;           //!< Mouse cursor used when dragging to the left. Must be an svg file.
+            QCursor scrollCursorLeftMax;        //!< Mouse cursor used when dragging to the left and the value hit the minimum. Must be an svg file.
+            QCursor scrollCursorRight;          //!< Mouse cursor used when dragging to the right. Must be an svg file.
+            QCursor scrollCursorRightMax;       //!< Mouse cursor used when dragging to the right and the value hit the maximum. Must be an svg file.
+            int labelSize;                      //!< Default label size. Used in derived classes like VectorInput.
+            bool autoSelectAllOnClickFocus;     //!< Select the full value when the control is focused.
         };
-
-        /*!
-         * Loads the button config data from a settings object.
-         */
-        static Config loadConfig(QSettings& settings);
-
-        /*!
-         * Returns default button config data.
-         */
-        static Config defaultConfig();
-
-        /*!
-         * Sets the HasError property of the QAbstractSpinBox to hasError. This
-         * allows the developer to manually set the error state of a SpinBox or
-         * DoubleSpinBox.π
-         */
-        static void setHasError(QAbstractSpinBox* spinbox, bool hasError);
 
         explicit SpinBox(QWidget* parent = nullptr);
 
-        // NOTE: setValue() is not virtual, but is in the base class. In order for this to work
-        // YOU MUST USE A POINTER TO SpinBox, NOT A POINTER TO QSpinBox
-        // Needed so that we can keep track of the last value properly for trapping the Escape key
+        //! Sets the SpinBox style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the SpinBox.
+        static Config loadConfig(QSettings& settings);
+        //! Gets the default SpinBox style configuration.
+        static Config defaultConfig();
+
+        //! Sets the "HasError" property of the spinbox, displaying it with a red border.
+        static void setHasError(QAbstractSpinBox* spinbox, bool hasError);
+
+        //! Sets the value of the SpinBox, with undo/redo support.
+        //! Note that this is an override to a non-virtual function, so an explicit pointer
+        //! to the SpinBox class must be used in place of QSpinBox for this to work properly.
         void setValue(int value);
 
+        //! Returns the recommended minimum size for this control.
         QSize minimumSizeHint() const override;
 
+        //! Returns whether an undo value is available.
         bool isUndoAvailable() const;
+        //! Returns whether a redo value is available.
         bool isRedoAvailable() const;
 
+        //! Sets whether the initial value was initialized. False prompts reinitialization.
         void setInitialValueWasSetting(bool b);
     Q_SIGNALS:
+        //! Triggered when the value begins changing, for example when the control starts being dragged.
         void valueChangeBegan();
+        //! Triggered when the value stops changing, for example when the control is released.
         void valueChangeEnded();
 
+        //! Triggered when the global undo key sequence is pressed by the user while this control is focused.
         void globalUndoTriggered();
+        //! Triggered when the global redo key sequence is pressed by the user while this control is focused.
         void globalRedoTriggered();
 
+        //! Triggered when the Cut key sequence is pressed by the user while this control is focused.
         void cutTriggered();
+        //! Triggered when the Copy key sequence is pressed by the user while this control is focused.
         void copyTriggered();
+        //! Triggered when the Paste key sequence is pressed by the user while this control is focused.
         void pasteTriggered();
+        //! Triggered when the Delete key sequence is pressed by the user while this control is focused.
         void deleteTriggered();
-        /// Always connect to this signal in the main UI thread, with a direct connection; do not use Qt::QueuedConnection or Qt::BlockingQueuedConnection
-        /// as the parameters will only be valid for a short time
+
+        //! Triggered before the context menu is shown.
+        //! Connect to this signal in the main UI thread, with a direct connection. Do not use Qt::QueuedConnection or
+        //! Qt::BlockingQueuedConnection as the parameters will only be valid for a short time
         void contextMenuAboutToShow(QMenu* menu, QAction* undoAction, QAction* redoAction);
 
     protected:
-        friend class Style;
         friend class EditorProxyStyle;
         friend class SpinBoxWatcher;
+        friend class Style;
         friend class VectorElement;
 
         AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::SpinBox::s_spinBoxWatcher': class 'QPointer<AzQtComponents::SpinBoxWatcher>' needs to have dll-interface to be used by clients of class 'AzQtComponents::SpinBox'
@@ -165,90 +149,90 @@ namespace AzQtComponents
         friend class DoubleSpinBox;
     };
 
-    /**
-     * Class to provide extra functionality for working with QDoubleSpinBox objects.
-     *
-     * The DoubleSpinBox class provides the ability to connect to a signal for when the
-     * value being modified is committed. Similar to how a QLineEdit control has a
-     * signal for editingFinished, you can connect to DoubleSpinBox::valueChangeEnded, which
-     * will be called consistently, regardless of if the value changes as a result of
-     * a text change by the user, the mouse wheel turning, the up and down arrow keys or
-     * the up and down buttons being clicked.
-     *
-     * This control also has signals for undo and redo, that can be overridden in the
-     * case that a global, or external, undo/redo system should be used.
-     * If the lineEdit is being edited (meaning the current text hasn't been committed
-     * and the editingFinished signal hasn't been emitted) then the lineEdit's
-     * internal undo stack will be used. If the value is committed, and the lineEdit's
-     * undo stack is clear, then the signals will be emitted for globalUndoTriggered
-     * and globalRedoTriggered.
-     * To set the enabled state of the undo and redo right click context menu items,
-     * connect to the contextMenuAboutToShow signal and set the state of the parameter
-     * actions.
-     *
-     * This control also changes the cursor to indicate, around the edges of the
-     * control, that a left mouse button press and drag to the left or right will
-     * change the value.
-     *
-     * DoubleSpinBox controls are styled in SpinBox.qss and configured in SpinBoxConfig.ini
-     *
-     */
+    //! Control for decimal number selection.
+    //! Supports value editing via direct input, dragging, mouse scroll-wheel and UI arrows.
     class AZ_QT_COMPONENTS_API DoubleSpinBox
         : public QDoubleSpinBox
     {
         Q_OBJECT
+
     public:
+        //! Display options for the DoubleSpinBox class.
         enum Option
         {
-            SHOW_ONE_DECIMAL_PLACE_ALWAYS, // indicates that zeros after the decimal place should be shown (i.e. 2.00 won't be truncated to 2)
+            SHOW_ONE_DECIMAL_PLACE_ALWAYS,  //!< Show zeros even for values with no decimal part.
         };
         Q_DECLARE_FLAGS(Options, Option)
         Q_FLAG(Options)
 
+        //! Whether an undo value is available.
         Q_PROPERTY(bool undoAvailable READ isUndoAvailable)
+        //! Whether a redo value is available.
         Q_PROPERTY(bool redoAvailable READ isRedoAvailable)
+        //! Display options for the control.
         Q_PROPERTY(Options options READ options WRITE setOptions)
+        //! The maximum number of decimal digits to display when the value is truncated for display.
         Q_PROPERTY(int displayDecimals READ displayDecimals WRITE setDisplayDecimals)
 
         explicit DoubleSpinBox(QWidget* parent = nullptr);
 
-        // NOTE: setValue() is not virtual, but is in the base class. In order for this to work
-        // YOU MUST USE A POINTER TO DoubleSpinbox, NOT A POINTER TO QSpinBox
-        // Needed so that we can keep track of the last value properly for trapping the Escape key
+        //! Sets the value of the SpinBox, with undo/redo support.
+        //! Note that this is an override to a non-virtual function, so an explicit pointer
+        //! to the DoubleSpinBox class must be used in place of QSpinBox for this to work properly.
         void setValue(double value);
 
+        //! Returns the recommended minimum size for this control.
         QSize minimumSizeHint() const override;
 
+        //! Formats the value into a string according to the display options.
         QString textFromValue(double value) const override;
 
+        //! Returns whether an undo value is available.
         bool isUndoAvailable() const;
+        //! Returns whether a redo value is available.
         bool isRedoAvailable() const;
 
+        //! Returns this control's display options.
         Options options() const { return m_options; }
+        //! Sets this control's display options.
         void setOptions(Options options) { m_options = options; }
 
+        //! Returns the setting for the number of decimals to display.
         int displayDecimals() const { return m_displayDecimals; }
+        //! Sets the setting for the number of decimals to display.
         void SetDisplayDecimals(int displayDecimals) { setDisplayDecimals(displayDecimals); }
+        //! Sets the setting for the number of decimals to display.
         void setDisplayDecimals(int displayDecimals) { m_displayDecimals = displayDecimals; }
 
+        //! Returns whether this SpinBox is currently being edited.
         bool isEditing() const;
 
+        //! Sets whether the initial value was initialized. False prompts reinitialization.
         void setInitialValueWasSetting(bool b);
 
     Q_SIGNALS:
+        //! Triggered when the value begins changing, for example when the control starts being dragged.
         void valueChangeBegan();
+        //! Triggered when the value stops changing, for example when the control is released.
         void valueChangeEnded();
 
+        //! Triggered when the global undo key sequence is pressed by the user while this control is focused.
         void globalUndoTriggered();
+        //! Triggered when the global redo key sequence is pressed by the user while this control is focused.
         void globalRedoTriggered();
 
+        //! Triggered when the Cut key sequence is pressed by the user while this control is focused.
         void cutTriggered();
+        //! Triggered when the Copy key sequence is pressed by the user while this control is focused.
         void copyTriggered();
+        //! Triggered when the Paste key sequence is pressed by the user while this control is focused.
         void pasteTriggered();
+        //! Triggered when the Delete key sequence is pressed by the user while this control is focused.
         void deleteTriggered();
 
-        /// Always connect to this signal in the main UI thread, with a direct connection; do not use Qt::QueuedConnection or Qt::BlockingQueuedConnection
-        /// as the parameters will only be valid for a short time
+        //! Triggered before the context menu is shown.
+        //! Connect to this signal in the main UI thread, with a direct connection. Do not use Qt::QueuedConnection or
+        //! Qt::BlockingQueuedConnection as the parameters will only be valid for a short time
         void contextMenuAboutToShow(QMenu* menu, QAction* undoAction, QAction* redoAction);
 
     protected:
@@ -273,14 +257,8 @@ namespace AzQtComponents
 
     namespace internal
     {
-        /**
-         * Internal class that helps with getting undo and redo to work
-         * with SpinBox and DoubleSpinBox. Exposed here so that Qt's moc
-         * will run over the class and generate the signal methods.
-         *
-         * DO NOT USE!
-         *
-         */
+        //! Internal class to add support to undo and redo for SpinBox classes.
+        //! Must not be used outside of the SpinBox classes.
         class SpinBoxLineEdit : public QLineEdit
         {
             Q_OBJECT
@@ -297,13 +275,12 @@ namespace AzQtComponents
         Q_SIGNALS:
             void globalUndoTriggered();
             void globalRedoTriggered();
-            void selectAllTriggered();
 
+            void selectAllTriggered();
             void cutTriggered();
             void copyTriggered();
             void pasteTriggered();
             void deleteTriggered();
-
         };
     } // namespace internal
 } // namespace AzQtComponents

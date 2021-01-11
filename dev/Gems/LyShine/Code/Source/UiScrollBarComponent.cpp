@@ -258,11 +258,16 @@ AZ::EntityId UiScrollBarComponent::GetScrollableEntity()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiScrollBarComponent::SetScrollableEntity(AZ::EntityId entityId)
 {
+    if (m_scrollableEntity.IsValid() && UiScrollableToScrollerNotificationBus::Handler::BusIsConnected())
+    {
+        UiScrollableToScrollerNotificationBus::Handler::BusDisconnect();
+    }
+    
     m_scrollableEntity = entityId;
 
-    if (m_scrollableEntity.IsValid())
+    if (entityId.IsValid())
     {
-        UiScrollableToScrollerNotificationBus::Handler::BusConnect(m_scrollableEntity);
+        UiScrollableToScrollerNotificationBus::Handler::BusConnect(entityId);
     }
 }
 

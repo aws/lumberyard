@@ -55,6 +55,9 @@ namespace AzToolsFramework
 
             static void Reflect(AZ::ReflectContext* context);
 
+            static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+            static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+
             // AZ::Component ...
             void Activate() override;
             void Deactivate() override;
@@ -83,7 +86,29 @@ namespace AzToolsFramework
                                                            ///< and creating a concrete ComponentMode.
         };
 
-        // Simple component for testing that can be supplied a componentmode
+        class IncompatiblePlaceholderEditorComponent
+            : public AzToolsFramework::Components::EditorComponentBase
+        {
+        public:
+            AZ_EDITOR_COMPONENT(
+                IncompatiblePlaceholderEditorComponent, "{284C7965-87C2-41C7-909B-1345061B3DC7}",
+                AzToolsFramework::Components::EditorComponentBase);
+
+            static void Reflect(AZ::ReflectContext* context);
+
+            static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+            static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+
+            // AZ::Component ...
+            void Activate() override;
+            void Deactivate() override;
+
+        private:
+            ComponentModeDelegate m_componentModeDelegate; ///< Responsible for detecting ComponentMode activation
+                                                           ///< and creating a concrete ComponentMode.
+        };
+
+        // Simple component for testing that can be supplied a component mode
         // type via template argument.
         template<typename ComponentModeT>
         class TestComponentModeComponent

@@ -104,7 +104,7 @@ namespace AssetProcessor
             // Only show the icon in the name column
             if (index.column() == static_cast<int>(AssetTreeColumns::Name))
             {
-                return item->GetIcon(m_fileProvider);
+                return item->GetIcon();
             }
             break;
         case Qt::ToolTipRole:

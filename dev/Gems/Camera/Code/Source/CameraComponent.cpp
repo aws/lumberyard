@@ -35,6 +35,7 @@ namespace Camera
         , m_specifyDimensions(properties.m_specifyFrustumDimensions)
         , m_frustumWidth(properties.m_frustumWidth)
         , m_frustumHeight(properties.m_frustumHeight)
+        , m_autoActivate(properties.m_autoActivate)
     {
     }
 
@@ -60,8 +61,15 @@ namespace Camera
                 m_view->LinkTo(GetEntity());
                 UpdateCamera();
             }
-            MakeActiveView();
+
+            // Only activate the view if auto activate checkbox is ticked. 
+             // This allows more control over multiple cameras in a scene.
+            if (m_autoActivate)
+            {
+                SetActiveView(true);
+            }
         }
+
         CameraRequestBus::Handler::BusConnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         CameraBus::Handler::BusConnect();
@@ -97,13 +105,14 @@ namespace Camera
         {
             serializeContext->ClassDeprecate("CameraComponent", "{A0C21E18-F759-4E72-AF26-7A36FC59E477}", &ClassConverters::DeprecateCameraComponentWithoutEditor);
             serializeContext->Class<CameraComponent, AZ::Component>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("Field of View", &CameraComponent::m_fov)
                 ->Field("Near Clip Plane Distance", &CameraComponent::m_nearClipPlaneDistance)
                 ->Field("Far Clip Plane Distance", &CameraComponent::m_farClipPlaneDistance)
                 ->Field("SpecifyDimensions", &CameraComponent::m_specifyDimensions)
                 ->Field("FrustumWidth", &CameraComponent::m_frustumWidth)
-                ->Field("FrustumHeight", &CameraComponent::m_frustumHeight);
+                ->Field("FrustumHeight", &CameraComponent::m_frustumHeight)
+                ->Field("AutoActivate", &CameraComponent::m_autoActivate);
         }
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection))
         {
@@ -118,10 +127,18 @@ namespace Camera
                 ->Event("SetFov", &CameraRequestBus::Events::SetFov) // Deprecated in 1.13
                 ->Event("SetNearClipDistance", &CameraRequestBus::Events::SetNearClipDistance)
                 ->Event("SetFarClipDistance", &CameraRequestBus::Events::SetFarClipDistance)
-                ->Event("MakeActiveView", &CameraRequestBus::Events::MakeActiveView)
+                ->Event("MakeActiveView", &CameraRequestBus::Events::MakeActiveView) // Deprecated
+                ->Event("ProjectWorldPointToScreen", &CameraRequestBus::Events::ProjectWorldPointToScreen)
+                ->Event("UnprojectScreenPointToWorld", &CameraRequestBus::Events::UnprojectScreenPointToWorld)
+                ->Event("ProjectWorldPointToViewport", &CameraRequestBus::Events::ProjectWorldPointToViewport)
+                ->Event("UnprojectViewportPointToWorld", &CameraRequestBus::Events::UnprojectViewportPointToWorld)
+                ->Event("GetProjectionMatrix", &CameraRequestBus::Events::GetProjectionMatrix)
+                ->Event("IsActiveView", &CameraRequestBus::Events::IsActiveView)
+                ->Event("SetActiveView", &CameraRequestBus::Events::SetActiveView)
                 ->VirtualProperty("FieldOfView","GetFovDegrees","SetFovDegrees")
                 ->VirtualProperty("NearClipDistance", "GetNearClipDistance", "SetNearClipDistance")
                 ->VirtualProperty("FarClipDistance", "GetFarClipDistance", "SetFarClipDistance")
+                ->VirtualProperty("ActiveView", "IsActiveView", "SetActiveView")
                 ;
 
             behaviorContext->Class<CameraComponent>()->RequestBus("CameraRequestBus");
@@ -200,7 +217,7 @@ namespace Camera
 
     void CameraComponent::SetNearClipDistance(float nearClipDistance) 
     {
-        m_nearClipPlaneDistance = AZ::GetMin(nearClipDistance, m_farClipPlaneDistance);
+        m_nearClipPlaneDistance = AZ::GetClamp(nearClipDistance, CAMERA_MIN_NEAR, m_farClipPlaneDistance);
         UpdateCamera();
     }
 
@@ -222,11 +239,49 @@ namespace Camera
         UpdateCamera();
     }
 
-    void CameraComponent::MakeActiveView()
+    bool CameraComponent::ProjectWorldPointToScreen(const AZ::Vector3& worldPoint, AZ::Vector3& outScreenPoint) const
     {
-        m_prevViewId = AZ::u32(m_viewSystem->GetActiveViewId());
-        m_viewSystem->SetActiveView(m_view);
-        UpdateCamera();
+        return m_view->ProjectWorldPointToScreen(worldPoint, outScreenPoint);
+    }
+
+    bool CameraComponent::UnprojectScreenPointToWorld(const AZ::Vector3& screenPoint, AZ::Vector3& outWorldPoint) const
+    {
+        return m_view->UnprojectScreenPointToWorld(screenPoint, outWorldPoint);
+    }
+
+    bool CameraComponent::ProjectWorldPointToViewport(const AZ::Vector3& worldPoint, const AZ::Vector4& viewport, AZ::Vector3& outViewportPoint) const
+    {
+        return m_view->ProjectWorldPointToViewport(worldPoint, viewport, outViewportPoint);
+    }
+
+    bool CameraComponent::UnprojectViewportPointToWorld(const AZ::Vector3& viewportPoint, const AZ::Vector4& viewport, AZ::Vector3& outWorldPoint) const
+    {
+        return m_view->UnprojectViewportPointToWorld(viewportPoint, viewport, outWorldPoint);
+    }
+
+    void CameraComponent::GetProjectionMatrix(AZ::Matrix4x4& outProjectionMatrix) const
+    {
+        m_view->GetProjectionMatrix(m_nearClipPlaneDistance, m_farClipPlaneDistance, outProjectionMatrix);
+    }
+
+    bool CameraComponent::IsActiveView() const
+    {
+        return(m_view && m_viewSystem->GetActiveView() == m_view);
+    }
+
+    void CameraComponent::SetActiveView(bool active)
+    {
+        if (active)
+        {
+            m_prevViewId = AZ::u32(m_viewSystem->GetActiveViewId());
+            m_viewSystem->SetActiveView(m_view);
+            UpdateCamera();
+        }
+        else if (m_prevViewId && IsActiveView())
+        {
+            m_viewSystem->SetActiveView(m_prevViewId);
+            m_prevViewId = 0;
+        }
     }
 
     void CameraComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)

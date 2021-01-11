@@ -364,7 +364,7 @@ void PaletteModel::insertIgnoringDuplicates(int row, QVector<AZ::Color>::const_i
 {
     if (!isUndoRedo)
     {
-        auto insertion = new UndoRedo::PaletteModelInsertionCommand(*this, row, QVector<AZ::Color>::fromStdVector(std::vector<AZ::Color>(first, last)));
+        auto insertion = new UndoRedo::PaletteModelInsertionCommand(*this, row, QVector<AZ::Color>(first, last));
         m_undoStack->push(insertion);
     }
     else

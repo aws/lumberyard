@@ -144,7 +144,7 @@ bool GemManager::LoadGems(const SSystemInitParams& initParams)
 
     if (!m_projectSettings->Initialize("", "@assets@"))
     {
-        const char* assetPath = initParams.UseAssetCache() ? initParams.assetsPathCache : initParams.assetsPath;
+        const char* assetPath = initParams.WillAssetCacheExist() ? initParams.assetsPathCache : initParams.assetsPath;
         AZ_Error("Gems", false, "Error initializing Gems::ProjectSettings for project. Add gems.json to %s at enabled Gems", assetPath);
         return false;
     }

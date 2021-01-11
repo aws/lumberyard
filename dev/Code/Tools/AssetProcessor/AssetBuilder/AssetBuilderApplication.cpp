@@ -23,6 +23,12 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 
 #include <AzToolsFramework/Asset/AssetSystemComponent.h>
+#include <AzToolsFramework/Component/EditorComponentAPIComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityActionComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityModelComponent.h>
+#include <AzToolsFramework/Entity/EditorEntitySearchComponent.h>
+#include <AzToolsFramework/Slice/SliceMetadataEntityContextComponent.h>
 #include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogComponent.h>
 
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
@@ -52,9 +58,15 @@ AZ::ComponentTypeList AssetBuilderApplication::GetRequiredSystemComponents() con
     }
 
     components.insert(components.end(), {
+        azrtti_typeid<AzToolsFramework::SliceMetadataEntityContextComponent>(),
         azrtti_typeid<AssetBuilderComponent>(),
         azrtti_typeid<AssetProcessor::ToolsAssetCatalogComponent>(),
         azrtti_typeid<AzToolsFramework::AssetSystem::AssetSystemComponent>(),
+        azrtti_typeid<AzToolsFramework::Components::EditorComponentAPIComponent>(),
+        azrtti_typeid<AzToolsFramework::Components::EditorEntityActionComponent>(),
+        azrtti_typeid<AzToolsFramework::Components::EditorEntityModelComponent>(),
+        azrtti_typeid<AzToolsFramework::Components::EditorEntitySearchComponent>(),
+        azrtti_typeid<AzToolsFramework::EditorEntityContextComponent>(),
     });
 
     return components;
@@ -145,6 +157,9 @@ void AssetBuilderApplication::StartCommon(AZ::Entity* systemEntity)
 
     AzFramework::StringFunc::Path::Join(gameRoot.c_str(), "Config/Editor.xml", configFilePath);
     ReflectModulesFromAppDescriptor(configFilePath.c_str());
+
+    AssetBuilderSDK::InitializeSerializationContext();
+    AssetBuilderSDK::InitializeBehaviorContext();
 
     // the asset builder app never writes source files, only assets, so there is no need to do any kind of asset upgrading
     AZ::Data::AssetManager::Instance().SetAssetInfoUpgradingEnabled(false);

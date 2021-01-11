@@ -26,6 +26,7 @@ namespace AzQtComponents
     DockMainWindow::DockMainWindow(QWidget* parent, Qt::WindowFlags flags)
         : QMainWindow(parent, flags)
     {
+        setCursor(Qt::ArrowCursor);
     }
 
     /**

@@ -247,11 +247,11 @@ namespace Racetrack
             return;
         }
 
-        int numDegrees = event->delta() / 8;
+        int numDegrees = event->angleDelta().y() / 8;
         int numSteps = numDegrees / 15;
         // +step := zoom IN
         // -step := zoom OUT
-        QPoint zoomPt = event->pos() - m_Inset.topLeft();
+        QPoint zoomPt = event->position().toPoint() - m_Inset.topLeft();
 
         Zoom(zoomPt, numSteps);
 
@@ -550,7 +550,7 @@ namespace Racetrack
 
     void DataRacetrack::RenderHorizCallouts(QPainter* painter)
     {
-        float textSpaceRequired = (float)painter->fontMetrics().width("9,999,999.99");
+        float textSpaceRequired = (float)painter->fontMetrics().horizontalAdvance("9,999,999.99");
         int fontH = painter->fontMetrics().height();
 
         AZStd::vector<float> divisions;
@@ -589,7 +589,7 @@ namespace Racetrack
             QString text;
             text = QString("%1").number(currentUnit, 'f', 0);
 
-            int textW = painter->fontMetrics().width(text);
+            int textW = painter->fontMetrics().horizontalAdvance(text);
 
             painter->setPen(solidPen);
             painter->drawText((int)leftEdge.x() - textW / 2, m_Inset.bottom() + fontH, text);

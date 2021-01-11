@@ -920,7 +920,7 @@ bool Connection::UserCreatedConnection() const
 
 void Connection::SetAssetPlatformsString(QString assetPlatforms)
 {
-    SetAssetPlatforms(assetPlatforms.split(',', QString::SkipEmptyParts));
+    SetAssetPlatforms(assetPlatforms.split(',', Qt::SkipEmptyParts));
 }
 
 #include <native/connection/connection.moc>

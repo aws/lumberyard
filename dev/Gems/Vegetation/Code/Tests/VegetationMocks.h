@@ -31,6 +31,7 @@
 #include <AzCore/std/containers/set.h>
 #include <Source/AreaSystemComponent.h>
 #include <Source/InstanceSystemComponent.h>
+#include <IIndexedMesh.h>
 
 // used for the mock for IStatObj
 #ifndef CRYINCLUDE_CRY3DENGINE_STATOBJ_H
@@ -969,10 +970,10 @@ namespace UnitTest
         void CleanUnusedLods() override
         {
         }
-        AZStd::vector<float> m_clothInverseMasses;
-        AZStd::vector<float>& GetClothInverseMasses() override
+        AZStd::vector<SMeshColor> m_clothData;
+        AZStd::vector<SMeshColor>& GetClothData() override
         {
-            return m_clothInverseMasses;
+            return m_clothData;
         }
     };
 

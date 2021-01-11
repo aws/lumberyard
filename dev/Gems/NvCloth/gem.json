@@ -2,7 +2,7 @@
     "GemFormatVersion": 4,
     "Uuid": "6ab53783d9f54c9e97a15ad729e7c182",
     "Name": "NvCloth",
-    "DisplayName": "NVIDIA Cloth [EXPERIMENTAL]",
+    "DisplayName": "NVIDIA Cloth [PREVIEW]",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
     "Summary": "Provides the functionality needed to add cloth simulation.",

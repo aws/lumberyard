@@ -22,7 +22,7 @@
 #include <QSet>
 #include <QList>
 #include <QCoreApplication>
-#include <QTime>
+#include <QElapsedTimer>
 
 
 using namespace UnitTestUtils;
@@ -116,7 +116,7 @@ void AssetScannerUnitTest::StartTest()
     // it makes sure that if a folder is added NON-recursively, child folder files are not found.
 
     scanner.StartScan();
-    QTime nowTime;
+    QElapsedTimer nowTime;
     nowTime.start();
     while (!doneScan)
     {

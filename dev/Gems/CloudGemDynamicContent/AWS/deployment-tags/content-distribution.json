@@ -29,17 +29,14 @@
                         "DefaultCacheBehavior" : {
                             "AllowedMethods" : ["HEAD","GET"],  
                             "TargetOriginId" : "contentOriginId",
-                            "ForwardedValues" : {
-                                "QueryString" : "false",
-                                "Cookies" : { "Forward" : "none" }
-                            },
+                            "CachePolicyId": { "Ref": "CloudFrontCachePolicy" },
                             "TrustedSigners" : [ {"Ref": "AWS::AccountId"} ],
                             "ViewerProtocolPolicy" : "https-only"
                         },
                        "PriceClass" : "PriceClass_200"
                     }
                 },
-                "DependsOn": [ "ContentBucket", "AccessIdentity"]
+                "DependsOn": [ "ContentBucket", "AccessIdentity", "CloudFrontCachePolicy" ]
             }
         },
         "Resources:AccessIdentity" : {
@@ -100,13 +97,43 @@
                       "Id": "StoragePolicy",
                       "Statement":[{
                         "Sid": "Bucket policy for CloudFront Distribution Access Identity",
-                        "Action":["s3:GetObject"],
+                        "Action": [
+                            "s3:GetObject",
+                            "s3:GetObjectVersion"
+                        ],
                         "Effect":"Allow",
                         "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ContentBucket" } , "/*" ]]},
                         "Principal": { "CanonicalUser": { "Fn::GetAtt": [ "AccessIdentity", "S3CanonicalUserId"] } }
                       }]
                     }
                  }
+            }
+        },
+        "Resources:CloudFrontCachePolicy": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::CloudFront::CachePolicy",
+                "Properties": {
+                    "CachePolicyConfig": {
+                        "DefaultTTL": 86400,
+                        "MaxTTL": 31536000,
+                        "MinTTL": 1,
+                        "Name": { "Fn::Join": [ "-", [{ "Ref": "AWS::StackName" }, "DynamicContentCachePolicy" ]]},
+                        "ParametersInCacheKeyAndForwardedToOrigin": {
+                            "CookiesConfig": {
+                                "CookieBehavior": "none"
+                            },
+                            "EnableAcceptEncodingGzip": false,
+                            "HeadersConfig": {
+                                "HeaderBehavior": "none"
+                            },
+                            "QueryStringsConfig": {
+                                "QueryStringBehavior": "whitelist",
+                                "QueryStrings": [ "versionId" ]
+                            }
+                        }
+                    }
+                }
             }
         }
     }

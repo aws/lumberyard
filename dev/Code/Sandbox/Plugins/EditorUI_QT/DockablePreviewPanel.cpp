@@ -25,7 +25,7 @@
 #include <Particles/ParticleItem.h>
 
 DockablePreviewPanel::DockablePreviewPanel(QWidget* parent)
-    : FloatableDockPanel("", parent)
+    : FloatableDockPanel("", parent, Qt::WindowFlags(), false)
     , m_titleBar(nullptr)
     , m_previewWindowView(nullptr)
 {

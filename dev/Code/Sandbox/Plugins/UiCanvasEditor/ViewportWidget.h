@@ -127,7 +127,7 @@ protected:
 
 private: // member functions
     // EditorPickModeNotificationBus
-    void OnEntityPickModeStarted() override;
+    void OnEntityPickModeStarted(AzToolsFramework::PickModeConfiguration pickModeConfiguration) override;
     void OnEntityPickModeStopped() override;
 
     // FontNotifications

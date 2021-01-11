@@ -55,13 +55,16 @@ namespace AzToolsFramework
         AZ_RTTI(EditorPythonEventsInterface, "{F50AE641-2C80-4E07-B4B3-7CB34FFAB393}");
 
         //! Signal the Python handler to start
-        virtual bool StartPython() = 0;
+        virtual bool StartPython(bool silenceWarnings = false) = 0;
 
         //! Signal the Python handler to stop
-        virtual bool StopPython() = 0;
+        virtual bool StopPython(bool silenceWarnings = false) = 0;
 
         //! Determines if the caller needs to wait for the Python VM to initialize (non-main thread only)
         virtual void WaitForInitialization() {}
+
+        //! Acquires the Python global interpreter lock (GIL) and executed the callback
+        virtual void ExecuteWithLock(AZStd::function<void()> executionCallback) = 0;
     };
 
     //! A bus to handle post notifications to the console views of Python output

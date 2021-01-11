@@ -27,7 +27,7 @@ namespace
 {
     QString elidedTextWithExtension(const QFontMetrics& fm, const QString& text, int width)
     {
-        if (fm.width(text) <= width)
+        if (fm.horizontalAdvance(text) <= width)
             return text;
 
         const int dot = text.lastIndexOf(QLatin1Char{'.'});
@@ -35,7 +35,7 @@ namespace
         {
             const auto baseName = text.left(dot);
             const auto extension = text.mid(dot + 1);
-            return fm.elidedText(baseName, Qt::ElideRight, width - fm.width(extension)) + extension;
+            return fm.elidedText(baseName, Qt::ElideRight, width - fm.horizontalAdvance(extension)) + extension;
         }
         else
         {

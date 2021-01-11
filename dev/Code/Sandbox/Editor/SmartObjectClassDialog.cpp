@@ -132,7 +132,7 @@ public:
 
         if (role == Qt::EditRole || role == Qt::DisplayRole)
         {
-            QStringList parts = value.toString().split(QStringLiteral("/"), QString::SkipEmptyParts);
+            QStringList parts = value.toString().split(QStringLiteral("/"), Qt::SkipEmptyParts);
             if (parts.isEmpty())
             {
                 return false;
@@ -196,7 +196,7 @@ public:
     QStringList GroupForSourceIndex(const QModelIndex& sourceIndex) const override
     {
         const QString path = sourceIndex.data().toString();
-        QStringList parts = path.split(QStringLiteral("/"), QString::SkipEmptyParts);
+        QStringList parts = path.split(QStringLiteral("/"), Qt::SkipEmptyParts);
         parts.pop_back();
         for (int i = 0; i < parts.count(); ++i)
         {
@@ -332,7 +332,7 @@ void CSmartObjectClassDialog::OnRefreshBtn()
     if (m_bMultiple)
     {
         static QRegularExpression exp(QStringLiteral("[ !\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^`{|}~]"));
-        for (auto token : m_sSOClass.split(exp, QString::SkipEmptyParts))
+        for (auto token : m_sSOClass.split(exp, Qt::SkipEmptyParts))
         {
             if (CItemDescriptionDlg::ValidateItem(token))
             {

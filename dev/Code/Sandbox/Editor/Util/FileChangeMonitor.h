@@ -15,11 +15,13 @@
 #define CRYINCLUDE_EDITOR_UTIL_FILECHANGEMONITOR_H
 #pragma once
 
-#include <QObject>
+#include <AzCore/std/containers/set.h>
 
+#include <QFileInfoList>
+#include <QFileSystemWatcher>
+#include <QObject>
 #include <QQueue>
 #include <QScopedPointer>
-#include <QFileSystemWatcher>
 
 class CFileChangeMonitorListener;
 
@@ -60,7 +62,7 @@ class CFileChangeMonitor : public QObject
 {
 public:
     friend class CEditorFileMonitor;
-    typedef std::set<CFileChangeMonitorListener*> TListeners;
+    typedef AZStd::set<CFileChangeMonitorListener*> TListeners;
 
 protected:
     explicit CFileChangeMonitor(QObject* parent = nullptr);

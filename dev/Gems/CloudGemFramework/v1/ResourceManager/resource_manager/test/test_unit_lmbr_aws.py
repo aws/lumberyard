@@ -92,7 +92,7 @@ class UnitTest_CloudGemFramework_ResourceManager_Metrics(lmbr_aws_test_support.l
             return count
 
         for file_path in os.listdir(directory_path):
-            with open(os.path.join(directory_path, file_path)) as file:
+            with open(os.path.join(directory_path, file_path), errors='ignore') as file:
                 file_contents = file.read()
                 if text in file_contents:
                     count = count + 1

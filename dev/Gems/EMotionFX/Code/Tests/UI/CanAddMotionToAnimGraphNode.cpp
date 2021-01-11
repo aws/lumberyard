@@ -106,7 +106,7 @@ namespace EMotionFX
 
         EMStudio::GraphNode* newNode = nodes[0];
         QRect nodeLocalRect = newNode->GetFinalRect();
-        QTest::mouseClick(m_blendGraphWidget, Qt::LeftButton, 0, nodeLocalRect.center());
+        QTest::mouseClick(m_blendGraphWidget, Qt::LeftButton, {}, nodeLocalRect.center());
 
         QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 

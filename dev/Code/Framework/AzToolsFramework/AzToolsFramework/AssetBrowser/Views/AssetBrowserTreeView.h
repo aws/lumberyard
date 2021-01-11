@@ -64,6 +64,8 @@ namespace AzToolsFramework
             void SelectProduct(AZ::Data::AssetId assetID) override;
             void SelectFileAtPath(const AZStd::string& assetPath) override;
             void ClearFilter() override;
+
+            void Update() override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////

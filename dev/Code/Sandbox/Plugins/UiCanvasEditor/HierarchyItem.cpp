@@ -469,11 +469,11 @@ void HierarchyItem::UpdateEditorOnlyInfo()
     if (isEditorOnly)
     {
         static const QColor editorOnlyBackgroundColor(60, 0, 0);
-        setBackgroundColor(0, editorOnlyBackgroundColor);
+        setBackground(0, editorOnlyBackgroundColor);
     }
     else
     {
-        setBackgroundColor(0, Qt::transparent);
+        setBackground(0, Qt::transparent);
     }
 }
 

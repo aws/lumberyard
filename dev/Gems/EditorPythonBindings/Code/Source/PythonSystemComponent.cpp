@@ -219,40 +219,20 @@ namespace RedirectOutput
 
 namespace EditorPythonBindings
 {
-    AzFramework::CommandResult Command_ExecuteByFilename(const AZStd::vector<AZStd::string_view>& args)
-    {
-        if (args.size() < 2)
-        {
-            // We expect at least "pyRunFile" and the filename
-            return AzFramework::CommandResult::ErrorWrongNumberOfArguments;
-        }
-        else if (args.size() == 2)
-        {
-            // If we only have "pyRunFile filename", there are no args to pass through.
-            AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByFilename, args[1]);
-        }
-        else
-        {
-            // We have "pyRunFile filename x y z", so copy everything past filename into a new vector
-            AZStd::vector<AZStd::string_view> trimmedArgs(&args[2], args.end());
-            AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByFilenameWithArgs, args[1], trimmedArgs);
-        }
-
-        return AzFramework::CommandResult::Success;
-    }
-
     void PythonSystemComponent::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serialize->Class<PythonSystemComponent, AZ::Component>()
-                ->Version(0);
+                ->Version(1)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>{AZ_CRC_CE("AssetBuilder")})
+                ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
                 ec->Class<PythonSystemComponent>("PythonSystemComponent", "The Python interpreter")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC_CE("System"))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ;
             }
@@ -261,12 +241,12 @@ namespace EditorPythonBindings
 
     void PythonSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC("PythonSystemService", 0x98e7cd4d));
+        provided.push_back(PythonEmbeddedService);
     }
 
     void PythonSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC("PythonSystemService", 0x98e7cd4d));
+        incompatible.push_back(PythonEmbeddedService);
     }
 
     void PythonSystemComponent::Activate()
@@ -279,10 +259,10 @@ namespace EditorPythonBindings
     {
         AzToolsFramework::EditorPythonRunnerRequestBus::Handler::BusDisconnect();
         AZ::Interface<AzToolsFramework::EditorPythonEventsInterface>::Unregister(this);
-        StopPython();
+        StopPython(true);
     }
 
-    bool PythonSystemComponent::StartPython()
+    bool PythonSystemComponent::StartPython(bool silenceWarnings)
     {
         struct ReleaseInitalizeWaiterScope final
         {
@@ -306,7 +286,7 @@ namespace EditorPythonBindings
 
         if (Py_IsInitialized())
         {
-            AZ_Warning("python", false, "Python is already active!");
+            AZ_Warning("python", silenceWarnings, "Python is already active!");
             return false;
         }
 
@@ -316,11 +296,6 @@ namespace EditorPythonBindings
         EditorPythonBindingsNotificationBus::Broadcast(&EditorPythonBindingsNotificationBus::Events::OnPreInitialize);
         if (StartPythonInterpreter(pythonPathStack))
         {
-            using namespace AzFramework;
-            bool result = false;
-            CommandRegistrationBus::BroadcastResult(result, &CommandRegistrationBus::Events::RegisterCommand, "pyRunFile", "Runs the Python script from the project.", CommandFlags::Development, Command_ExecuteByFilename);
-            AZ_Warning("python", result, "Failed to register console command 'pyRunFile'");
-
             EditorPythonBindingsNotificationBus::Broadcast(&EditorPythonBindingsNotificationBus::Events::OnPostInitialize);
 
             // initialize internal base module and bootstrap scripts
@@ -331,19 +306,15 @@ namespace EditorPythonBindings
         return false;
     }
 
-    bool PythonSystemComponent::StopPython()
+    bool PythonSystemComponent::StopPython(bool silenceWarnings)
     {
         if (!Py_IsInitialized())
         {
-            AZ_Warning("python", false, "Python is not active!");
+            AZ_Warning("python", silenceWarnings, "Python is not active!");
             return false;
         }
 
-        using namespace AzFramework;
         bool result = false;
-        CommandRegistrationBus::BroadcastResult(result, &CommandRegistrationBus::Events::UnregisterCommand, "pyRunFile");
-        AZ_Warning("python", result, "Failed to unregister console command 'pyRunFile'");
-
         EditorPythonBindingsNotificationBus::Broadcast(&EditorPythonBindingsNotificationBus::Events::OnPreFinalize);
         AzToolsFramework::EditorPythonRunnerRequestBus::Handler::BusDisconnect();
 
@@ -356,6 +327,14 @@ namespace EditorPythonBindings
     {
         m_initalizeWaiterCount++;
         m_initalizeWaiter.acquire();
+    }
+
+    void PythonSystemComponent::ExecuteWithLock(AZStd::function<void()> executionCallback)
+    {
+        AZStd::lock_guard<decltype(m_lock)> lock(m_lock);
+        pybind11::gil_scoped_release release;
+        pybind11::gil_scoped_acquire acquire;
+        executionCallback();
     }
 
     void PythonSystemComponent::DiscoverPythonPaths(PythonPathStack& pythonPathStack)
@@ -512,6 +491,10 @@ namespace EditorPythonBindings
 
             RedirectOutput::Intialize(PyImport_ImportModule("azlmbr_redirect"));
 
+            // Acquire GIL before calling Python code
+            AZStd::lock_guard<decltype(m_lock)> lock(m_lock);
+            pybind11::gil_scoped_acquire acquire;
+
             // print Python version using AZ logging
             const int verRet = PyRun_SimpleStringFlags("import sys \nprint (sys.version) \n", nullptr);
             AZ_Error("python", verRet == 0, "Error trying to fetch the version number in Python!");
@@ -549,6 +532,7 @@ namespace EditorPythonBindings
         if (!script.empty())
         {
             // Acquire GIL before calling Python code
+            AZStd::lock_guard<decltype(m_lock)> lock(m_lock);
             pybind11::gil_scoped_acquire acquire;
 
             // Acquire scope for __main__ for executing our script
@@ -669,6 +653,7 @@ namespace EditorPythonBindings
         try
         {
             // Acquire GIL before calling Python code
+            AZStd::lock_guard<decltype(m_lock)> lock(m_lock);
             pybind11::gil_scoped_acquire acquire;
         
             // Create standard "argc" / "argv" command-line parameters to pass in to the Python script via sys.argv.

@@ -121,6 +121,27 @@ namespace LmbrCentral
         void SetStreamInDistance(float streamInDistance) override;
         float GetStreamInDistance() override { return m_streamInDistance; }
 
+        void SetMinSpec(EngineSpec minSpec) override;
+        EngineSpec GetMinSpec() override { return m_minSpec; }
+
+        void SetPlayOnStart(bool playOnStart) override;
+        bool GetPlayOnStart() override { return m_playOnStart; }
+
+        void SetMaxViewDistance(float maxViewDistance) override;
+        float GetMaxViewDistance() override { return m_maxViewDistance; }
+
+        void SetViewDistanceMultiplier(float viewDistanceMultiplier) override;
+        float GetViewDistanceMultiplier() override { return m_viewDistanceMultiplier; }
+
+        void SetLODDistanceRatio(AZ::u32 lodDistanceRatio) override;
+        AZ::u32 GetLODDistanceRatio() override { return m_lodDistanceRatio; }
+
+        void SetCastShadows(bool castShadows) override;
+        bool GetCastShadows() override { return m_castShadows; }
+
+        void SetUseVisAreas(bool useVisAreas) override;
+        bool GetUseVisAreas() override { return m_useVisAreas; }
+
         IGeomCacheRenderNode* GetGeomCacheRenderNode() override { return m_geomCacheRenderNode; }
 
         void ClearGeomCacheRenderNode() { m_geomCacheRenderNode = nullptr; }

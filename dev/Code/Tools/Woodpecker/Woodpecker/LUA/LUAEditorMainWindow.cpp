@@ -796,8 +796,11 @@ namespace LUAEditor
         // w/out pulling in headers, AssetBrowserUI::AB_DEFAULT_CRC := 0
         //EditorFramework::ShowAssetBrowserView( AZ::ScriptAsset::StaticAssetType(), AZ_CRC("LUA CONTEXT", 0xec76567e) );
         //AZ_Assert(false, "No asset browser yet!");
+        const char* rootDirString;
+        AZ::ComponentApplicationBus::BroadcastResult(rootDirString, &AZ::ComponentApplicationBus::Events::GetExecutableFolder);
+
         QDir rootDir;
-        AZ::ComponentApplicationBus::BroadcastResult(rootDir, &AZ::ComponentApplicationBus::Events::GetExecutableFolder);
+        rootDir.setPath(rootDirString);
         rootDir.cdUp();
 
         QString name = QFileDialog::getOpenFileName(this, "Open lua file", m_lastOpenFilePath.size() > 0 ? m_lastOpenFilePath.c_str() : rootDir.absolutePath(), "Lua files (*.lua)");
@@ -1735,11 +1738,14 @@ namespace LUAEditor
 
     bool LUAEditorMainWindow::OnFileSaveDialog(const AZStd::string& assetName, AZStd::string& newAssetName)
     {
+        const char* rootDirString;
+        AZ::ComponentApplicationBus::BroadcastResult(rootDirString, &AZ::ComponentApplicationBus::Events::GetExecutableFolder);
+
         QDir rootDir;
-        AZ::ComponentApplicationBus::BroadcastResult(rootDir, &AZ::ComponentApplicationBus::Events::GetExecutableFolder);
+        rootDir.setPath(rootDirString);
         rootDir.cdUp();
 
-        QString name = QFileDialog::getSaveFileName(this, QString(AZStd::string::format("Save File {%s}", assetName.c_str()).c_str()), m_lastOpenFilePath.size() > 0 ? m_lastOpenFilePath.c_str() : rootDir.absolutePath(), QString("*.lua"), 0, 0);
+        QString name = QFileDialog::getSaveFileName(this, QString(AZStd::string::format("Save File {%s}", assetName.c_str()).c_str()), m_lastOpenFilePath.size() > 0 ? m_lastOpenFilePath.c_str() : rootDir.absolutePath(), QString("*.lua"));
         if (name.isEmpty())
         {
             return false;
@@ -1761,11 +1767,14 @@ namespace LUAEditor
 
     bool LUAEditorMainWindow::OnFileSaveAsDialog(const AZStd::string& assetName, AZStd::string& newAssetName)
     {
+        const char* rootDirString;
+        AZ::ComponentApplicationBus::BroadcastResult(rootDirString, &AZ::ComponentApplicationBus::Events::GetExecutableFolder);
+
         QDir rootDir;
-        AZ::ComponentApplicationBus::BroadcastResult(rootDir, &AZ::ComponentApplicationBus::Events::GetExecutableFolder);
+        rootDir.setPath(rootDirString);
         rootDir.cdUp();
 
-        QString name = QFileDialog::getSaveFileName(this, QString(AZStd::string::format("Save File As {%s}", assetName.c_str()).c_str()), rootDir.absolutePath(), QString("*.lua"), 0, 0);
+        QString name = QFileDialog::getSaveFileName(this, QString(AZStd::string::format("Save File As {%s}", assetName.c_str()).c_str()), rootDir.absolutePath(), QString("*.lua"));
         if (name.isEmpty())
         {
             return false;
@@ -2396,7 +2405,7 @@ namespace LUAEditor
 
     Qt::Orientations LUAEditorMainWindowLayout::expandingDirections() const
     {
-        return 0;
+        return Qt::Orientations();
     }
 
     QSize LUAEditorMainWindowLayout::sizeHint() const

@@ -677,7 +677,7 @@ namespace AzToolsFramework
 
         Qt::Orientations LogPanelLayout::expandingDirections() const
         {
-            return 0;
+            return Qt::Orientations();
         }
 
         QSize LogPanelLayout::sizeHint() const

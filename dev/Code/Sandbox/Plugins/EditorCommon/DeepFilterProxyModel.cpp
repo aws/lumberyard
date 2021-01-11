@@ -22,7 +22,7 @@ DeepFilterProxyModel::DeepFilterProxyModel(QObject* parent)
 void DeepFilterProxyModel::setFilterString(const QString& filter)
 {
     m_filter = filter;
-    m_filterParts = m_filter.split(' ', QString::SkipEmptyParts);
+    m_filterParts = m_filter.split(' ', Qt::SkipEmptyParts);
     m_acceptCache.clear();
 }
 
@@ -34,7 +34,7 @@ void DeepFilterProxyModel::invalidate()
 
 QVariant DeepFilterProxyModel::data(const QModelIndex& index, int role) const
 {
-    if (role == Qt::TextColorRole)
+    if (role == Qt::ForegroundRole)
     {
         QModelIndex sourceIndex = mapToSource(index);
         if (matchFilter(sourceIndex.row(), sourceIndex.parent()))

@@ -151,7 +151,7 @@ namespace AzQtComponents
 
                 if (matches.hasMatch())
                 {
-                    QStringList colorComponents = matches.captured(1).split(',', QString::SkipEmptyParts);
+                    QStringList colorComponents = matches.captured(1).split(',', Qt::SkipEmptyParts);
                     if (colorComponents.count() <= 4)
                     {
                         if (colorComponents.count() == 3)

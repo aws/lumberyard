@@ -211,7 +211,7 @@ QVariant LensFlareLightEntityModel::data(const QModelIndex& index, int role) con
         return pEntity->GetName();
 
     case Qt::UserRole:
-        return qVariantFromValue<CEntityObject*>(pEntity);
+        return QVariant::fromValue<CEntityObject*>(pEntity);
     }
 
     return {};

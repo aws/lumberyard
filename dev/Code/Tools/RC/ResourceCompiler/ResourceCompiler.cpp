@@ -1031,15 +1031,6 @@ bool ResourceCompiler::CompileFile()
     {
         bool bRefresh = config->GetAsBool("refresh", false, true);
 
-        // Force "refresh" to be true if user asked for dialog - it helps a lot
-        // when a command line used, because users very often forget to specify /refresh
-        // in such cases. Also, some tools, including CryTif exporter, call RC without
-        // providing /refresh
-        if (config->GetAsBool("userdialog", false, true))
-        {
-            bRefresh = true;
-        }
-
         pCC->SetForceRecompiling(bRefresh);
     }
 
@@ -1869,10 +1860,8 @@ std::unique_ptr<QCoreApplication> CreateQApplication(int &argc, char** argv)
     // special circumsance  - if 'userDialog' is present on the command line, we need an interactive app:
     AzFramework::CommandLine cmdLine;
     cmdLine.Parse(argc, argv);
-    bool userDialog = cmdLine.HasSwitch("userdialog") &&
-        ((cmdLine.GetNumSwitchValues("userdialog") == 0) || (cmdLine.GetSwitchValue("userdialog", 0) == "1"));
 
-    std::unique_ptr<QCoreApplication> qApplication = userDialog? std::make_unique<QApplication>(argc, argv) : std::make_unique<QCoreApplication>(argc, argv);
+    std::unique_ptr<QCoreApplication> qApplication = std::make_unique<QCoreApplication>(argc, argv);
 
     // now that QT is initialized, we can use its path manip to set the rest up:
     QDir appPath(qApp->applicationDirPath());
@@ -2134,6 +2123,9 @@ int rcmain(int argc, char** argv, char** envp)
             string appRootInput = config.GetAsString("approot", "", "");
             string appRoot = (!appRootInput.empty()) ? appRootInput : ResourceCompiler::GetAppRootPathFromGameRoot(devAssets);
             rc.SetAppRootPath(appRoot);
+
+            string assetCacheRoot = string(pFileIO->GetAlias("@devroot@")) + "/Cache/" + cfg.m_gameFolder + "/" + cfg.m_assetPlatform;
+            pFileIO->SetAlias("@root@", assetCacheRoot.c_str());
         }
         RCLog("");
 

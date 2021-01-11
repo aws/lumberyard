@@ -74,6 +74,10 @@ void ReflectedVarInit::setupReflection(AZ::SerializeContext* serializeContext)
         ->Field("assetId", &CReflectedVarMotion::m_assetId)
         ;
 
+    serializeContext->Class <CReflectedVarAsset, CReflectedVar>()
+        ->Version(1)
+        ->Field("assetId", &CReflectedVarAsset::m_assetId);
+
     AZ::EditContext* ec = serializeContext->GetEditContext();
     if (ec)
     {
@@ -125,6 +129,12 @@ void ReflectedVarInit::setupReflection(AZ::SerializeContext* serializeContext)
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
             ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &CReflectedVarMotion::varName)
             ->Attribute(AZ::Edit::Attributes::DescriptionTextOverride, &CReflectedVarMotion::description)
+            ;
+
+        ec->Class<CReflectedVarAsset>("VarAsset", "")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &CReflectedVarAsset::varName)
+            ->Attribute(AZ::Edit::Attributes::DescriptionTextOverride, &CReflectedVarAsset::description)
             ;
     }
     CReflectedVarString::reflect(serializeContext);

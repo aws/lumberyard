@@ -304,4 +304,22 @@ namespace Maestro
         }
     }
 
+    void SequenceAgent::GetAssetTypeName(AZStd::string& returnValue, AZ::EntityId entityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress)
+    {
+        returnValue = "";
+
+        const AZ::Uuid propertyTypeId = GetVirtualPropertyTypeId(animatableAddress);
+
+        auto findIter = m_addressToBehaviorVirtualPropertiesMap.find(animatableAddress);
+        if (findIter != m_addressToBehaviorVirtualPropertiesMap.end())
+        {
+            AZ::Attribute* assetTypeAttribute = AZ::FindAttribute(AZ::Script::Attributes::AssetType, findIter->second->m_setter->m_attributes);
+            if (assetTypeAttribute)
+            {
+                AZ::AttributeReader attributeReader(nullptr, assetTypeAttribute);
+                attributeReader.Read<AZStd::string>(returnValue);
+            }
+        }
+    }
+
 }// namespace Maestro

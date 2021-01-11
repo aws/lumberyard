@@ -1,0 +1,15 @@
+{
+    "GemFormatVersion": 4,
+    "Uuid": "c7d1af5bc3eb423193bd9100c32d26cd",
+    "Name": "Websockets",
+    "DisplayName": "Websockets",
+    "Version": "0.1.0",
+    "Summary": "A simple interface for creating and using websockets",
+    "Tags": ["Networking"],
+    "IconPath": "preview.png",
+    "Modules": [
+        {
+            "Type": "GameModule"
+        }
+    ]
+}

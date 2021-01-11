@@ -1,20 +1,21 @@
 {
-    "auto": {
-      "Tests": [
-        "Tests/EditorPythonBindingsTest.cpp",
-        "Tests/PythonBindingLibTests.cpp",
-        "Tests/PythonAssetTypesTests.cpp",
-        "Tests/PythonContainerAnyTests.cpp",
-        "Tests/PythonDictionaryTests.cpp",
-        "Tests/PythonPairTests.cpp",
-        "Tests/PythonPairTests.h",
-        "Tests/PythonGlobalsTests.cpp",
-        "Tests/PythonProxyBusTests.cpp",
-        "Tests/PythonProxyObjectTests.cpp",
-        "Tests/PythonReflectionComponentTests.cpp",
-        "Tests/PythonLogSymbolsComponentTests.cpp",
-        "Tests/PythonTestingUtility.h",
-        "Tests/PythonTraceMessageSink.h"
-      ]
-    }
+  "auto": {
+    "Tests": [
+      "Tests/CustomTypeBindingBusTests.cpp",
+      "Tests/EditorPythonBindingsTest.cpp",
+      "Tests/PythonAssetTypesTests.cpp",
+      "Tests/PythonAssociativeTests.cpp",
+      "Tests/PythonBindingLibTests.cpp",
+      "Tests/PythonGlobalsTests.cpp",
+      "Tests/PythonLogSymbolsComponentTests.cpp",
+      "Tests/PythonPairTests.cpp",
+      "Tests/PythonPairTests.h",
+      "Tests/PythonProxyBusTests.cpp",
+      "Tests/PythonProxyObjectTests.cpp",
+      "Tests/PythonReflectionComponentTests.cpp",
+      "Tests/PythonTestingUtility.h",
+      "Tests/PythonThreadingTests.cpp",
+      "Tests/PythonTraceMessageSink.h"
+    ]
+  }
 }

@@ -40,7 +40,7 @@ namespace ScriptCanvasEditor
         
     protected:
     
-        OperationStatus OperateOnFile(const QString& fileName) override;
+        OperationStatus OperateOnFile(const QString& fileNam, AZ::TypeId assetTypeId) override;
 
     private:
 

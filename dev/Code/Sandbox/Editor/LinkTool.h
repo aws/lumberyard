@@ -18,7 +18,7 @@
 #define CRYINCLUDE_EDITOR_LINKTOOL_H
 
 #pragma once
-
+#include <AzCore/Component/EntityBus.h>
 #include "EditTool.h"
 
 class CGeomCacheEntity;
@@ -27,6 +27,7 @@ class CGeomCacheEntity;
 class CLinkTool
     : public CEditTool
     , public IObjectSelectCallback
+    , private AZ::EntitySystemBus::Handler
 {
     Q_OBJECT
 public:
@@ -64,6 +65,10 @@ private:
     void LinkToGeomCacheNode(CEntityObject* pChild, CGeomCacheEntity* pParent, const char* target);
     void LinkToBone(CEntityObject* pChild, CEntityObject* pParent, CViewport* view);
     void LinkToNode(CEntityObject* pChild, CEntityObject* pParent, const char* nodeName);
+
+    // AZ::EntitySystemBus::Handler
+    void OnEntityDestruction(const AZ::EntityId& entityId) override;
+
 
     CBaseObject* m_pChild;
     Vec3 m_StartDrag;

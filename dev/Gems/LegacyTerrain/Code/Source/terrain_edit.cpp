@@ -212,7 +212,6 @@ void CTerrain::SetTerrainElevation(int offsetX, int offsetY, int areaSize, const
             }
 
             // Build height-based error metrics for sector.
-            // We only need to do this if the heights actually changed (versus just painting layers, etc)
             if (heightsChanged)
             {
                 if (!leafNode->m_ZErrorFromBaseLOD)
@@ -229,9 +228,10 @@ void CTerrain::SetTerrainElevation(int offsetX, int offsetY, int areaSize, const
                     sectorHasMeshData);
 
                 assert(leafNode->m_ZErrorFromBaseLOD[0] == 0);
-
-                leafNode->PropagateChangesToRoot();
             }
+
+            // We need to do this regardless of whether the height changed or not to make sure our surface weight updates are properly applied
+            leafNode->PropagateChangesToRoot();
         }
     }
 

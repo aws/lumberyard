@@ -22,6 +22,7 @@
 
 #include <QPaintEvent>
 #include <QPainter>
+#include <QPainterPath>
 #include <QRubberBand>
 #include <QScrollBar>
 #include <QStaticText>

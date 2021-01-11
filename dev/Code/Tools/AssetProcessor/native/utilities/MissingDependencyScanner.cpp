@@ -359,6 +359,14 @@ namespace AssetProcessor
         AZStd::map<AZ::Uuid, PotentialDependencyMetaData> uuids(potentialDependencies.m_uuids);
         AZStd::map<AZ::Data::AssetId, PotentialDependencyMetaData> assetIds(potentialDependencies.m_assetIds);
 
+        // Check if any products exist for the given job, and those products have a sub ID that matches
+        // the expected sub ID.
+        AzToolsFramework::AssetDatabase::ProductDatabaseEntry productWithPotentialMissingDependencies;
+        databaseConnection->GetProductByProductID(productPK, productWithPotentialMissingDependencies);
+        QString scannedProductPath( productWithPotentialMissingDependencies.m_productName.c_str() );
+        auto lastSeparatorIndex = scannedProductPath.lastIndexOf(AZ_CORRECT_DATABASE_SEPARATOR_STRING);
+        scannedProductPath = scannedProductPath.remove(lastSeparatorIndex + 1, scannedProductPath.length());
+
         // Check the existing product dependency list for the file that is being scanned, remove
         // any potential UUIDs that match dependencies already being emitted.
         for (const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry&
@@ -457,8 +465,9 @@ namespace AssetProcessor
                 continue;
             }
 
-            // Check if any products exist for the given job, and those products have a sub ID that matches
-            // the expected sub ID.
+
+            bool isProductOfFileWithPotentialMissingDependencies = fileWithPotentialMissingDependencies.m_sourceGuid == assetIdIter->first.m_guid;
+
             bool foundMatchingProduct = false;
             for (const AzToolsFramework::AssetDatabase::JobDatabaseEntry& job : jobs)
             {
@@ -474,7 +483,10 @@ namespace AssetProcessor
                         // This product references itself. Don't report it as a missing dependency.
                         // If the product references a different product of the same source and that isn't
                         // a dependency, then do report that.
-                        if (productPK == product.m_productID)
+                        // We have to check against more than the productPK to catch identical products across multiple
+                        // platforms. 
+                        if (productPK == product.m_productID ||
+                            (isProductOfFileWithPotentialMissingDependencies && productWithPotentialMissingDependencies.m_subID == product.m_subID))
                         {
                             continue;
                         }
@@ -577,26 +589,33 @@ namespace AssetProcessor
                         // Don't report if a file has a reference to itself.
                         continue;
                     }
+
                     // Cull the platform from the product path to perform a more confident comparison against the given path.
                     QString culledProductPath = QString(product.m_productName.c_str());
-                    culledProductPath = culledProductPath.remove(0,culledProductPath.indexOf(AZ_CORRECT_DATABASE_SEPARATOR_STRING)+1);
 
-                    // This first check will catch paths that include the project name, as well as references to assets that include a scan folder in the path.
-                    if (culledProductPath.compare(searchName, Qt::CaseInsensitive) != 0)
+                    // If this appears to be a valid path to a product relative to the product being checked
+                    if (culledProductPath.compare(scannedProductPath.append(searchName), Qt::CaseInsensitive) != 0)
                     {
-                        int nextFolderIndex = culledProductPath.indexOf(AZ_CORRECT_DATABASE_SEPARATOR_STRING);
-                        if (nextFolderIndex == -1)
-                        {
-                            continue;
-                        }
-                        // Perform a second check with the scan folder removed. Many asset references are relevant to scan folder roots.
-                        // For example, a material may have a relative path reference to a texture as "textures/SomeTexture.dds".
-                        // This relative path resolves in many systems based on scan folder root, so if this file is in "platform/project/textures/SomeTexture.dds",
-                        // this check is intended to find that reference.
-                        culledProductPath = culledProductPath.remove(0, nextFolderIndex+1);
+
+                        culledProductPath = culledProductPath.remove(0, culledProductPath.indexOf(AZ_CORRECT_DATABASE_SEPARATOR_STRING) + 1);
+
+                        // This first check will catch paths that include the project name, as well as references to assets that include a scan folder in the path.
                         if (culledProductPath.compare(searchName, Qt::CaseInsensitive) != 0)
                         {
-                            continue;
+                            int nextFolderIndex = culledProductPath.indexOf(AZ_CORRECT_DATABASE_SEPARATOR_STRING);
+                            if (nextFolderIndex == -1)
+                            {
+                                continue;
+                            }
+                            // Perform a second check with the scan folder removed. Many asset references are relevant to scan folder roots.
+                            // For example, a material may have a relative path reference to a texture as "textures/SomeTexture.dds".
+                            // This relative path resolves in many systems based on scan folder root, so if this file is in "platform/project/textures/SomeTexture.dds",
+                            // this check is intended to find that reference.
+                            culledProductPath = culledProductPath.remove(0, nextFolderIndex + 1);
+                            if (culledProductPath.compare(searchName, Qt::CaseInsensitive) != 0)
+                            {
+                                continue;
+                            }
                         }
                     }
 

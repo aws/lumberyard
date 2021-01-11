@@ -14,8 +14,8 @@
 #include <AzQtComponents/AzQtComponentsAPI.h>
 
 AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
-#include <QPointer>
 #include <QColor>
+#include <QPointer>
 #include <QStyle>
 #include <QValidator>
 AZ_POP_DISABLE_WARNING
@@ -28,81 +28,52 @@ namespace AzQtComponents
     class Style;
     class ComboBoxWatcher;
 
+    //! Default validator for the ComboBox control. Always returns true to all inputs.
     class AZ_QT_COMPONENTS_API ComboBoxValidator
         : public QValidator
     {
         Q_OBJECT
 
     public:
-        explicit ComboBoxValidator(QObject* parent = nullptr)
-            : QValidator(parent)
-        {
-
-        }
-
-        virtual QValidator::State validateIndex(int) const
-        {
-            return QValidator::Acceptable;
-        };
-
-        QValidator::State validate(QString&, int&) const override
-        {
-            return QValidator::Acceptable;
-        }
+        explicit ComboBoxValidator(QObject* parent = nullptr);
+        virtual QValidator::State validateIndex(int) const;
+        QValidator::State validate(QString&, int&) const override;
     };
 
-    /**
-     * Class to provide extra functionality for working with ComboBox controls.
-     *
-     * QComboBox controls are styled in ComboBox.qss
-     *
-     */
+    //! Adds functionality to ComboBox controls by offering configuration, styling and validation options.
     class AZ_QT_COMPONENTS_API ComboBox
     {
     public:
+        //! Style configuration for the ComboBox class.
         struct Config
         {
-            QColor placeHolderTextColor;
-            QColor framelessTextColor;
-            QString errorImage;
-            QSize errorImageSize;
-            int errorImageSpacing;
-            int itemPadding;
+            QColor placeHolderTextColor;    //!< Color for the placeholder text that is shown when no value is selected.
+            QColor framelessTextColor;      //!< Default text color.
+            QString errorImage;             //!< Path to the icon. Svg images recommended.
+            QSize errorImageSize;           //!< Size of the error image. Size must be proportional to the image's ratio.
+            int errorImageSpacing;          //!< Spacing around the error image in pixels.
+            int itemPadding;                //!< Total horizontal padding (left + right) of items in the dropdown, in pixels.
         };
 
-        /*!
-        * Loads the config data from a settings object.
-        */
+        //! Sets the ComboBox style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the ComboBox.
         static Config loadConfig(QSettings& settings);
-
-        /*!
-        * Returns default config data.
-        */
+        //! Gets the default ComboBox style configuration.
         static Config defaultConfig();
 
-        /*!
-        * Adds a validator to the checkbox.
-        * QComboBox implementation only sets a validator to the underlying
-        * QLineEdit, meant for editable QComboBox widgets, and the validator
-        * gets deleted together with the owning QLineEdit when the QComboBox
-        * widget is set to not editable.
-        * This function binds a validator to the QComboBox instead, and it
-        * won't be deleted until the QComboBox itself is destroyed.
-        */
+        //! Adds a validator to the ComboBox.
+        //! This function binds a validator to the control itself instead of the underlying
+        //! LineEdit, meaning it won't be deleted until the QComboBox itself is destroyed.
        static void setValidator(QComboBox* cb, QValidator* validator);
 
-        /*!
-        * Forces the ComboBox to set its internal error state to "error"
-        */
+        //! Forces the ComboBox to set its internal error state to "error"
        static void setError(QComboBox* cb, bool error);
 
-        /*!
-         * Applies the CustomCheckState styling to a QCheckBox.
-         * With this style applied, the checkmark will be defined by the model,
-         * and won't be automatically checked for the current item.
-         * Same as
-         *   AzQtComponents::Style::addClass(comboBox, "CustomCheckState")
-         */
+        //! Applies the CustomCheckState styling to a QCheckBox.
+        //! With this style applied, the checkmark will be defined by the model,
+        //! and won't be automatically checked for the current item.
+        //! Same as AzQtComponents::Style::addClass(comboBox, "CustomCheckState")
         static void addCustomCheckStateStyle(QComboBox* cb);
 
     private:

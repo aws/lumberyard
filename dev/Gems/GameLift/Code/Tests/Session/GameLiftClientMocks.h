@@ -90,7 +90,7 @@ namespace UnitTest
         const char* m_testPlayerSessionId = "TestPlayerSessionId";
         const char* m_testError = "TestError";
 
-        GameLiftClientMock()
+        GameLiftClientMock() : GameLiftClient(Aws::Auth::AWSCredentials())
         {
             ON_CALL(*this, CreateGameSessionCallable(_)).WillByDefault(Invoke(this, &GameLiftClientMock::CreateGameSessionCallableMock));
             ON_CALL(*this, StartGameSessionPlacementCallable(_)).WillByDefault(Invoke(this, &GameLiftClientMock::StartGameSessionPlacementCallableMock));

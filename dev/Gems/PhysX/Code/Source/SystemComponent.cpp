@@ -121,7 +121,6 @@ namespace PhysX
     }
 #endif
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     void SystemComponent::Reflect(AZ::ReflectContext* context)
     {
         D6JointLimitConfiguration::Reflect(context);
@@ -166,16 +165,6 @@ namespace PhysX
                 ->Version(1)
                 ->Field("GlobalWindTag", &WindConfiguration::m_globalWindTag)
                 ->Field("LocalWindTag", &WindConfiguration::m_localWindTag)
-            ;
-
-            serialize->Class<Configuration>()
-                ->Version(1)
-                ->Field("Settings", &Configuration::m_settings)
-                ->Field("WorldConfiguration", &Configuration::m_worldConfiguration)
-                ->Field("CollisionLayers", &Configuration::m_collisionLayers)
-                ->Field("CollisionGroups", &Configuration::m_collisionGroups)
-                ->Field("EditorConfiguration", &Configuration::m_editorConfiguration)
-                ->Field("MaterialLibrary", &Configuration::m_materialLibrary)
             ;
 
             serialize->Class<PhysXConfiguration>()
@@ -327,7 +316,6 @@ namespace PhysX
             }
         }
     }
-    AZ_POP_DISABLE_WARNING
 
     void SystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
@@ -349,7 +337,6 @@ namespace PhysX
         (void)dependent;
     }
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     SystemComponent::SystemComponent()
         : m_enabled(true)
         , m_configurationPath(DefaultConfigurationPath)
@@ -357,7 +344,6 @@ namespace PhysX
     }
 
     SystemComponent::~SystemComponent() = default;
-    AZ_POP_DISABLE_WARNING
 
     // AZ::Component interface implementation
     void SystemComponent::Init()
@@ -426,6 +412,12 @@ namespace PhysX
         return &(m_physxSDKGlobals.m_azErrorCallback);
     }
 
+    physx::PxCpuDispatcher* SystemComponent::GetCpuDispatcher()
+    {
+        AZ_Assert(m_physxSDKGlobals.m_physics, "Attempting to get the PhysX CPU dispatcher before the PhysX SDK has been initialized.");
+        AZ_Assert(m_cpuDispatcher, "Attempting to get the PhysX CPU dispatcher before it has been initialized.");
+        return m_cpuDispatcher;
+    }
 
     template<typename AssetHandlerT, typename AssetT>
     void RegisterAsset(AZStd::vector<AZStd::unique_ptr<AZ::Data::AssetHandler>>& assetHandlers)
@@ -924,27 +916,10 @@ namespace PhysX
         return configuration;
     }
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     void SystemComponent::LoadConfiguration()
     {
         // Initialize collision configuration with default one.
         m_physicsConfiguration.m_collisionConfiguration = CreateDefaultCollisionConfiguration();
-        
-        // Try loading deprecated configs first.
-        {
-            bool loaded = AZ::Utils::LoadObjectFromFileInPlace<Configuration>(DefaultConfigurationPath, m_configuration);
-
-            if (loaded)
-            {
-                m_physicsConfiguration.m_defaultWorldConfiguration = m_configuration.m_worldConfiguration;
-                m_physicsConfiguration.m_collisionConfiguration.m_collisionLayers = m_configuration.m_collisionLayers;
-                m_physicsConfiguration.m_collisionConfiguration.m_collisionGroups = m_configuration.m_collisionGroups;
-                m_physxConfiguration.m_editorConfiguration = m_configuration.m_editorConfiguration;
-                m_physxConfiguration.m_settings = m_configuration.m_settings;
-                m_physicsConfiguration.m_defaultMaterialLibrary = m_configuration.m_materialLibrary;
-                PhysX::ConfigurationNotificationBus::Broadcast(&PhysX::ConfigurationNotificationBus::Events::OnPhysXConfigurationLoaded);
-            }
-        }
 
         // Load PhysX configuration.
         {
@@ -963,7 +938,6 @@ namespace PhysX
 
         SaveConfiguration();
     }
-    AZ_POP_DISABLE_WARNING
 
     void SystemComponent::SaveConfiguration()
     {
@@ -1075,36 +1049,6 @@ namespace PhysX
                 "AddColliderComponentToEntity(): Using Shape of type %d is not implemented.", static_cast<AZ::u8>(shapeType));
         }
     }
-
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
-    const Configuration& SystemComponent::GetConfiguration()
-    {
-        m_configuration.m_worldConfiguration = m_physicsConfiguration.m_defaultWorldConfiguration;
-        m_configuration.m_collisionLayers = m_physicsConfiguration.m_collisionConfiguration.m_collisionLayers;
-        m_configuration.m_collisionGroups = m_physicsConfiguration.m_collisionConfiguration.m_collisionGroups;
-        m_configuration.m_editorConfiguration = m_physxConfiguration.m_editorConfiguration;
-        m_configuration.m_settings = m_physxConfiguration.m_settings;
-        m_configuration.m_materialLibrary = m_physicsConfiguration.m_defaultMaterialLibrary;
-
-        return m_configuration;
-    }
-
-    void SystemComponent::SetConfiguration(const Configuration& configuration)
-    {
-        SetDefaultWorldConfiguration(configuration.m_worldConfiguration);
-        SetDefaultMaterialLibrary(configuration.m_materialLibrary);
-
-        Physics::CollisionConfiguration collisionConfiguration;
-        collisionConfiguration.m_collisionGroups = configuration.m_collisionGroups;
-        collisionConfiguration.m_collisionLayers = configuration.m_collisionLayers;
-        SetCollisionConfiguration(collisionConfiguration);
-
-        PhysXConfiguration physxConfiguration;
-        physxConfiguration.m_settings = configuration.m_settings;
-        physxConfiguration.m_editorConfiguration = configuration.m_editorConfiguration;
-        SetPhysXConfiguration(physxConfiguration);
-    }
-    AZ_POP_DISABLE_WARNING
 
     void SystemComponent::SetPhysXConfiguration(const PhysXConfiguration& configuration)
     {

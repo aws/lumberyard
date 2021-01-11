@@ -16,6 +16,7 @@
 #include <GraphCanvas/Components/Connections/ConnectionBus.h>
 #include <GraphCanvas/Components/GridBus.h>
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
+#include <GraphCanvas/Components/Nodes/Group/NodeGroupBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/StyleBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
@@ -75,6 +76,8 @@ namespace ScriptCanvasEditor
     {
         AZ::EntityId graphCanvasMemberId;
         SceneMemberMappingRequestBus::EventResult(graphCanvasMemberId, scriptCanvasTargetId, &SceneMemberMappingRequests::GetGraphCanvasEntityId);
+
+        graphCanvasMemberId = GraphCanvas::GraphUtils::FindVisibleElement(graphCanvasMemberId);
 
         m_targets.emplace_back(graphCanvasMemberId);
     }

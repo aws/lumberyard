@@ -181,11 +181,11 @@ protected:
 
     static int CompareVariants(const QVariant& sourceKey, const QVariant& targetKey)
     {
-        if (sourceKey < targetKey)
+        if (sourceKey.toString() < targetKey.toString())
         {
             return -1;
         }
-        else if (sourceKey > targetKey)
+        else if (sourceKey.toString() > targetKey.toString())
         {
             return 1;
         }

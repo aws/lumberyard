@@ -25,6 +25,12 @@
 
 namespace InputNodes
 {
+    void InputNode::OnActivate()
+    {
+        ScriptCanvas::ExecutionTimingNotificationsBus::EventResult(m_latentStartTimerEvent, this->GetOwningScriptCanvasId(), &ScriptCanvas::ExecutionTimingNotifications::GetLatentStartTimerEvent);
+        ScriptCanvas::ExecutionTimingNotificationsBus::EventResult(m_latentStopTimerEvent, this->GetOwningScriptCanvasId(), &ScriptCanvas::ExecutionTimingNotifications::GetLatentStopTimerEvent);
+    }
+
     void InputNode::OnPostActivate()
     {
         if (GetExecutionType() == ScriptCanvas::ExecutionType::Runtime)
@@ -57,6 +63,11 @@ namespace InputNodes
     
     void InputNode::OnPressed(float value)
     {
+        size_t latentExecutionId = static_cast<size_t>(AZStd::GetTimeNowMicroSecond());
+        if (m_latentStartTimerEvent && m_latentStartTimerEvent->HasHandlerConnected())
+        {
+            m_latentStartTimerEvent->Signal(AZStd::move(latentExecutionId));
+        }
         m_value = value;
         const ScriptCanvas::Datum output = ScriptCanvas::Datum(m_value);
         const ScriptCanvas::SlotId pressedSlotId = InputNodeProperty::GetPressedSlotId(this);
@@ -68,10 +79,19 @@ namespace InputNodes
         }
 
         SignalOutput(pressedSlotId);
+        if (m_latentStopTimerEvent && m_latentStopTimerEvent->HasHandlerConnected())
+        {
+            m_latentStopTimerEvent->Signal(AZStd::move(latentExecutionId));
+        }
     }
 
     void InputNode::OnHeld(float value)
     {
+        size_t latentExecutionId = static_cast<size_t>(AZStd::GetTimeNowMicroSecond());
+        if (m_latentStartTimerEvent && m_latentStartTimerEvent->HasHandlerConnected())
+        {
+            m_latentStartTimerEvent->Signal(AZStd::move(latentExecutionId));
+        }
         m_value = value;
         const ScriptCanvas::Datum output = ScriptCanvas::Datum(m_value);
         const ScriptCanvas::SlotId heldSlotId = InputNodeProperty::GetHeldSlotId(this);
@@ -81,10 +101,19 @@ namespace InputNodes
             PushOutput(output, *slot);
         }
         SignalOutput(heldSlotId);
+        if (m_latentStopTimerEvent && m_latentStopTimerEvent->HasHandlerConnected())
+        {
+            m_latentStopTimerEvent->Signal(AZStd::move(latentExecutionId));
+        }
     }
 
     void InputNode::OnReleased(float value)
     {
+        size_t latentExecutionId = static_cast<size_t>(AZStd::GetTimeNowMicroSecond());
+        if (m_latentStartTimerEvent && m_latentStartTimerEvent->HasHandlerConnected())
+        {
+            m_latentStartTimerEvent->Signal(AZStd::move(latentExecutionId));
+        }
         m_value = value;
         const ScriptCanvas::Datum output = ScriptCanvas::Datum(m_value);
         const ScriptCanvas::SlotId releasedSlotId = InputNodeProperty::GetReleasedSlotId(this);
@@ -95,6 +124,10 @@ namespace InputNodes
             PushOutput(output, *slot);
         }
         SignalOutput(releasedSlotId);
+        if (m_latentStopTimerEvent && m_latentStopTimerEvent->HasHandlerConnected())
+        {
+            m_latentStopTimerEvent->Signal(AZStd::move(latentExecutionId));
+        }
     }
 } // namespace InputNodes
 #include <Source/InputNode.generated.cpp>

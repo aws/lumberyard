@@ -17,6 +17,8 @@ import glob
 import re
 import posixpath
 from six import iteritems  # Python 2.7/3.7 Compatibility
+from typing import Tuple
+from io import BytesIO
 
 from resource_manager.errors import HandledError
 from boto3.s3.transfer import S3Transfer
@@ -32,6 +34,7 @@ import pak_files
 from functools import wraps
 from path_utils import ensure_posix_path
 import cloudfront
+import content_bucket
 
 def list_manifests(context, args):
     # this will need to look for manifest references and build a tree
@@ -42,12 +45,29 @@ def list_manifests(context, args):
 
 
 def list(context, args):
-    manifest_path, manifest = _get_path_and_manifest(context, args.manifest_path)
+    manifest_path, manifest = _get_path_and_manifest(context, args.manifest_path, args.manifest_version_id)
     files_list = _get_files_list(context, manifest, args.section)
     if args.file_name:
         files_list = [thisEntry for thisEntry in files_list if entry_matches_file(thisEntry, args.file_name, args.platform_type)]
 
     context.view.show_manifest_file(files_list)
+    _clear_versioned_manifest(manifest_path, args.manifest_version_id)
+
+
+def _clear_versioned_manifest(manifest_path, manifest_version_id=None):
+    """
+        Remove the downloaded versioned manifest file
+
+        Arguments
+            manifest_path -- path to the manifest
+            manifest_version_id -- version ID of the manifest
+    """
+    if not manifest_version_id:
+        return
+
+    manifest_path += f'.{manifest_version_id}'
+    if os.path.exists(manifest_path):
+        os.remove(manifest_path)
 
 
 def gui_is_stack_configured(context):
@@ -200,6 +220,8 @@ def gui_pak_and_upload(context, args):
     if not gui_is_stack_configured(context):
         context.view.gui_signal_upload_complete()
         return
+    if not args.staging_status:
+        args.staging_status = "PRIVATE"
     command_upload_manifest_content(context, args)
     pak_status = {}
     manifest_path, manifest = _get_path_and_manifest(context, args.manifest_path)
@@ -214,22 +236,21 @@ def gui_pak_and_upload(context, args):
 @stack_required
 def gui_get_bucket_status(context, args):
     manifest_path, manifest = _get_path_and_manifest(context, args.manifest_path)
-    contentsList = _get_bucket_content_list(context)
-    manifestDict = _create_manifest_bucket_key_map(context, manifest, manifest_path)
-    bucketDiffData = {'new': [], 'outdated': [], 'match': []}
-    for thisBucketItem in contentsList:
-        thisKey = thisBucketItem.get('Key')
-        if thisKey in manifestDict:
-            manifestItemHash = manifestDict[thisKey]
-            bucketItemHash = _get_bucket_item_hash(thisBucketItem)
-            if manifestItemHash == bucketItemHash:
-                bucketDiffData['match'].append(thisKey)
+    contents_list = content_bucket.get_bucket_content_list(context)
+    manifest_dict = _create_manifest_bucket_key_map(context, manifest, manifest_path)
+    bucket_diff_data = {'new': [], 'outdated': [], 'match': []}
+    for this_bucket_item in contents_list:
+        this_key = this_bucket_item.get('Key')
+        if this_key in manifest_dict:
+            matched, version_id = synchronize_manifest_entry_with_bucket(context, this_key, manifest_dict[thisKey])
+            if matched:
+                bucket_diff_data['match'].append(thisKey)
             else:
-                bucketDiffData['outdated'].append(thisKey)
-            del manifestDict[thisKey]
-    for remainingKey in manifestDict.keys():
-        bucketDiffData['new'].append(remainingKey)
-    context.view.show_bucket_diff(bucketDiffData)
+                bucket_diff_data['outdated'].append(thisKey)
+            del manifest_dict[thisKey]
+    for remaining_key in manifest_dict.keys():
+        bucket_diff_data['new'].append(remaining_key)
+    context.view.show_bucket_diff(bucket_diff_data)
 
 
 @stack_required
@@ -379,7 +400,6 @@ def _add_file_to_pak(context, file_name, file_platform, pak_file, manifest_path,
 
     file_list = _get_files_list(context, manifest, 'Files')
     file_found = False
-    file_entry = {}
     for file_entry in file_list:
         if not entry_matches_platform(file_entry, pak_platform_type):
             continue
@@ -562,9 +582,41 @@ def determine_manifest_path(context, provided_name):
     return manifest_path
 
 
-def _get_path_and_manifest(context, provided_name):
-    manifest_path = determine_manifest_path(context, provided_name)
-    manifest = context.config.load_json(manifest_path)
+def _get_path_and_manifest(context: object, provided_name: str, version_id: str ='') -> Tuple[str, dict]:
+    """
+        Get the path and content of the manifest on disk.
+
+        Arguments
+            context -- context to use
+            provided_name -- name of the manfiest
+            version_id -- version ID of the manifest. Manifest will be downloaded from S3 first if specifed
+    """
+    versioned_manifest_path = manifest_path = determine_manifest_path(context, provided_name)
+    if version_id:
+        # Download a specific version of standalone manifest pak from S3
+        versioned_manifest_path = manifest_path + f'.{version_id}'
+        bucket_name = content_bucket.get_content_bucket(context)
+        s3 = context.aws.resource('s3')
+        try:
+            manifest_pak_obj = BytesIO()
+            s3.meta.client.download_fileobj(
+                Bucket = bucket_name, 
+                Key = get_standalone_manifest_pak_key(context, manifest_path), 
+                Fileobj  = manifest_pak_obj,
+                ExtraArgs = {'VersionId': version_id})
+            manifest_pak_obj.seek(0)
+
+            manifest_path_in_pak = os.path.join(dynamic_content_settings.get_manifest_folder(), provided_name)
+            manifest_path_in_pak = ensure_posix_path(os.path.normcase(manifest_path_in_pak))
+            pak_files.extract_from_pak_object(manifest_pak_obj, manifest_path_in_pak, versioned_manifest_path)
+        except Exception as e:
+            print(f'Failed to download the manifest version {version_id}. Error: {str(e)}')
+
+    if os.path.exists(versioned_manifest_path):
+        manifest = context.config.load_json(versioned_manifest_path)
+    else:
+        print(f'Invalid manifest path {versioned_manifest_path}')
+        manifest = {}
     return manifest_path, manifest
 
 
@@ -578,6 +630,7 @@ def _update_file_hash_section(context, manifest_path, manifest, section):
         raise HandledError('No specified to update hashes for')
         
     files_list = _get_files_list(context, manifest, section)
+    content_hash_dict = _create_content_hash_dict(context, manifest, section)
 
     show_manifest.updating_file_hashes(manifest_path)
     files_updated = False
@@ -588,17 +641,59 @@ def _update_file_hash_section(context, manifest_path, manifest, section):
             this_file['hash'] = ''
             this_file['size'] = None
             continue
+
         hex_return = hashlib.md5(open(this_file_path, 'rb').read()).hexdigest()
         manifest_hash = this_file.get('hash', '')
         if hex_return != manifest_hash:
             files_updated = True
-            
-        show_manifest.hash_comparison_disk(this_file_path, manifest_hash, hex_return)
+
+        if section == 'Files':
+            show_manifest.hash_comparison_disk(this_file_path, manifest_hash, hex_return)
+        else:
+            # Update and compare the content hash of pak files
+            content_hash = content_hash_dict.get(this_file.get('pakFile', ''), {})
+            hex_content_hash = content_hash.hexdigest() if content_hash else ''
+            manifest_content_hash = this_file.get('contentHash', '')
+            if hex_content_hash != manifest_content_hash:
+                files_updated = True
+            show_manifest.content_hash_comparison_disk(this_file_path, manifest_content_hash, hex_content_hash)
+            this_file['contentHash'] = hex_content_hash
+
         this_file['hash'] = hex_return
         file_stat = os.stat(this_file_path)
         this_file['size'] = file_stat.st_size
     manifest[section] = files_list
     return files_updated
+
+
+def _create_content_hash_dict(context: object, manifest: dict, section: str) -> dict:
+    """ Calculate the content hash dictionary. Pak files with same archive members can get 
+        different standard hash values (md5 hash of the pak file itself) because of the metadata
+        like modified time and order of archive members. However, they should always get the 
+        same content hash (the hash of all the archive member hash).
+    
+    Arguments
+        context -- context to use
+        manifest -- manifest dictionary loaded from the manifest file
+        section -- section of the manifest files
+    """
+    if section == 'Files':
+        # Only pak files have content hash
+        return {}
+
+    # Iterate through each file in the manifest and re-calculate the content hash of the pak it belongs to
+    files_list = _get_files_list(context, manifest, 'Files')
+    content_hash_dict = {}
+    for this_file in files_list:
+        pak_file = this_file.get('pakFile', '')
+        if not pak_file:
+            # The current file isn't in any pak
+            continue
+        if pak_file not in content_hash_dict:
+            content_hash_dict[pak_file] = hashlib.md5()
+
+        content_hash_dict[pak_file].update(this_file['hash'].encode())
+    return content_hash_dict
 
 
 def _update_file_hashes(context, manifest_path, manifest):
@@ -614,71 +709,102 @@ def _save_content_manifest(context, filePath, manifestData):
     print("Updated manifest")
 
 
-def _get_content_bucket(context):
-    return _get_content_bucket_by_name(context, context.config.default_deployment, dynamic_content_settings.get_default_resource_group(), dynamic_content_settings.get_default_bucket_name())
-
-
-def _get_content_bucket_by_name(context, deployment_name,
-                                resource_group_name=dynamic_content_settings.get_default_resource_group(),
-                                bucket_name=dynamic_content_settings.get_default_bucket_name()):
-    """Returns the resource id of the content bucket."""
-    if deployment_name is None:
-        deployment_name = context.config.default_deployment
-  
-    stack_id = context.config.get_resource_group_stack_id(deployment_name, resource_group_name, optional=True)
-    bucket_resource = context.stack.get_physical_resource_id(stack_id, bucket_name)
-    return bucket_resource
-
-
-def _get_bucket_content_list(context):
+def _head_bucket_current_item(context: object, file_key:str, deployment_name: str = '') -> 'hash_metadata':
+    """ Get the hash metadata and version id of the bucket item 
+    
+    Arguments
+        s3_client -- boto3 client for s3
+        bucket_name -- name of the s3 bucket
+        file_key -- key of the bucket item
+    """
+    bucket_name = content_bucket.get_content_bucket_by_name(context, deployment_name)
     s3 = context.aws.client('s3')
-    bucket_name = _get_content_bucket(context)
-    next_marker = 0
-    contents_list = []
-    while True:
-        try:
-            res = s3.list_objects(
-                Bucket=bucket_name,
-                Marker=str(next_marker)
-            )
-            this_list = res.get('Contents', [])
-            contents_list += this_list
-            if len(this_list) < get_list_objects_limit():
-                break
-            next_marker += get_list_objects_limit()
-        except Exception as e:
-            raise HandledError('Could not list_objects on '.format(bucket=bucket_name), e)
-    return contents_list
-
-
-def _send_bucket_delete_list(context, objectList):
-    s3 = context.aws.client('s3')
-    bucket_name = _get_content_bucket(context)
+    head_response = {}
     try:
-        res = s3.delete_objects(
+        head_response = s3.head_object(
             Bucket=bucket_name,
-            Delete={'Objects': objectList}
+            Key=file_key
         )
+    except ClientError as e:
+        if e.response['Error']['Message'] == 'Not Found':
+            show_manifest.key_not_found(file_key)
+        else:
+            HandledError(f'Could not get the head response for s3 object {file_key}', e)
+
+    return _get_hash_metadata_from_head_response(head_response), _get_version_id_from_head_response(head_response)
+
+
+def _update_bucket_hash_metadata(context: object, file_key: str, bucket_hash_metadata: 'hash_metadata', deployment_name = '') -> None:
+    """ Update the hash and content hash metadata of the bucket item
+    
+    Arguments
+        s3_client -- s3 client to use
+        bucket_name -- name of the s3 bucket
+        file_key -- key of the bucket item
+        bucket_hash_metadata -- hash metadata of the bucket item
+    """ 
+    bucket_name = content_bucket.get_content_bucket_by_name(context, deployment_name)
+    s3 = context.aws.client('s3')
+    try:
+        # S3 doesn't allow modification of the object metadata. Instead, we need to copy the object with any updated metadata
+        s3.copy_object(
+            Bucket=bucket_name,
+            Key=file_key,
+            CopySource={
+                'Bucket': bucket_name, 
+                'Key': file_key
+                },
+            Metadata={
+                _get_meta_hash_name(): bucket_hash_metadata.hash, 
+                _get_meta_content_hash_name(): bucket_hash_metadata.hash
+                },
+            MetadataDirective='REPLACE')
     except Exception as e:
-        raise HandledError('Could not delete_objects on '.format(bucket=bucket_name), e)
+        raise HandledError(f'Could not update the hash metadata for s3 object {file_key}', e)
 
 
 def command_empty_content(context, args):
-    _empty_bucket_contents(context)
-    staging.empty_staging_table(context)
+    if args.all_versions and args.noncurrent_versions:
+        print('Argument all_versions and noncurrent_versions should not be specified at the same time')
+        return
+    if args.noncurrent_versions:
+        message = 'Deleting noncurrent versions is nonreversible and you will not be able to roll back to any previous version after this operation.'
+        if not args.confirm_deleting_noncurrent_versions:
+            context.view.confirm_message(message)
+    deleted_object_list = _empty_bucket_contents(context, args.all_versions, args.noncurrent_versions)
+    staging.empty_staging_table(context, deleted_object_list)
 
 
-def _empty_bucket_contents(context):
-    contents_list = _get_bucket_content_list(context)
-    object_list = []
+def _empty_bucket_contents(context: object, all_versions: bool, noncurrent_versions: bool):
+    """ Remove the dynamic content found in the S3 bucket
     
-    for thisContent in contents_list:
-        object_list.append({'Key': thisContent.get('Key', {})})
-        if len(object_list) == get_list_objects_limit():
-            _send_bucket_delete_list(context, object_list)
-            object_list = []
+    Arguments
+        context -- context to use
+        all_versions -- whether to remove all versions of dynamic content
+        noncurrent_versions -- whether to remove noncurrent versions of dynamic content
+    """ 
+    object_list = []
+    deleted_object_list = []
+    file_to_versions = content_bucket.list_all_versions(context)
+    for content_key, available_versions in file_to_versions.items():
+        for version in available_versions:
+            if version.get('IsLatest'):
+                if noncurrent_versions:
+                    continue
+            elif not (all_versions or noncurrent_versions):
+                    continue
+
+            object = {'Key': content_key, 'VersionId': version.get('VersionId')}
+            object_list.append(object)
+            if len(object_list) == content_bucket.get_list_objects_limit():
+                content_bucket.delete_objects_from_bucket(context, object_list)
+                deleted_object_list.extend(object_list)
+                object_list = []
     if len(object_list):
-        _send_bucket_delete_list(context, object_list)
+        content_bucket.delete_objects_from_bucket(context, object_list)
+        deleted_object_list.extend(object_list)
+
+    return deleted_object_list
 
 
 def make_end_in_slash(file_name):
@@ -704,7 +830,7 @@ def get_standalone_manifest_key(context, manifest_path):
     return os.path.split(manifest_path)[1]
 
 
-def add_manifest_pak_entry(context, manifest, manifest_path, filesList):
+def add_manifest_pak_entry(context, manifest_path, filesList, manifest_version_id=None):
     """ When uploading all of the changed content within a top level manifest we're going to need to pak up the
     manifest itself and upload that as well.
     This method lets us simply append an entry about that manifest pak to the list of "changed content" so it all goes
@@ -715,110 +841,151 @@ def add_manifest_pak_entry(context, manifest, manifest_path, filesList):
         'localFolder': dynamic_content_settings.get_pak_folder(),
         'hash': hashlib.md5(open(manifest_path, 'rb').read()).hexdigest()
     }
+    if manifest_version_id:
+        manifest_path += f'.{manifest_version_id}'
+    manifest_object['hash'] =  hashlib.md5(open(manifest_path, 'rb').read()).hexdigest()
+    manifest_object['contentHash'] = hashlib.md5(manifest_object['hash'].encode()).hexdigest()
     file_stat = os.stat(manifest_path)
     manifest_object['size'] = file_stat.st_size
     filesList.append(manifest_object)
 
 
-def _create_manifest_bucket_key_map(context, manifest, manifest_path):
+def _create_manifest_bucket_key_map(context, manifest, manifest_path, manifest_version_id=''):
+    if not manifest:
+        return {}
+
     files_list = _get_files_list(context, manifest, 'Paks')
 
-    add_manifest_pak_entry(context, manifest, manifest_path, files_list)
-    _append_loose_manifest(context, files_list, manifest_path)
+    add_manifest_pak_entry(context, manifest_path, files_list, manifest_version_id)
+    _append_loose_manifest(context, files_list, manifest_path, manifest_version_id)
 
     return_map = {}
-    for thisFile in files_list:
-        file_key = _create_bucket_key(thisFile)
-        return_map[file_key] = thisFile.get('hash', '')
+    for this_file in files_list:
+        file_key = _create_bucket_key(this_file)
+        return_map[file_key] = {
+            'hash_metadata': hash_metadata(this_file.get('hash', ''), this_file.get('contentHash', '')),
+            'version_id': this_file.get('versionId')
+            }
 
     return return_map
 
 
 def list_bucket_content(context, args):
-    manifest_path, manifest = _get_path_and_manifest(context, args.manifest_path)
-    contents_list = _get_bucket_content_list(context)
-    manifest_dict = _create_manifest_bucket_key_map(context, manifest, manifest_path)
-    s3 = context.aws.client('s3')
-    bucket_name = _get_content_bucket(context)
+    manifest_path, manifest = _get_path_and_manifest(context, args.manifest_path, args.manifest_version_id)
+    contents_list = content_bucket.get_bucket_content_list(context)
+    manifest_dict = _create_manifest_bucket_key_map(context, manifest, manifest_path, args.manifest_version_id)
 
-    for thisBucketItem in contents_list:
-        this_key = thisBucketItem.get('Key')
+    for this_bucket_item in contents_list:
+        this_key = this_bucket_item.get('Key')
         if this_key in manifest_dict:
-            try:
-                head_response = s3.head_object(
-                    Bucket=bucket_name,
-                    Key=this_key
-                )
-            except Exception as e:
-                show_manifest.key_not_found(this_key)
-                continue
-
-            show_manifest.hash_comparison_bucket(this_key, manifest_dict[this_key], _get_bucket_item_hash(head_response))
+            synchronize_manifest_entry_with_bucket(context, this_key, manifest_dict[this_key])
             del manifest_dict[this_key]
-    for remainingKey in manifest_dict.keys():
-        show_manifest.new_local_key(remainingKey)
+    for remaining_key in manifest_dict.keys():
+        show_manifest.new_local_key(remaining_key)
+    _clear_versioned_manifest(manifest_path, args.manifest_version_id)
+
+
+def command_list_file_versions(context: object, args: dict):
+    """ CLI command to list all versions of a manifest or pak file found in the content bucket
+    
+        Arguments
+            context -- context to use
+            args -- command arguments
+    """
+    file_to_versions = content_bucket.list_all_versions(context)
+    show_manifest.list_file_versions(args.file_name, file_to_versions.get(args.file_name, []))
 
 
 def compare_bucket_content(context, args):
-    manifest_path, manifest = _get_path_and_manifest(context, args.manifest_path)
-
-    s3 = context.aws.client('s3')
-    bucket_name = _get_content_bucket(context)
-    manifest_dict = _create_manifest_bucket_key_map(context, manifest, manifest_path)
-    for thisKey, thisHash in iteritems(manifest_dict):
-        try:
-            headResponse = s3.head_object(
-                Bucket=bucket_name,
-                Key=thisKey
-            )
-        except Exception as e:
-            show_manifest.key_not_found(thisKey)
-            continue
-        show_manifest.hash_comparison_bucket(thisKey, thisHash, _get_bucket_item_hash(headResponse))
+    manifest_path, manifest = _get_path_and_manifest(context, args.manifest_path, args.manifest_version_id)
+    manifest_dict = _create_manifest_bucket_key_map(context, manifest, manifest_path, args.manifest_version_id)
+    for this_key, this_manifest_entry in iteritems(manifest_dict):
+        synchronize_manifest_entry_with_bucket(context, this_key, this_manifest_entry)    
+    _clear_versioned_manifest(manifest_path, args.manifest_version_id)
 
 
-def check_matched_bucket_entry(context, localFile, localHash, bucketKey):
-    s3 = context.aws.client('s3')
-    bucket_name = _get_content_bucket(context)
+def synchronize_manifest_entry_with_bucket(context: object, file_key: str, manifest_entry: dict, deployment: str = '') -> Tuple[bool, str]:
+    """ Synchronize the manifest entry with bucket. Returns a boolean which indicates whether 
+        the manifest entry matches the existing s3 object and the version id of the S3 object
+    
+        Arguments
+            context -- context to use
+            file_key -- key of the bucket item
+            manifest_entry -- information including hash metadata and version ID of the manifest entry
+            deployment -- name of the deployment
+    """
+    bucket_hash_metadata, version_id = _head_bucket_current_item(context, file_key, deployment)
+    manifest_hash_metadata = manifest_entry.get('hash_metadata', {})
 
-    try:
-        head_response = s3.head_object(
-            Bucket=bucket_name,
-            Key=bucketKey
-        )
-    except Exception as e:
-        print("Didn't find entry {}".format(bucketKey))
-        return False
+    if not bucket_hash_metadata.hash:
+        # Bucket item doesn't exist
+        return False, version_id
+    
+    if manifest_hash_metadata.hash == bucket_hash_metadata.hash and (not bucket_hash_metadata.content_hash):
+        # The local file doesn't actually change. Set content hash metadata of the bucket item if not exist
+        bucket_hash_metadata.content_hash = manifest_hash_metadata.content_hash
+        _update_bucket_hash_metadata(context, file_key, bucket_hash_metadata, deployment)
+        manifest_entry['version_id'] = version_id
 
-    bucket_hash = _get_bucket_item_hash(head_response)
-    print("Comparing {} vs Bucket {}".format(localHash, bucket_hash))
-    return bucket_hash == localHash
+    if manifest_hash_metadata.content_hash == bucket_hash_metadata.content_hash:
+        # Compare the content hash and reset the local manifest hash if the local file has the same content as the S3 object
+        manifest_hash_metadata.hash = bucket_hash_metadata.hash
+        manifest_entry['version_id'] = version_id
+    show_manifest.content_hash_comparison_bucket(file_key, manifest_hash_metadata.content_hash, bucket_hash_metadata.content_hash)
+    if content_bucket.content_versioning_enabled(context, deployment):
+        show_manifest.content_version_comparison_bucket(file_key, manifest_entry.get('version_id'), version_id)
+    return manifest_hash_metadata.content_hash == bucket_hash_metadata.content_hash, version_id
 
 
-def _get_bucket_item_hash(bucketItem):
-    return bucketItem.get('Metadata', {}).get(_get_meta_hash_name(),{})
+def synchronize_local_pak_with_bucket(context: object, pak_path: str, bucket_key: str, pak_hash_metadata: 'hash_metadata') -> Tuple[bool, str]:
+    """ Synchronize the local pak with bucket. Returns a boolean which indicates whether 
+        the local pak matches the existing s3 object and the version id of the object
+
+    Arguments
+        context -- context to use
+        pak_path -- path to the local pak file
+        bucket_key -- key of the bucket item
+        pak_hash_metadata -- hash metadata of the pak file 
+    """
+    bucket_hash_metadata, version_id = _head_bucket_current_item(context, bucket_key)
+
+    if not bucket_hash_metadata.hash:
+        # Bucket item doesn't exist
+        pak_hash_metadata.content_hash = pak_files.calculate_pak_content_hash(pak_path)
+        return False, version_id
+  
+    if pak_hash_metadata.hash == bucket_hash_metadata.hash and bucket_hash_metadata.content_hash:
+        pak_hash_metadata.content_hash = bucket_hash_metadata.content_hash
+    else:
+        pak_hash_metadata.content_hash = pak_files.calculate_pak_content_hash(pak_path)
+        if pak_hash_metadata.hash == bucket_hash_metadata.hash:
+            # The local file doesn't have content update. Set content hash metadata of the bucket item if not exist
+            bucket_hash_metadata.content_hash = pak_hash_metadata.content_hash
+            _update_bucket_hash_metadata(context, bucket_key, bucket_hash_metadata)
+
+    print("Comparing {} vs Bucket {}".format(pak_hash_metadata.content_hash, bucket_hash_metadata.content_hash))
+    return pak_hash_metadata.content_hash == bucket_hash_metadata.content_hash, version_id
 
 
-# Retrieve the list of files in the bucket which do not line up with our current manifest
-def _get_unmatched_content(context, manifest, manifest_path, deployment_name, do_signing):
-    s3 = context.aws.client('s3')
-    bucket_name = _get_content_bucket_by_name(context, deployment_name)
-    manifest_dict = _create_manifest_bucket_key_map(context, manifest, manifest_path)
-    return_dict = {}
-    for thisKey, thisHash in iteritems(manifest_dict):
-        try:
-            headResponse = s3.head_object(
-                Bucket=bucket_name,
-                Key=thisKey
-            )
-        except Exception as e:
-            show_manifest.key_not_found(thisKey)
-            return_dict[thisKey] = thisHash
-            continue
-        show_manifest.hash_comparison_bucket(thisKey, thisHash, _get_bucket_item_hash(headResponse))
-        if _get_bucket_item_hash(headResponse) != thisHash or staging.signing_status_changed(context, thisKey, do_signing):
-            return_dict[thisKey] = thisHash
-    return return_dict
+def _get_hash_metadata_from_head_response(head_response: dict) -> 'hash_metadata':
+    """ Get the hash metadata of the bucket item from the head response
+    
+    Arguments
+        head_response -- response of the head call
+    """
+    standard_hash = head_response.get('Metadata', {}).get(_get_meta_hash_name(),'')
+    content_hash = head_response.get('Metadata', {}).get(_get_meta_content_hash_name(),'')
+
+    return hash_metadata(standard_hash, content_hash)
+
+
+def _get_version_id_from_head_response(head_response: dict) -> str:
+    """ Get the version ID of the bucket item from the head response
+    
+    Arguments
+        head_response -- response of the head call
+    """
+    return head_response.get('VersionId')
 
 
 class ProgressPercentage(object):
@@ -841,10 +1008,11 @@ class ProgressPercentage(object):
 
 def command_upload_manifest_content(context, args):
     staging_args = staging.parse_staging_arguments(args)
-    upload_manifest_content(context, args.manifest_path, args.deployment_name, staging_args, args.all, args.signing, args.invalidate_existing_files)
+    upload_manifest_content(context, args.manifest_path, args.deployment_name, staging_args,
+                            args.all, args.signing, args.invalidate_existing_files, args.replace)
 
 
-def _append_loose_manifest(context, files_list, manifest_path):
+def _append_loose_manifest(context, files_list, manifest_path, manifest_version_id=None):
     # Need to preserve sub-folder data
     manifest_path = ensure_posix_path(manifest_path)
     manifest_folder = dynamic_content_settings.get_manifest_folder()
@@ -855,80 +1023,222 @@ def _append_loose_manifest(context, files_list, manifest_path):
     manifest_local_folder = dynamic_content_settings.get_manifest_folder()
     if len(manifest_sub_path):
         manifest_local_folder = manifest_local_folder + os.path.dirname(manifest_sub_path)
-
+    
     manifest_object = {
         'keyName': os.path.split(manifest_path)[1],
         'localFolder': manifest_local_folder,
-        'hash': hashlib.md5(open(manifest_path, 'rb').read()).hexdigest()
+        'versionId': manifest_version_id
     }
+    if manifest_version_id:
+        manifest_path += f'.{manifest_version_id}'
+    manifest_object['hash'] =  hashlib.md5(open(manifest_path, 'rb').read()).hexdigest()
+    manifest_object['contentHash'] = manifest_object['hash']
     file_stat = os.stat(manifest_path)
     manifest_object['size'] = file_stat.st_size
     files_list.append(manifest_object)
 
 
 # 1 - Build new paks to ensure our paks are up to date and our manifest reflects the latest changes
-# 2 - Update our manifest hashes to match our current content
-# 3 - Check each item in our manifest against a HEAD call to get the metadata with our saved local hash values
-# 4 - Upload each unmatched pak file
-# 5 - Upload the manifest (In pak and loose)
-def upload_manifest_content(context, manifest_path, deployment_name, staging_args, upload_all=False, do_signing=False, invalidate_existing_files=False):
-    build_new_paks(context, manifest_path, upload_all)
-    manifest_path, manifest = _get_path_and_manifest(context, manifest_path)
-    _update_file_hashes(context, manifest_path, manifest)
-    remaining_content = _get_unmatched_content(context, manifest, manifest_path, deployment_name, do_signing)
-    bucket_name = _get_content_bucket_by_name(context, deployment_name)
-    files_list = _get_files_list(context, manifest, 'Paks')
-    _append_loose_manifest(context, files_list, manifest_path)
+# 2 - Sychronize with bucket: Upload unmatched files and update the manifest files
+# 3 - Set the staging status for each uploaded file
+def upload_manifest_content(context, manifest_path, deployment_name, staging_args, 
+                            upload_all=False, do_signing=False, invalidate_existing_files=False, replace=False):
+    build_new_paks(context, manifest_path, upload_all, False)
+    uploaded_files, unchanged_files, manifest_path = synchronize_with_bucket(context, manifest_path, deployment_name, upload_all, do_signing, invalidate_existing_files)
 
-    uploaded_files = {}
-    for thisFile in files_list:
-        this_key = _create_bucket_key(thisFile)
-        if this_key in remaining_content or upload_all:
-            this_file_path = _get_path_for_file_entry(context, thisFile, context.config.game_directory_name)
-            if thisFile['hash'] == '':
-                show_manifest.skipping_invalid_file(this_file_path)
-                continue
-            show_manifest.found_updated_item(this_key)
-            context.view.found_updated_item(this_key)
-            _do_file_upload(context, this_file_path, bucket_name, this_key, thisFile['hash'], invalidate_existing_files)
-            upload_info = {}
-
-            if do_signing:
-                this_signature = signing.get_file_signature(context, _get_path_for_file_entry(context, thisFile, context.config.game_directory_name))
-                upload_info['Signature'] = this_signature
-            upload_info['Size'] = thisFile.get('size')
-            upload_info['Hash'] = thisFile.get('hash')
-            uploaded_files[this_key] = upload_info
-
-    parent_pak_key = get_standalone_manifest_pak_key(context, manifest_path)
-    parent_loose_key = get_standalone_manifest_key(context, manifest_path)
+    for this_file, file_info in iteritems(uploaded_files):
+        # Set the staging status for all the new/updated content
+        staging_args['Signature'] = file_info.get('Signature')
+        staging_args['Size'] = file_info.get('Size')
+        staging_args['Hash'] = file_info.get('Hash')
+        staging_args['ContentHash'] = file_info.get('ContentHash')
+        staging_args['Parent'] = file_info.get('Parent')
+        staging_args['ParentVersionId'] = uploaded_files.get(staging_args['Parent'], {}).get('VersionId')
+        staging.set_staging_status(this_file, context, staging_args, deployment_name, file_info.get('VersionId'))
     
-    if staging_args is not None:
-        for thisFile, fileInfo in iteritems(uploaded_files):
-            staging_args['Signature'] = fileInfo.get('Signature')
-            staging_args['Size'] = fileInfo.get('Size')
-            staging_args['Hash'] = fileInfo.get('Hash')
-            if thisFile in [parent_pak_key, parent_loose_key]:
-                staging_args['Parent'] = ''
+    staging_args = {}
+    for this_file, file_info in iteritems(unchanged_files):
+        # For any matched item which is shared by the new manifest version, we should only 
+        # update its parent version ID list and keep its original staging status
+        staging_args['ParentVersionId'] = uploaded_files.get(file_info['Parent'], {}).get('VersionId')
+        staging.set_staging_status(this_file, context, staging_args, deployment_name, file_info.get('VersionId'))
+
+    if replace:
+        _remove_old_versions(context, deployment_name, uploaded_files.keys())
+
+
+# 1 - Check each item in our local manifest against a HEAD call to get its content hash and standard hash metadata
+# 2 - For each matched item by content hash, replace its standard hash in the local manifest with the standard hash metadata of the same named S3 object
+# 3 - Update the version ID of each matched pak (returned from the HEAD call) in our manifest
+# 4 - Upload each unmatched pak file by content hash and set its metadata in S3
+# 5 - Update the version ID of each unmatched pak (returned from the upload request) in the manifest 
+# 6 - Upload the manifest (In pak and loose)
+def synchronize_with_bucket(context: object, manifest_path: str, deployment_name: str, 
+                            ignore_file_check: bool, do_signing: bool, invalidate_existing_files: bool) -> Tuple[list, list, str]:
+    """ Synchronize with the content bucket to upload unmatched content and update manifest files. The workflow should look like below:
+  
+    Arguments
+        context -- context to use
+        manifest_path -- relative path of the manifest
+        deployment_name -- name of the deployment
+        ignore_file_check -- whether to ignore the file check
+        do_signing -- whether to add file signatures to the content table
+        invalidate_existing_files -- Whether to invalidate same named s3 items during the upload
+    """
+    manifest_path, manifest = _get_path_and_manifest(context, manifest_path)
+    paks_list = _get_files_list(context, manifest, 'Paks')
+    standalone_manifest_list = []
+    _append_loose_manifest(context, standalone_manifest_list, manifest_path)
+    add_manifest_pak_entry(context, manifest_path, standalone_manifest_list)
+    files_list = paks_list + standalone_manifest_list
+    versioned = content_bucket.content_versioning_enabled(context, deployment_name)
+    uploaded_files = {}
+    unchanged_files = {}
+
+    manifest_hash = ''
+    standalone_manifest_pak_key = get_standalone_manifest_pak_key(context, manifest_path)
+    loose_manifest_key = get_standalone_manifest_key(context, manifest_path)
+    for file in files_list:
+        parent = '' if file['keyName'] in [standalone_manifest_pak_key, loose_manifest_key] else standalone_manifest_pak_key
+        if file['keyName'] == loose_manifest_key:
+            # Save the local manifest since the hash of matched content might be updated after the sync
+            _save_content_manifest(context, manifest_path, manifest)
+            # Recalculate hash metadata of the local manifest
+            file['contentHash'] = file['hash'] = hashlib.md5(open(manifest_path, 'rb').read()).hexdigest()
+            manifest_hash = file['hash']
+            create_standalone_manifest_pak(context, manifest_path)            
+        elif file['keyName'] == standalone_manifest_pak_key:
+            # Recalculate hash metadata of the standalone manifest pak
+            file['hash'] = manifest_hash
+            file['contentHash'] = hashlib.md5(manifest_hash.encode()).hexdigest()
+
+        file_hash_metadata = hash_metadata(file.get('hash', ''), file.get('contentHash', ''))
+        matched, version_id = synchronize_manifest_entry_with_bucket(context, file['keyName'], {'hash_metadata': file_hash_metadata}, deployment_name)
+        if matched:
+            # Reset the hash of matched files to line up with our current manifest in the bucket
+            file['hash'] = file_hash_metadata.hash
+            if versioned:
+                file['versionId'] = version_id
             else:
-                staging_args['Parent'] = parent_pak_key
+                file.pop('versionId', None)
+            if (not staging.signing_status_changed(context, file['keyName'], do_signing, file.get('versionId'))) and (not ignore_file_check):
+                # File matches the existing s3 item. Don't need to upload it unless customers force to do that
+                unchanged_files[file['keyName']] = {'Parent': parent, 'VersionId': version_id}
+                continue
+        _upload_unmatched_file(context, file, invalidate_existing_files, deployment_name)
+        updated_version_id = _get_file_version_id(context, file['keyName'], deployment_name)
+        if versioned:
+            file['versionId'] = updated_version_id
+        else:
+            file.pop('versionId', None)
+        uploaded_files[file['keyName']] = _create_upload_info(context, file, parent, do_signing)
 
-            staging.set_staging_status(thisFile, context, staging_args, deployment_name)
+    return uploaded_files, unchanged_files, manifest_path
 
 
-def _get_meta_hash_name():
+def _remove_old_versions(context: object, deployment_name: str, files_to_remove: list):
+    """ 
+    Remove all the noncurrent versions of files
+  
+    Arguments
+        context -- context to use
+        deployment_name -- name of the deployment
+        files_to_remove -- list of files to remove the old versions for
+    """
+    s3 = context.aws.client('s3')
+    bucket_name = content_bucket.get_content_bucket_by_name(context, deployment_name)
+    file_to_versions = content_bucket.list_all_versions(context, deployment_name)
+    for file_key in files_to_remove:
+        versions = file_to_versions.get(file_key, [])
+        for version in versions:
+            if version.get('IsLatest'):
+                continue
+
+            version_id = version.get('VersionId')
+            print(f'Delete item from S3. Key: {file_key} VersionId: {version_id}')
+            try:
+                response = s3.delete_object(
+                    Bucket = bucket_name,
+                    Key = file_key,
+                    VersionId=version_id
+                )
+            except Exception as e:
+                print(f'Failed to delete item from S3. Key: {file_key} VersionId: {version_id} Error: {str(e)}')
+                continue
+            staging.remove_entry(context, file_key, version_id)
+
+
+def _get_file_version_id(context: object, key: str, deployment_name: str) -> str:
+    """ Get the version id of an s3 object
+    
+    Arguments
+        context -- context to use
+        bucket_name -- name of the s3 bucket
+        key -- key of the s3 object
+    """
+    bucket_hash_metadata, version_id = _head_bucket_current_item(context, key, deployment_name)
+    return version_id
+
+
+def _upload_unmatched_file(context, file, invalidate_existing_files, deployment_name = ''):
+    """ Upload unmatched dynamic content to the s3 bucket
+    
+    Arguments
+        context -- context to use
+        bucket_name -- name of the s3 bucket
+        file -- file to upload
+        invalidate_existing_files -- Whether to invalidate same named s3 items during the upload
+    """
+    file_path = _get_path_for_file_entry(context, file, context.config.game_directory_name)
+    if not file['hash'] or not file['keyName']:
+        show_manifest.skipping_invalid_file(file_path)
+        return
+    show_manifest.found_updated_item(file['keyName'])
+    context.view.found_updated_item(file['keyName'])
+    file_hash_metadata = hash_metadata(file.get('hash', ''), file.get('contentHash', ''))
+    _do_file_upload(context, file_path, file['keyName'], file_hash_metadata, invalidate_existing_files, deployment_name)
+
+
+def _create_upload_info(context, file, parent, do_signing):
+    """ Gather the upload info for writing to the staging settings table later
+    
+    Arguments
+        context -- context to use
+        file -- file that has been uploaded to s3
+        parent -- parent of the uploaded file
+        do_signing -- Whether to add file signatures to the content table for client side verification
+    """
+    upload_info = {}
+    if do_signing:
+        signature = signing.get_file_signature(context, _get_path_for_file_entry(context, file, context.config.game_directory_name))
+        upload_info['Signature'] = signature
+    upload_info['Size'] = file.get('size')
+    upload_info['Hash'] = file.get('hash')
+    upload_info['ContentHash'] = file.get('contentHash', '')
+    upload_info['VersionId'] = file.get('versionId')
+    upload_info['Parent'] = parent
+    return upload_info
+
+
+def _get_meta_hash_name() -> str:
+    """ Get the name of the hash metadata """
     return 'hash'
 
+def _get_meta_content_hash_name() -> str:
+    """ Get the name of the content hash metadata """
+    return 'contenthash'
 
-def _do_file_upload(context, this_file_path, bucketName, thisKey, hashValue, invalidate_existing_files=False):
+
+def _do_file_upload(context, this_file_path, this_key, file_hash_metadata, invalidate_existing_files=False, deployment_name=''):
+    bucket_name = content_bucket.get_content_bucket_by_name(context, deployment_name)
     s3 = context.aws.client('s3')
     if invalidate_existing_files:
         try:
             s3.get_object(
-                Bucket=bucketName,
-                Key=thisKey
+                Bucket=bucket_name,
+                Key=this_key
             )
-            cloudfront.create_invalidation(context, thisKey, thisKey + hashValue)
+            cloudfront.create_invalidation(context, this_key, this_key + file_hash_metadata.hash)
         except ClientError as e:
             if e.response['Error']['Code'] == 'NoSuchKey':
                 # File doesn't exist in the s3 bucket. Consider it as a new file.
@@ -938,12 +1248,16 @@ def _do_file_upload(context, this_file_path, bucketName, thisKey, hashValue, inv
         max_concurrency=10,
         num_download_attempts=10,
     )
+
     transfer = S3Transfer(s3, config)
-    transfer.upload_file(this_file_path, bucketName, thisKey,
+    transfer.upload_file(this_file_path, bucket_name, this_key,
                          callback=ProgressPercentage(context, this_file_path),
-                         extra_args={'Metadata': {_get_meta_hash_name(): hashValue}})
+                         extra_args={'Metadata': {
+                             _get_meta_hash_name(): file_hash_metadata.hash,
+                             _get_meta_content_hash_name(): file_hash_metadata.content_hash
+                             }})
     show_manifest.done_uploading(this_file_path)
-    context.view.done_uploading(this_file_path)
+    context.view.done_uploading(this_file_path)      
 
 
 def _get_cache_game_path(context, game_directory):
@@ -1089,7 +1403,6 @@ def _get_path_for_standalone_manifest_pak(context, manifest_path):
 
 def create_standalone_manifest_pak(context, manifest_path):
     manifest_path, manifest = _get_path_and_manifest(context, manifest_path)
-    _update_file_hashes(context, manifest_path, manifest)
     full_path = ensure_posix_path(os.path.join(context.config.root_directory_path, manifest_path))
 
     archiver = pak_files.PakFileArchiver()
@@ -1124,7 +1437,7 @@ def command_build_new_paks(context, args):
     build_new_paks(context, args.manifest_path, args.all)
 
 
-def build_new_paks(context, manifest_path, pak_All=False):
+def build_new_paks(context, manifest_path, pak_All=False, create_manifest_pak=True):
     # TODO: add variable for a pak name, and add the pak name to the file entry in the manifest
     manifest_path, manifest = _get_path_and_manifest(context, manifest_path)
     updatedContent = _get_updated_local_content(context, manifest_path, manifest, pak_All)
@@ -1139,14 +1452,12 @@ def build_new_paks(context, manifest_path, pak_All=False):
                          _get_game_root_for_file_entry(context, file, context.config.game_directory_name))
             files_to_pak.append(file_pair)
             print(file_pair)
-        archiver.archive_files(files_to_pak, pak_folder_path)
+        archiver.archive_files(files_to_pak, pak_folder_path)    
     _save_content_manifest(context, manifest_path, manifest)
-    
-    create_standalone_manifest_pak(context, manifest_path)  
+    _update_file_hashes(context, manifest_path, manifest)
 
-
-def get_list_objects_limit():
-    return 1000  # This is an AWS internal limit on list_objects
+    if create_manifest_pak:
+        create_standalone_manifest_pak(context, manifest_path)
 
 
 def upload_folder_command(context, args):
@@ -1164,7 +1475,7 @@ def upload_folder(context, folder, bundle_type, deployment_name, staging_args, d
         return
 
     print('Found {} potential {} bundles at {}'.format(len(bundles), bundle_type, folder_path))
-    bucketName = _get_content_bucket(context)
+    bucketName = content_bucket.get_content_bucket_by_name(context, deployment_name)
 
     uploaded_files = {}
     print('Comparing against bucket {}:'.format(bucketName))
@@ -1175,13 +1486,15 @@ def upload_folder(context, folder, bundle_type, deployment_name, staging_args, d
         thisSize = file_stat.st_size
         print('Found bundle {}'.format(thisBundle))
         print('Size {} Hash {}'.format(thisSize, thisHash))
-        if check_matched_bucket_entry(context, thisBundle, thisHash, thisKey):
+        bundle_hash_metadata = hash_metadata(hash=thisHash)
+        matched, version_id = synchronize_local_pak_with_bucket(context, thisBundle, thisKey, bundle_hash_metadata)
+        if matched:
             print('Bucket entry matches, skipping')
             continue
-
+                
         print('Uploading {} as {}'.format(thisBundle, thisKey))
-        _do_file_upload(context, thisBundle, bucketName, thisKey, thisHash, invalidate_existing_files)
-        did_upload = True
+        _do_file_upload(context, thisBundle, thisKey, bundle_hash_metadata, invalidate_existing_files, deployment_name)
+        version_id = _get_file_version_id(context, thisKey, deployment_name)
         upload_info = {}
 
         if do_signing:
@@ -1189,17 +1502,40 @@ def upload_folder(context, folder, bundle_type, deployment_name, staging_args, d
                                                                                           context.config.game_directory_name))
             upload_info['Signature'] = this_signature
         upload_info['Size'] = thisSize
-        upload_info['Hash'] = thisHash
+        upload_info['Hash'] = bundle_hash_metadata.hash
+        upload_info['ContentHash'] = bundle_hash_metadata.content_hash
+        upload_info['VersionId'] = version_id
         uploaded_files[thisKey] = upload_info
 
-
     if staging_args is not None:
-        for thisFile, fileInfo in iteritems(uploaded_files):
-            staging_args['Signature'] = fileInfo.get('Signature')
-            staging_args['Size'] = fileInfo.get('Size')
-            staging_args['Hash'] = fileInfo.get('Hash')
+        for thisFile, file_info in iteritems(uploaded_files):
+            staging_args['Signature'] = file_info.get('Signature')
+            staging_args['Size'] = file_info.get('Size')
+            staging_args['Hash'] = file_info.get('Hash')
+            staging_args['ContentHash'] = file_info.get('ContentHash')
             staging_args['Parent'] = ''
+            staging.set_staging_status(thisFile, context, staging_args, deployment_name, file_info.get('VersionId'))
 
-            staging.set_staging_status(thisFile, context, staging_args, deployment_name)
+class hash_metadata(object):
+    """ Object used to store hash and hash content metadata """
+    def __init__(self, hash='', content_hash=''):
+        self.hash = hash
+        self.content_hash = content_hash
+    
+    @property
+    def hash(self):
+        return self._hash
+
+    @property
+    def content_hash(self):
+        return self._content_hash
+
+    @hash.setter
+    def hash(self, value):
+        self._hash = value
+
+    @content_hash.setter
+    def content_hash(self, value):
+        self._content_hash = value
 
 

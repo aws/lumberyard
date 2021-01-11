@@ -163,7 +163,7 @@ namespace AssetProcessor
             AZ_TracePrintf(AssetProcessor::DebugChannel, QString("Invalid executable path '%1'").arg(rcExecutableFullPath).toUtf8().data());
             return false;
         }
-        this->m_systemRoot = systemRoot;
+        this->m_systemRoot.setPath(systemRoot);
         this->m_rcExecutableFullPath = rcExecutableFullPath;
         this->m_resourceCompilerInitialized = true;
         return true;

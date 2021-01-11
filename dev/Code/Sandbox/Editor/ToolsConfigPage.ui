@@ -279,9 +279,6 @@
             <height>32</height>
            </size>
           </property>
-          <property name="pixmap">
-           <pixmap>../../../../../../../CHRIST~1/AppData/Local/Temp/scp51941/home/nicolas/amazon/ui/0</pixmap>
-          </property>
           <property name="wordWrap">
            <bool>true</bool>
           </property>

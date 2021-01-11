@@ -59,6 +59,8 @@ namespace AZ
                     ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                     ->Attribute(AZ::Script::Attributes::Category, "Asset")
                     ->Attribute(AZ::Script::Attributes::Module, "asset")
+                    ->Constructor()
+                    ->Constructor<const Uuid&, u32>()
                     ->Method("CreateString", &Data::AssetId::CreateString)
                     ->Method("IsValid", &Data::AssetId::IsValid)
                         ->Attribute(AZ::Script::Attributes::Alias, "is_valid")
@@ -67,6 +69,16 @@ namespace AZ
                     ->Method("IsEqual", [](const Data::AssetId& self, const Data::AssetId& other) { return self == other; })
                         ->Attribute(AZ::Script::Attributes::Alias, "is_equal")
                         ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
+                    ;
+
+                behaviorContext->Class<Data::AssetInfo>()
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                    ->Attribute(AZ::Script::Attributes::Category, "Asset")
+                    ->Attribute(AZ::Script::Attributes::Module, "asset")
+                    ->Property("assetId", BehaviorValueGetter(&Data::AssetInfo::m_assetId), nullptr)
+                    ->Property("assetType", BehaviorValueGetter(&Data::AssetInfo::m_assetType), nullptr)
+                    ->Property("sizeBytes", BehaviorValueGetter(&Data::AssetInfo::m_sizeBytes), nullptr)
+                    ->Property("relativePath", BehaviorValueGetter(&Data::AssetInfo::m_relativePath), nullptr)
                     ;
             }
         }

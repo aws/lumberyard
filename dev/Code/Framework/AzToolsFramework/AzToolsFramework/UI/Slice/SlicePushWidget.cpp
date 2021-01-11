@@ -474,6 +474,7 @@ namespace AzToolsFramework
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
         m_fieldTree = new QTreeWidget();
+        m_fieldTree->setObjectName("SlicePushWidget.m_fieldTree");
         m_fieldTree->setColumnCount(2);
         m_fieldTree->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         m_fieldTree->setDragDropMode(QAbstractItemView::DragDropMode::NoDragDrop);
@@ -517,10 +518,15 @@ namespace AzToolsFramework
 
         m_iconGroup = QIcon(":/PropertyEditor/Resources/browse_on.png");
         m_iconChangedDataItem = QIcon(":/PropertyEditor/Resources/changed_data_item.png");
+        m_iconChangedDataItem.addFile(":/PropertyEditor/Resources/changed_data_item.png", QSize(), QIcon::Selected);
         m_iconConflictedDataItem = QIcon(":/PropertyEditor/Resources/cant_save.png");
+        m_iconConflictedDataItem.addFile(":/PropertyEditor/Resources/cant_save.png", QSize(), QIcon::Selected);
         m_iconConflictedDisabledDataItem = QIcon(":/PropertyEditor/Resources/cant_save_disabled.png");
+        m_iconConflictedDisabledDataItem.addFile(":/PropertyEditor/Resources/cant_save_disabled.png", QSize(), QIcon::Selected);
         m_iconNewDataItem = QIcon(":/PropertyEditor/Resources/new_data_item.png");
+        m_iconNewDataItem.addFile(":/PropertyEditor/Resources/new_data_item.png", QSize(), QIcon::Selected);
         m_iconRemovedDataItem = QIcon(":/PropertyEditor/Resources/removed_data_item.png");
+        m_iconRemovedDataItem.addFile(":/PropertyEditor/Resources/removed_data_item.png", QSize(), QIcon::Selected);
         m_iconSliceItem = QIcon(":/PropertyEditor/Resources/slice_item.png");
         m_iconWarning = QIcon(":/PropertyEditor/Resources/warning.png");
         m_iconOpen = QIcon(":/PropertyEditor/Resources/open_arrow.png");
@@ -607,7 +613,7 @@ namespace AzToolsFramework
         // Create/populate button box.
         {
             QDialogButtonBox* buttonBox = new QDialogButtonBox(this);
-            m_pushSelectedButton = new QPushButton(tr(" Save Selected Overrides"));
+            m_pushSelectedButton = new QPushButton(tr("Save Selected Overrides"));
             m_pushSelectedButton->setToolTip(tr("Save selected overrides to the specified slice(es)."));
             m_pushSelectedButton->setDefault(false);
             m_pushSelectedButton->setAutoDefault(false);
@@ -786,7 +792,7 @@ namespace AzToolsFramework
         }
 
         m_warningTitle = new QLabel(tr("One or more slice files have missing file references. Cancel to update your references or \"Save...\" to remove the missing references."));
-     
+        m_warningTitle->setObjectName("SlicePushWidget.m_warningTitle");
         SetupTopAreaMessage(warningLayout, m_warningTitle, true);
     }
 

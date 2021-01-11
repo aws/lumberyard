@@ -60,6 +60,7 @@ namespace LmbrCentral
     const float ParticleEmitterSettings::MaxSizeScale = 100.f;
     const float ParticleEmitterSettings::MaxLifttimeStrength = 1.f;
     const float ParticleEmitterSettings::MinLifttimeStrength = -1.f;
+    const float ParticleEmitterSettings::MaxRandSizeScale = 1.f;
 
     //////////////////////////////////////////////////////////////////////////
     void ParticleComponent::Reflect(AZ::ReflectContext* context)
@@ -88,6 +89,7 @@ namespace LmbrCentral
                 ->Event("Hide", &ParticleComponentRequestBus::Events::Hide)
                 ->Event("Enable", &ParticleComponentRequestBus::Events::Enable)
                 ->Event("GetEnable", &ParticleComponentRequestBus::Events::GetEnable)
+                ->Event("GetEnablePreRoll", &ParticleComponentRequestBus::Events::GetEnablePreRoll)
                 ->Event("EnablePreRoll", &ParticleComponentRequestBus::Events::EnablePreRoll)
                 ->Event("SetColorTint", &ParticleComponentRequestBus::Events::SetColorTint)
                 ->Event("GetColorTint", &ParticleComponentRequestBus::Events::GetColorTint)
@@ -95,6 +97,8 @@ namespace LmbrCentral
                 ->Event("GetCountScale", &ParticleComponentRequestBus::Events::GetCountScale)
                 ->Event("SetTimeScale", &ParticleComponentRequestBus::Events::SetTimeScale)
                 ->Event("GetTimeScale", &ParticleComponentRequestBus::Events::GetTimeScale)
+                ->Event("SetPulsePeriod", &ParticleComponentRequestBus::Events::SetPulsePeriod)
+                ->Event("GetPulsePeriod", &ParticleComponentRequestBus::Events::GetPulsePeriod)
                 ->Event("SetSpeedScale", &ParticleComponentRequestBus::Events::SetSpeedScale)
                 ->Event("GetSpeedScale", &ParticleComponentRequestBus::Events::GetSpeedScale)
                 ->Event("SetGlobalSizeScale", &ParticleComponentRequestBus::Events::SetGlobalSizeScale)
@@ -105,27 +109,59 @@ namespace LmbrCentral
                 ->Event("GetParticleSizeScaleY", &ParticleComponentRequestBus::Events::GetParticleSizeScaleY)
                 ->Event("SetParticleSizeScaleZ", &ParticleComponentRequestBus::Events::SetParticleSizeScaleZ)
                 ->Event("GetParticleSizeScaleZ", &ParticleComponentRequestBus::Events::GetParticleSizeScaleZ)
+                ->Event("SetParticleSizeScaleRandom", &ParticleComponentRequestBus::Events::SetParticleSizeScaleRandom)
+                ->Event("GetParticleSizeScaleRandom", &ParticleComponentRequestBus::Events::GetParticleSizeScaleRandom)
+                ->Event("GetLifetimeStrength", &ParticleComponentRequestBus::Events::GetLifetimeStrength)
                 ->Event("SetLifetimeStrength", &ParticleComponentRequestBus::Events::SetLifetimeStrength)
+                ->Event("GetIgnoreRotation", &ParticleComponentRequestBus::Events::GetIgnoreRotation)
+                ->Event("SetIgnoreRotation", &ParticleComponentRequestBus::Events::SetIgnoreRotation)
+                ->Event("GetNotAttached", &ParticleComponentRequestBus::Events::GetNotAttached)
+                ->Event("SetNotAttached", &ParticleComponentRequestBus::Events::SetNotAttached)
+                ->Event("GetUseBoundingBox", &ParticleComponentRequestBus::Events::GetUseBoundingBox)
+                ->Event("SetUseBoundingBox", &ParticleComponentRequestBus::Events::SetUseBoundingBox)
+                ->Event("GetUseLOD", &ParticleComponentRequestBus::Events::GetUseLOD)
+                ->Event("SetUseLOD", &ParticleComponentRequestBus::Events::SetUseLOD)
+                ->Event("GetTargetEntity", &ParticleComponentRequestBus::Events::GetTargetEntityId)
+                ->Event("SetTargetEntity", &ParticleComponentRequestBus::Events::SetTargetEntityId)
+                ->Event("IsAudioEnabled", &ParticleComponentRequestBus::Events::IsAudioEnabled)
                 ->Event("EnableAudio", &ParticleComponentRequestBus::Events::EnableAudio)
+                ->Event("GetRTPC", &ParticleComponentRequestBus::Events::GetRTPC)
                 ->Event("SetRTPC", &ParticleComponentRequestBus::Events::SetRTPC)
+
+                ->Event("GetViewDistMultiplier", &ParticleComponentRequestBus::Events::GetViewDistMultiplier)
                 ->Event("SetViewDistMultiplier", &ParticleComponentRequestBus::Events::SetViewDistMultiplier)
+                ->Event("GetUseVisArea", &ParticleComponentRequestBus::Events::GetUseVisArea)
                 ->Event("SetUseVisArea", &ParticleComponentRequestBus::Events::SetUseVisArea)
+
                 ->Event("GetEmitterSettings", &ParticleComponentRequestBus::Events::GetEmitterSettings)
                 ->Event("Restart", &ParticleComponentRequestBus::Events::Restart)
                 ->VirtualProperty("Visible", "GetVisibility", "SetVisibility")
                 ->VirtualProperty("Enable", "GetEnable", "Enable")
+                ->VirtualProperty("EnablePreRoll", "GetEnablePreRoll", "EnablePreRoll")
                 ->VirtualProperty("ColorTint", "GetColorTint", "SetColorTint")
                 ->VirtualProperty("CountScale", "GetCountScale", "SetCountScale")
                 ->VirtualProperty("TimeScale", "GetTimeScale", "SetTimeScale")
+                ->VirtualProperty("PulsePeriod", "GetPulsePeriod", "SetPulsePeriod")
                 ->VirtualProperty("SpeedScale", "GetSpeedScale", "SetSpeedScale")
                 ->VirtualProperty("GlobalSizeScale", "GetGlobalSizeScale", "SetGlobalSizeScale")
                 ->VirtualProperty("ParticleSizeScaleX", "GetParticleSizeScaleX", "SetParticleSizeScaleX")
                 ->VirtualProperty("ParticleSizeScaleY", "GetParticleSizeScaleY", "SetParticleSizeScaleY")
                 ->VirtualProperty("ParticleSizeScaleZ", "GetParticleSizeScaleZ", "SetParticleSizeScaleZ")
+                ->VirtualProperty("ParticleSizeScaleRandom", "GetParticleSizeScaleRandom", "SetParticleSizeScaleRandom")
+                ->VirtualProperty("LifetimeStrength", "GetLifetimeStrength", "SetLifetimeStrength")
+                ->VirtualProperty("IgnoreRotation", "GetIgnoreRotation", "SetIgnoreRotation")
+                ->VirtualProperty("NotAttached", "GetNotAttached", "SetNotAttached")
+                ->VirtualProperty("UseBoundingBox", "GetUseBoundingBox", "SetUseBoundingBox")
+                ->VirtualProperty("UseLOD", "GetUseLOD", "SetUseLOD")
+                ->VirtualProperty("TargetEntity", "GetTargetEntity", "SetTargetEntity")
+                ->VirtualProperty("EnableAudio", "IsAudioEnabled", "EnableAudio")
+                ->VirtualProperty("AudioRTPC", "GetRTPC", "SetRTPC")
+                ->VirtualProperty("ViewDistMultiplier", "GetViewDistMultiplier", "SetViewDistMultiplier")
+                ->VirtualProperty("UseVisArea", "GetUseVisArea", "SetUseVisArea")
                 ;
         }
     }
-    
+
     void ParticleEmitterSettings::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -133,13 +169,13 @@ namespace LmbrCentral
         {
             serializeContext->Class<ParticleEmitterSettings>()->
                 Version(6, &VersionConverter)->
-                
+
                 //Particle
                 Field("Visible", &ParticleEmitterSettings::m_visible)->
                 Field("Enable", &ParticleEmitterSettings::m_enable)->
                 Field("SelectedEmitter", &ParticleEmitterSettings::m_selectedEmitter)->
                 Field("Asset", &ParticleEmitterSettings::m_asset)->
-                
+
                 //Spawn Properties
                 Field("Color", &ParticleEmitterSettings::m_color)->
                 Field("Pre-roll", &ParticleEmitterSettings::m_prime)->
@@ -167,9 +203,9 @@ namespace LmbrCentral
                 //render node and misc
                 Field("View Distance Multiplier", &ParticleEmitterSettings::m_viewDistMultiplier)->
                 Field("Use VisArea", &ParticleEmitterSettings::m_useVisAreas)
-            ;
+                ;
         }
-        
+
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
         if (behaviorContext)
         {
@@ -259,7 +295,7 @@ namespace LmbrCentral
 
         return re;
     }
-
+    
     //////////////////////////////////////////////////////////////////////////
 
     void ParticleComponent::Init()
@@ -284,28 +320,42 @@ namespace LmbrCentral
     }
 
     // ParticleComponentRequestBus handlers
-    void ParticleComponent::Show()
+    bool ParticleComponent::GetEnable()
     {
-        m_settings.m_visible = true;
-        m_emitter.Show();
+        return m_settings.m_enable;
     }
 
     void ParticleComponent::Enable(bool enable)
     {
-        m_settings.m_enable = enable;
-        m_emitter.Enable(enable);
+        if (enable != m_settings.m_enable)
+        {
+            m_settings.m_enable = enable;
+            m_emitter.Enable(enable);
+        }
+    }
+
+    void ParticleComponent::Show()
+    {
+        SetVisibility(true);
     }
 
     void ParticleComponent::Hide()
     {
-        m_settings.m_visible = false;
-        m_emitter.Hide();
+        SetVisibility(false);
+    }
+
+    bool ParticleComponent::GetVisibility()
+    {
+        return m_settings.m_visible;
     }
 
     void ParticleComponent::SetVisibility(bool visible)
     {
-        m_settings.m_visible = visible;
-        m_emitter.SetVisibility(visible);
+        if (visible != m_settings.m_visible)
+        {
+            m_settings.m_visible = visible;
+            m_emitter.SetVisibility(visible);
+        }
     }
 
     void ParticleComponent::SetupEmitter(const AZStd::string& emitterName, const ParticleEmitterSettings& settings)
@@ -315,21 +365,57 @@ namespace LmbrCentral
         m_emitter.Set(m_settings.m_selectedEmitter, m_settings);
     }
 
+    bool ParticleComponent::GetEnablePreRoll()
+    {
+        return m_settings.m_prime;
+    }
+
     void ParticleComponent::EnablePreRoll(bool enable)
     {
-        m_settings.m_prime = enable;
-        m_emitter.ApplyEmitterSetting(m_settings);
+        if (enable != m_settings.m_prime)
+        {
+            m_settings.m_prime = enable;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    AZ::EntityId ParticleComponent::GetTargetEntityId()
+    {
+        return m_settings.m_targetEntity;
+    }
+
+    void ParticleComponent::SetTargetEntityId(AZ::EntityId entityId)
+    {
+        if (entityId != m_settings.m_targetEntity)
+        {
+            m_settings.m_targetEntity = entityId;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    AZ::Color ParticleComponent::GetColorTint()
+    {
+        return m_settings.m_color;
     }
 
     void ParticleComponent::SetColorTint(const AZ::Color& tint)
     {
-        m_settings.m_color = tint;
-        m_emitter.ApplyEmitterSetting(m_settings);
+        if (tint != m_settings.m_color)
+        {
+            m_settings.m_color = tint;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    float ParticleComponent::GetCountScale()
+    {
+        return m_settings.m_countScale;
     }
 
     void ParticleComponent::SetCountScale(float scale)
     {
-        if (ParticleEmitterSettings::MaxCountScale < scale || scale < 0)
+        if (scale == m_settings.m_countScale
+            || ParticleEmitterSettings::MaxCountScale < scale || scale < 0.f)
         {
             return;
         }
@@ -338,9 +424,15 @@ namespace LmbrCentral
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
+    float ParticleComponent::GetTimeScale()
+    {
+        return m_settings.m_timeScale;
+    }
+
     void ParticleComponent::SetTimeScale(float scale)
     {
-        if (ParticleEmitterSettings::MaxTimeScale < scale || scale < 0)
+        if (scale == m_settings.m_timeScale
+            || ParticleEmitterSettings::MaxTimeScale < scale || scale < 0.f)
         {
             return;
         }
@@ -350,9 +442,15 @@ namespace LmbrCentral
 
     }
 
+    float ParticleComponent::GetSpeedScale()
+    {
+        return m_settings.m_speedScale;
+    }
+
     void ParticleComponent::SetSpeedScale(float scale)
     {
-        if (ParticleEmitterSettings::MaxSpeedScale < scale || scale < 0)
+        if (scale == m_settings.m_speedScale
+            || ParticleEmitterSettings::MaxSpeedScale < scale || scale < 0.f)
         {
             return;
         }
@@ -361,9 +459,15 @@ namespace LmbrCentral
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
+    float ParticleComponent::GetGlobalSizeScale()
+    {
+        return m_settings.m_sizeScale;
+    }
+
     void ParticleComponent::SetGlobalSizeScale(float scale)
     {
-        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        if (scale == m_settings.m_sizeScale
+            || ParticleEmitterSettings::MaxSizeScale < scale || scale < 0.f)
         {
             return;
         }
@@ -372,9 +476,15 @@ namespace LmbrCentral
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
+    float ParticleComponent::GetParticleSizeScaleX()
+    {
+        return m_settings.m_particleSizeScaleX;
+    }
+
     void ParticleComponent::SetParticleSizeScaleX(float scale)
     {
-        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        if (scale == m_settings.m_particleSizeScaleX
+            || ParticleEmitterSettings::MaxSizeScale < scale || scale < 0.f)
         {
             return;
         }
@@ -383,9 +493,15 @@ namespace LmbrCentral
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
+    float ParticleComponent::GetParticleSizeScaleY()
+    {
+        return m_settings.m_particleSizeScaleY;
+    }
+
     void ParticleComponent::SetParticleSizeScaleY(float scale)
     {
-        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        if (scale == m_settings.m_particleSizeScaleY
+            || ParticleEmitterSettings::MaxSizeScale < scale || scale < 0.f)
         {
             return;
         }
@@ -394,9 +510,15 @@ namespace LmbrCentral
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
+    float ParticleComponent::GetParticleSizeScaleZ()
+    {
+        return m_settings.m_particleSizeScaleZ;
+    }
+
     void ParticleComponent::SetParticleSizeScaleZ(float scale)
     {
-        if (ParticleEmitterSettings::MaxSizeScale < scale || scale < 0)
+        if (scale == m_settings.m_particleSizeScaleZ
+            || ParticleEmitterSettings::MaxSizeScale < scale || scale < 0.f)
         {
             return;
         }
@@ -405,9 +527,31 @@ namespace LmbrCentral
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
+    float ParticleComponent::GetParticleSizeScaleRandom()
+    {
+        return m_settings.m_particleSizeScaleRandom;
+    }
+
+    void ParticleComponent::SetParticleSizeScaleRandom(float scale)
+    {
+        if (scale == m_settings.m_particleSizeScaleRandom
+            || ParticleEmitterSettings::MaxRandSizeScale < scale || scale < 0.f)
+        {
+            return;
+        }
+
+        m_settings.m_particleSizeScaleRandom = scale;
+        m_emitter.ApplyEmitterSetting(m_settings);
+    }
+
+    float ParticleComponent::GetPulsePeriod()
+    {
+        return m_settings.m_pulsePeriod;
+    }
+
     void ParticleComponent::SetPulsePeriod(float pulse)
     {
-        if (pulse < 0)
+        if (pulse == m_settings.m_pulsePeriod || pulse < 0.f)
         {
             return;
         }
@@ -416,9 +560,15 @@ namespace LmbrCentral
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
+    float ParticleComponent::GetLifetimeStrength()
+    {
+        return m_settings.m_strength;
+    }
+
     void ParticleComponent::SetLifetimeStrength(float strength)
     {
-        if (ParticleEmitterSettings::MinLifttimeStrength > strength
+        if (strength == m_settings.m_strength
+            || ParticleEmitterSettings::MinLifttimeStrength > strength
             || ParticleEmitterSettings::MaxLifttimeStrength < strength)
         {
             return;
@@ -428,32 +578,119 @@ namespace LmbrCentral
         m_emitter.ApplyEmitterSetting(m_settings);
     }
 
+    bool ParticleComponent::GetIgnoreRotation()
+    {
+        return m_settings.m_ignoreRotation;
+    }
+
+    void ParticleComponent::SetIgnoreRotation(bool ignore)
+    {
+        if (ignore != m_settings.m_ignoreRotation)
+        {
+            m_settings.m_ignoreRotation = ignore;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    bool ParticleComponent::GetNotAttached()
+    {
+        return m_settings.m_notAttached;
+    }
+
+    void ParticleComponent::SetNotAttached(bool notAttached)
+    {
+        if (notAttached != m_settings.m_notAttached)
+        {
+            m_settings.m_notAttached = notAttached;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    bool ParticleComponent::GetUseBoundingBox()
+    {
+        return m_settings.m_registerByBBox;
+    }
+
+    void ParticleComponent::SetUseBoundingBox(bool useBox)
+    {
+        if (useBox != m_settings.m_registerByBBox)
+        {
+            m_settings.m_registerByBBox = useBox;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    bool ParticleComponent::GetUseLOD()
+    {
+        return m_settings.m_useLOD;
+    }
+
+    void ParticleComponent::SetUseLOD(bool activate)
+    {
+        if (activate != m_settings.m_useLOD)
+        {
+            m_settings.m_useLOD = activate;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
     // Enable audio
+    bool ParticleComponent::IsAudioEnabled()
+    {
+        return m_settings.m_enableAudio;
+    }
+
     void ParticleComponent::EnableAudio(bool enable)
     {
-        m_settings.m_enableAudio = enable;
-        m_emitter.ApplyEmitterSetting(m_settings);
+        if (enable != m_settings.m_enableAudio)
+        {
+            m_settings.m_enableAudio = enable;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
     }
 
     // Set audio RTPC
+    const AZStd::string& ParticleComponent::GetRTPC()
+    {
+        return m_settings.m_audioRTPC;
+    }
+
     void ParticleComponent::SetRTPC(const AZStd::string& rtpc)
     {
-        m_settings.m_audioRTPC = rtpc;
-        m_emitter.ApplyEmitterSetting(m_settings);
+        if (!rtpc.compare(m_settings.m_audioRTPC))
+        {
+            m_settings.m_audioRTPC = rtpc;
+            m_emitter.ApplyEmitterSetting(m_settings);
+        }
+    }
+
+    float ParticleComponent::GetViewDistMultiplier()
+    {
+        return m_settings.m_viewDistMultiplier;
     }
 
     void ParticleComponent::SetViewDistMultiplier(float multiplier)
     {
-        m_settings.m_viewDistMultiplier = multiplier;
-        m_emitter.ApplyRenderFlags(m_settings);
+        if (multiplier != m_settings.m_viewDistMultiplier)
+        {
+            m_settings.m_viewDistMultiplier = multiplier;
+            m_emitter.ApplyRenderFlags(m_settings);
+        }
+    }
+
+    bool ParticleComponent::GetUseVisArea()
+    {
+        return m_settings.m_useVisAreas;
     }
 
     void ParticleComponent::SetUseVisArea(bool enable)
     {
-        m_settings.m_useVisAreas = enable;
-        m_emitter.ApplyRenderFlags(m_settings);
+        if (enable != m_settings.m_useVisAreas)
+        {
+            m_settings.m_useVisAreas = enable;
+            m_emitter.ApplyRenderFlags(m_settings);
+        }
     }
-    
 
     // get emitter setting
     ParticleEmitterSettings ParticleComponent::GetEmitterSettings()
@@ -466,60 +703,6 @@ namespace LmbrCentral
         m_emitter.Restart();
     }
 
-    bool ParticleComponent::GetVisibility()
-    {
-        return m_settings.m_visible;
-    }
-    
-    bool ParticleComponent::GetEnable()
-    {
-        return m_settings.m_enable;
-    }
-
-    AZ::Color ParticleComponent::GetColorTint()
-    {
-        return m_settings.m_color;
-    }
-
-    float ParticleComponent::GetCountScale()
-    {
-        return m_settings.m_countScale;
-    }
-
-    float ParticleComponent::GetTimeScale()
-    {
-        return m_settings.m_timeScale;
-    }
-
-    float ParticleComponent::GetSpeedScale()
-    {
-        return m_settings.m_speedScale;
-    }
-
-    float ParticleComponent::GetGlobalSizeScale()
-    {
-        return m_settings.m_sizeScale;
-    }
-
-    float ParticleComponent::GetParticleSizeScaleX()
-    {
-        return m_settings.m_particleSizeScaleX;
-    }
-
-    float ParticleComponent::GetParticleSizeScaleY()
-    {
-        return m_settings.m_particleSizeScaleY;
-    }
-
-    float ParticleComponent::GetParticleSizeScaleZ()
-    {
-        return m_settings.m_particleSizeScaleZ;
-    }
-
-    float ParticleComponent::GetPulsePeriod()
-    {
-        return m_settings.m_pulsePeriod;
-    }
     //end ParticleComponentRequestBus handlers
 
     IRenderNode* ParticleComponent::GetRenderNode()

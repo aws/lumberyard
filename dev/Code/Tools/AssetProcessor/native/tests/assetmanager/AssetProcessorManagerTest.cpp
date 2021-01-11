@@ -22,7 +22,7 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 
-#include <QTime>
+#include <QElapsedTimer>
 #include <QCoreApplication>
 
 #include "native/unittests/MockApplicationManager.h"
@@ -164,7 +164,7 @@ AssetProcessorManagerTest::AssetProcessorManagerTest()
 
 bool AssetProcessorManagerTest::BlockUntilIdle(int millisecondsMax)
 {
-    QTime limit;
+    QElapsedTimer limit;
     limit.start();
 
     if(AZ::Debug::Trace::IsDebuggerPresent())
@@ -1659,6 +1659,56 @@ TEST_F(PathDependencyTest, NoLongerProcessedFile_IsRemoved)
     ASSERT_FALSE(QFile::exists(m_normalizedCacheRootDir.absoluteFilePath("pc/samplesproject/test1.asset1").toUtf8().constData()));
 }
 
+TEST_F(PathDependencyTest, AssetProcessed_Impl_SelfReferrentialProductDependency_DependencyIsRemoved)
+{
+    using namespace AssetProcessor;
+    using namespace AssetBuilderSDK;
+
+    TestAsset mainFile("testFileName");
+    AZStd::vector<JobDetails> capturedDetails;
+    CaptureJobs(capturedDetails, ("subfolder1/" + mainFile.m_name + ".txt").c_str());
+
+    ASSERT_FALSE(capturedDetails.empty());
+
+    JobDetails jobDetails = capturedDetails[0];
+    AZ::Uuid outputAssetTypeId = AZ::Uuid::CreateRandom();
+    int subId = 1;
+
+    ProcessJobResponse processJobResponse;
+    processJobResponse.m_resultCode = ProcessJobResult_Success;
+
+    ASSERT_FALSE(jobDetails.m_destinationPath.isEmpty());
+
+    // create a product asset
+    QString outputAssetPath = QDir(jobDetails.m_destinationPath).absoluteFilePath(QString(mainFile.m_name.c_str()) + ".asset");
+    UnitTestUtils::CreateDummyFile(outputAssetPath, "this is a test output asset");
+
+    // add the new product asset to its own product dependencies list by assetId
+    JobProduct jobProduct(outputAssetPath.toUtf8().constData(), outputAssetTypeId, subId);
+    AZ::Data::AssetId productAssetId(jobDetails.m_jobEntry.m_sourceFileUUID, subId);
+    jobProduct.m_dependencies.push_back(ProductDependency(productAssetId, 5));
+
+    // add the product asset to its own product dependencies list by path
+    jobProduct.m_pathDependencies.emplace(ProductPathDependency(AZStd::string::format("%s%s", mainFile.m_name.c_str(), ".asset"), ProductPathDependencyType::ProductFile));
+
+    processJobResponse.m_outputProducts.push_back(jobProduct);
+    mainFile.m_products.push_back(productAssetId);
+
+    // tell the APM that the asset has been processed and allow it to bubble through its event queue:
+    m_assertAbsorber.Clear();
+    m_assetProcessorManager->AssetProcessed(jobDetails.m_jobEntry, processJobResponse);
+    ASSERT_TRUE(BlockUntilIdle(5000));
+
+    // Verify we have no entries in the ProductDependencies table
+    AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer dependencyContainer;
+    m_sharedConnection->GetProductDependencies(dependencyContainer);
+    ASSERT_TRUE(dependencyContainer.empty());
+
+    // We are testing 2 different dependencies, so we should get 2 warnings
+    ASSERT_EQ(m_assertAbsorber.m_numWarningsAbsorbed, 2);
+    m_assertAbsorber.Clear();
+}
+
 // This test shows the process of deferring resolution of a path dependency works.
 // 1) Resource A comes in with a relative path to resource B which has not been processed yet
 // 2) Resource B is processed, resolving the path dependency on resource A
@@ -2294,7 +2344,7 @@ TEST_F(PathDependencyTest, AbsoluteDependencies_Deferred_ResolveCorrectly)
     QString absPathDep1(tempPath.absoluteFilePath(QString("subfolder4%1%2").arg(QDir::separator()).arg(relativePathDep1.c_str())));
     // When an absolute path matches a scan folder, the portion of the path matching that scan folder
     // is replaced with the scan folder's ID.
-    AZStd::string absPathDep1WithScanfolder(AZStd::string::format("$1$%s", relativePathDep1.c_str()));
+    AZStd::string absPathDep1WithScanfolder(AZStd::string::format("$4$%s", relativePathDep1.c_str()));
     QString absPathDep2(tempPath.absoluteFilePath("subfolder2/dep2.txt"));
     QString absPathDep3(tempPath.absoluteFilePath("subfolder1/dep3.txt"));
 
@@ -5571,7 +5621,7 @@ TEST_F(ChainJobDependencyTest, TestChainDependency_Multi)
         m_data->m_rcController->JobSubmitted(job);
     }
 
-    QTime timer;
+    QElapsedTimer timer;
     timer.start();
 
     // Wait for all the jobs to finish, up to 5 seconds

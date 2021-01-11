@@ -322,6 +322,9 @@ struct CVisAreaManager
     virtual void CloneRegion(const AABB& region, const Vec3& offset, float zRotation);
     virtual void ClearRegion(const AABB& region);
 
+    //! Clears terrain nodes from vis area octree. Call when Terrain is destroyed. 
+    void ClearTerrainNodes() override;
+
     void MarkAllSectorsAsUncompiled(const IRenderNode* pRenderNode = NULL);
     void InitAABBTree();
 

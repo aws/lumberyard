@@ -784,7 +784,7 @@ public:
         ToolTip_ParseNode(node);
     }
 
-    virtual void ToolTip_BuildFromConfig(QToolTipWidget* tooltip, QString path, QString option, QString optionalData = "", bool isEnabled = true)
+    virtual void ToolTip_BuildFromConfig(IQToolTip* tooltip, QString path, QString option, QString optionalData = "", bool isEnabled = true)
     {
         AZ_Assert(tooltip, "tooltip cannot be null");
 

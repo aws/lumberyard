@@ -78,6 +78,8 @@
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
 #include "windows.h"
+#include <psapi.h>
+LINK_SYSTEM_LIBRARY(psapi.lib)
 #include <float.h>
 
 // To enable profiling with vtune (https://software.intel.com/en-us/intel-vtune-amplifier-xe), make sure the line below is not commented out
@@ -183,6 +185,8 @@
 #if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_IOS)
 #include "MobileDetectSpec.h"
 #endif
+
+#include <LmbrCentral/FileSystem/AliasConfiguration.h>
 
 #include "IDebugCallStack.h"
 
@@ -2288,9 +2292,57 @@ bool CSystem::LaunchAssetProcessor()
         m_pUserCallback->OnInitProgress("Launching remote Asset Processor...");
     }
 
+    const char* appRoot = nullptr;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
+
+#if defined(AZ_PLATFORM_WINDOWS)
+    STARTUPINFO si;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_MINIMIZE;
+    PROCESS_INFORMATION pi;
+    char full_launch_command[AZ_MAX_PATH_LEN] = { 0 };
+    if (appRoot != nullptr)
+    {
+        azsnprintf(full_launch_command, AZ_MAX_PATH_LEN, "\"%s\" --start-hidden --app-root \"%s\"", m_assetProcessorExe, appRoot);
+    }
+    else
+    {
+        azsnprintf(full_launch_command, AZ_MAX_PATH_LEN, "\"%s\" --start-hidden", m_assetProcessorExe);
+    }
+
+    bool created = ::CreateProcess(nullptr, full_launch_command, nullptr, nullptr, FALSE, 0, nullptr, m_workingDir, &si, &pi) != 0;
+    if (!created)
+    {
+        AZ_Assert(false, "CreateProcess failed to launch AssetProcessor at location: %s", m_assetProcessorExe);
+        return false;
+    }
+
+    return true;
+#elif defined(AZ_PLATFORM_MAC)
+    char full_launch_command[AZ_MAX_PATH_LEN] = { 0 };
+    if (appRoot != nullptr)
+    {
+        azsnprintf(full_launch_command, AZ_MAX_PATH_LEN, "open -g \"%s\" --args --start-hidden --app-root \"%s\"", m_assetProcessorExe, appRoot);
+    }
+    else
+    {
+        azsnprintf(full_launch_command, AZ_MAX_PATH_LEN, "open -g \"%s\" --args --start-hidden", m_assetProcessorExe);
+    }
+
+    int error = system(full_launch_command);
+    return (error == 0);
+#endif // AZ_PLATFORM_MAC
+#endif // REMOTE_ASSET_PROCESSOR
+    AZ_Assert(false, "Could not start Asset Processor; platform not supported");
+    return false;
+}
+
+#ifdef REMOTE_ASSET_PROCESSOR
+void CSystem::RetrieveAssetProcessorPath()
+{
     static const char* asset_processor_name = "AssetProcessor";
-    char assetProcessorExe[AZ_MAX_PATH_LEN] = { 0 };
-    char workingDir[AZ_MAX_PATH_LEN] = { 0 };
 
 #if defined(AZ_PLATFORM_WINDOWS)
     static const char* asset_processor_ext = ".exe";
@@ -2309,14 +2361,14 @@ bool CSystem::LaunchAssetProcessor()
         AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
 
         AZStd::string engineBinFolder = AZStd::string::format("%s%s", engineRoot, binFolderName.data());
-        azstrncpy(workingDir, AZ_ARRAY_SIZE(workingDir), engineBinFolder.c_str(), engineBinFolder.length());
+        azstrncpy(m_workingDir, AZ_ARRAY_SIZE(m_workingDir), engineBinFolder.c_str(), engineBinFolder.length());
 
         AZStd::string engineAssetProcessorPath = AZStd::string::format("%s%s%s%s",
-                                                                       engineBinFolder.c_str(),
-                                                                       AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING,
-                                                                       asset_processor_name,
-                                                                       asset_processor_ext);
-        azstrncpy(assetProcessorExe, AZ_ARRAY_SIZE(assetProcessorExe), engineAssetProcessorPath.c_str(), engineAssetProcessorPath.length());
+            engineBinFolder.c_str(),
+            AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING,
+            asset_processor_name,
+            asset_processor_ext);
+        azstrncpy(m_assetProcessorExe, AZ_ARRAY_SIZE(m_assetProcessorExe), engineAssetProcessorPath.c_str(), engineAssetProcessorPath.length());
     }
 #if defined(AZ_PLATFORM_WINDOWS)
     if (engineRoot == nullptr)
@@ -2327,59 +2379,13 @@ bool CSystem::LaunchAssetProcessor()
         char drive[AZ_MAX_PATH_LEN] = { 0 };
         char dir[AZ_MAX_PATH_LEN] = { 0 };
         _splitpath_s(exeName, drive, AZ_MAX_PATH_LEN, dir, AZ_MAX_PATH_LEN, nullptr, 0, nullptr, 0);
-        _makepath_s(assetProcessorExe, AZ_MAX_PATH_LEN, drive, dir, "AssetProcessor", "exe");
-        _makepath_s(workingDir, AZ_MAX_PATH_LEN, drive, dir, nullptr, nullptr);
+        _makepath_s(m_assetProcessorExe, AZ_MAX_PATH_LEN, drive, dir, "AssetProcessor", "exe");
+        _makepath_s(m_workingDir, AZ_MAX_PATH_LEN, drive, dir, nullptr, nullptr);
     }
 #endif // defined(AZ_PLATFORM_WINDOWS)
 
-    const char* appRoot = nullptr;
-    AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
-
-#if defined(AZ_PLATFORM_WINDOWS)
-    STARTUPINFO si;
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_MINIMIZE;
-    PROCESS_INFORMATION pi;
-    char full_launch_command[AZ_MAX_PATH_LEN] = { 0 };
-    if (appRoot != nullptr)
-    {
-        azsnprintf(full_launch_command, AZ_MAX_PATH_LEN, "\"%s\" --start-hidden --app-root \"%s\"", assetProcessorExe, appRoot);
-    }
-    else
-    {
-        azsnprintf(full_launch_command, AZ_MAX_PATH_LEN, "\"%s\" --start-hidden", assetProcessorExe);
-    }
-
-    bool created = ::CreateProcess(nullptr, full_launch_command, nullptr, nullptr, FALSE, 0, nullptr, workingDir, &si, &pi) != 0;
-    if (!created)
-    {
-        AZ_Assert(false, "CreateProcess failed to launch AssetProcessor at location: %s", assetProcessorExe);
-        return false;
-    }
-
-    return true;
-#elif defined(AZ_PLATFORM_MAC)
-    char full_launch_command[AZ_MAX_PATH_LEN] = { 0 };
-    if (appRoot != nullptr)
-    {
-        azsnprintf(full_launch_command, AZ_MAX_PATH_LEN, "open -g \"%s\" --args --start-hidden --app-root \"%s\"", assetProcessorExe, appRoot);
-    }
-    else
-    {
-        azsnprintf(full_launch_command, AZ_MAX_PATH_LEN, "open -g \"%s\" --args --start-hidden", assetProcessorExe);
-    }
-
-    int error = system(full_launch_command);
-    return (error == 0);
-#endif // AZ_PLATFORM_MAC
-#endif // REMOTE_ASSET_PROCESSOR
-    AZ_Assert(false, "Could not start Asset Processor; platform not supported");
-    return false;
 }
 
-#ifdef REMOTE_ASSET_PROCESSOR
 bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool waitForConnect)
 {
     using AzFramework::AssetSystem::AssetSystemErrors;
@@ -2445,8 +2451,11 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
         {
             AZStd::chrono::system_clock::time_point start, last;
             start = last = AZStd::chrono::system_clock::now();
+
             bool isAssetProcessorLaunched = false;
+
 #if defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
+
             //poll, wait for either connection or failure/timeout
             //we don't care if we actually connected and the negotiation failed until
             //the last check. This will give the user the maximum amount of time to
@@ -2454,9 +2463,7 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
             //however if we timeout, meaning it never negotiated then
             //we can present that information to the user
 
-            // this assumes that Asset Processor is running on LocalHost, so technically, 2000 milliseconds grace time is massive overkill
-            // but just in case its busy, we give it that much extra time
-            const int numMillisecondsToWaitForConnect = 2000;
+            int numMillisecondsToWaitForConnect = 2000;
 
             //we should be able to connect
             while (!engineConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::milliseconds(numMillisecondsToWaitForConnect))
@@ -2495,7 +2502,7 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
                     AzFramework::AssetSystemInfoBus::Broadcast(&AzFramework::AssetSystem::AssetSystemInfoNotifications::OnError, AssetSystemErrors::ASSETSYSTEM_FAILED_TO_LAUNCH_ASSETPROCESSOR);
                 }
             }
-#endif//defined(AZ_PLATFORM_WINDOWS)
+#endif // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
 
             //give the AP 5 seconds to connect BUT if we launched the ap then give the AP 120 seconds to connect (virus scanner can really slow it down on its initial launch!)
             int timeToConnect = isAssetProcessorLaunched ? 120000 : 5000;
@@ -2689,6 +2696,9 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
 
 #if defined(REMOTE_ASSET_PROCESSOR)
 
+    // Initialize Asset Processor Path string
+    RetrieveAssetProcessorPath();
+
     bool allowedEngineConnection = !m_env.IsInToolMode() && !initParams.bTestMode;
     bool allowedRemoteIO = allowedEngineConnection && initParams.remoteFileIO && !m_env.IsEditor();
     bool connInitialized = false;
@@ -2798,6 +2808,16 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
     AZ::IO::FileIOBase::SetInstance(m_env.pFileIO);
     AZ::IO::FileIOBase::SetDirectInstance(m_env.pFileIO);
 
+    auto aliasInterface = AZ::Interface<LmbrCentral::IAliasConfiguration>::Get();
+
+    AZ_Warning("SystemInit", aliasInterface, "Failed to find IAliasConfiguration interface, filesystem aliases will be set manually.  This is OK for applications that do not load Gems");
+
+    if(aliasInterface)
+    {
+        // The aliases are already set during component activation but since CrySystem replaces the default file IO, we need to set them again
+        aliasInterface->SetupAliases();
+    }
+
 #if !defined(_RELEASE)
     const ICmdLineArg* pArg = m_pCmdLine->FindArg(eCLAT_Pre, "LvlRes");          // -LvlRes command line option
 
@@ -2807,7 +2827,7 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
     }
 #endif // !defined(_RELEASE)
 
-    bool usingAssetCache = initParams.UseAssetCache();
+    bool usingAssetCache = initParams.WillAssetCacheExist();
     const char* rootPath = usingAssetCache ? initParams.rootPathCache : initParams.rootPath;
     const char* assetsPath = usingAssetCache ? initParams.assetsPathCache : initParams.assetsPath;
 
@@ -2823,114 +2843,126 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
         return false;
     }
 
-    // establish the root folder and assets folder immediately.
-    // Other folders that can be computed from the root can be specified later.
-    m_env.pFileIO->SetAlias("@root@", rootPath);
-    m_env.pFileIO->SetAlias("@assets@", assetsPath);
-
-    if (initParams.userPath[0] == 0)
+    if (!aliasInterface)
     {
-        string outPath = PathUtil::Make(m_env.pFileIO->GetAlias("@root@"), "user");
-        
-        m_env.pFileIO->SetAlias("@user@", outPath.c_str());
-    }
-    else
-    {
-        m_env.pFileIO->SetAlias("@user@", initParams.userPath);
-    }
+        // establish the root folder and assets folder immediately.
+        // Other folders that can be computed from the root can be specified later.
+        m_env.pFileIO->SetAlias("@root@", rootPath);
+        m_env.pFileIO->SetAlias("@assets@", assetsPath);
 
-    if (initParams.logPath[0] == 0)
-    {
-        char resolveBuffer[AZ_MAX_PATH_LEN] = { 0 };
+        if (initParams.userPath[0] == 0)
+        {
+            string outPath = PathUtil::Make(m_env.pFileIO->GetAlias("@root@"), "user");
 
-        m_env.pFileIO->ResolvePath("@user@", resolveBuffer, AZ_MAX_PATH_LEN);
-        string outPath = PathUtil::Make(resolveBuffer, "log");
-        m_env.pFileIO->SetAlias("@log@", outPath.c_str());
-    }
-    else
-    {
-        m_env.pFileIO->SetAlias("@log@", initParams.logPath);
-    }
+            m_env.pFileIO->SetAlias("@user@", outPath.c_str());
+        }
+        else
+        {
+            m_env.pFileIO->SetAlias("@user@", initParams.userPath);
+        }
 
-    m_env.pFileIO->CreatePath("@root@");
-    m_env.pFileIO->CreatePath("@user@");
-    m_env.pFileIO->CreatePath("@log@");
-
-    if ((!m_env.IsInToolMode()) || (m_bShaderCacheGenMode)) // in tool mode, the promise is that you won't access @cache@!
-    {
-        string finalCachePath;
-        if (initParams.cachePath[0] == 0)
+        if (initParams.logPath[0] == 0)
         {
             char resolveBuffer[AZ_MAX_PATH_LEN] = { 0 };
 
             m_env.pFileIO->ResolvePath("@user@", resolveBuffer, AZ_MAX_PATH_LEN);
-            finalCachePath = PathUtil::Make(resolveBuffer, "cache");
+            string outPath = PathUtil::Make(resolveBuffer, "log");
+            m_env.pFileIO->SetAlias("@log@", outPath.c_str());
         }
         else
         {
-            finalCachePath = initParams.cachePath;
+            m_env.pFileIO->SetAlias("@log@", initParams.logPath);
         }
+
+        m_env.pFileIO->CreatePath("@root@");
+        m_env.pFileIO->CreatePath("@user@");
+        m_env.pFileIO->CreatePath("@log@");
+
+        if ((!m_env.IsInToolMode()) || (m_bShaderCacheGenMode)) // in tool mode, the promise is that you won't access @cache@!
+        {
+            string finalCachePath;
+            if (initParams.cachePath[0] == 0)
+            {
+                char resolveBuffer[AZ_MAX_PATH_LEN] = { 0 };
+
+                m_env.pFileIO->ResolvePath("@user@", resolveBuffer, AZ_MAX_PATH_LEN);
+                finalCachePath = PathUtil::Make(resolveBuffer, "cache");
+            }
+            else
+            {
+                finalCachePath = initParams.cachePath;
+            }
 
 #if defined(AZ_PLATFORM_WINDOWS)
-        // Search for a non-locked cache directory because shaders require separate caches for each running instance.
-        // We only need to do this check for Windows, because consoles can't have multiple instances running simultaneously.
-        // Ex: running editor and game, running multiple games, or multiple non-interactive editor instances 
-        // for parallel level exports.  
+            // Search for a non-locked cache directory because shaders require separate caches for each running instance.
+            // We only need to do this check for Windows, because consoles can't have multiple instances running simultaneously.
+            // Ex: running editor and game, running multiple games, or multiple non-interactive editor instances 
+            // for parallel level exports.  
 
-        string originalPath = finalCachePath;
+            string originalPath = finalCachePath;
 #if defined(REMOTE_ASSET_PROCESSOR)
-        if (!allowedRemoteIO) // not running on VFS
+            if (!allowedRemoteIO) // not running on VFS
 #endif
-        {
-            int attemptNumber = 0;
-
-            // The number of max attempts ultimately dictates the number of Lumberyard instances that can run
-            // simultaneously.  This should be a reasonably high number so that it doesn't artificially limit
-            // the number of instances (ex: parallel level exports via multiple Editor runs).  It also shouldn't 
-            // be set *infinitely* high - each cache folder is GBs in size, and finding a free directory is a 
-            // linear search, so the more instances we allow, the longer the search will take.  
-            // 128 seems like a reasonable compromise.
-            constexpr int maxAttempts = 128;
-
-            char workBuffer[AZ_MAX_PATH_LEN] = { 0 };
-            while (attemptNumber < maxAttempts)
             {
-                finalCachePath = originalPath;
-                if (attemptNumber != 0)
-                {
-                    azsnprintf(workBuffer, AZ_MAX_PATH_LEN, "%s%i", originalPath.c_str(), attemptNumber);
-                    finalCachePath = workBuffer;
-                }
-                else
+                int attemptNumber = 0;
+
+                // The number of max attempts ultimately dictates the number of Lumberyard instances that can run
+                // simultaneously.  This should be a reasonably high number so that it doesn't artificially limit
+                // the number of instances (ex: parallel level exports via multiple Editor runs).  It also shouldn't 
+                // be set *infinitely* high - each cache folder is GBs in size, and finding a free directory is a 
+                // linear search, so the more instances we allow, the longer the search will take.  
+                // 128 seems like a reasonable compromise.
+                constexpr int maxAttempts = 128;
+
+                char workBuffer[AZ_MAX_PATH_LEN] = { 0 };
+                while (attemptNumber < maxAttempts)
                 {
                     finalCachePath = originalPath;
+                    if (attemptNumber != 0)
+                    {
+                        azsnprintf(workBuffer, AZ_MAX_PATH_LEN, "%s%i", originalPath.c_str(), attemptNumber);
+                        finalCachePath = workBuffer;
+                    }
+                    else
+                    {
+                        finalCachePath = originalPath;
+                    }
+
+                    ++attemptNumber; // do this here so we don't forget
+
+                    m_env.pFileIO->CreatePath(finalCachePath.c_str());
+                    // if the directory already exists, check for locked file
+                    string outLockPath = PathUtil::Make(finalCachePath.c_str(), "lockfile.txt");
+
+                    // note, the zero here after GENERIC_READ|GENERIC_WRITE indicates no share access at all
+                    g_cacheLock = CreateFileA(outLockPath.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, 0);
+                    if (g_cacheLock != INVALID_HANDLE_VALUE)
+                    {
+                        break;
+                    }
                 }
 
-                ++attemptNumber; // do this here so we don't forget
-
-                m_env.pFileIO->CreatePath(finalCachePath.c_str());
-                // if the directory already exists, check for locked file
-                string outLockPath = PathUtil::Make(finalCachePath.c_str(), "lockfile.txt");
-
-                // note, the zero here after GENERIC_READ|GENERIC_WRITE indicates no share access at all
-                g_cacheLock = CreateFileA(outLockPath.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, 0);
-                if (g_cacheLock != INVALID_HANDLE_VALUE)
+                if (attemptNumber >= maxAttempts)
                 {
-                    break;
+                    AZ_Assert(false, "Couldn't find a valid asset cache folder for the Asset Processor after %i attempts.", attemptNumber);
+                    AZ_Printf("FileSystem", "Couldn't find a valid asset cache folder for the Asset Processor after %i attempts.", attemptNumber);
+                    return false;
                 }
             }
-
-            if (attemptNumber >= maxAttempts)
-            {
-                AZ_Assert(false, "Couldn't find a valid asset cache folder for the Asset Processor after %i attempts.", attemptNumber);
-                AZ_Printf("FileSystem", "Couldn't find a valid asset cache folder for the Asset Processor after %i attempts.", attemptNumber);
-                return false;
-            }
-        }
 
 #endif // defined(AZ_PLATFORM_WINDOWS)
-        AZ_Printf("FileSystem", "Using %s folder for asset cache.\n", finalCachePath.c_str());
-        m_env.pFileIO->SetAlias("@cache@", finalCachePath.c_str());
+            AZ_Printf("FileSystem", "Using %s folder for asset cache.\n", finalCachePath.c_str());
+            m_env.pFileIO->SetAlias("@cache@", finalCachePath.c_str());
+            m_env.pFileIO->CreatePath("@cache@");
+        }
+    }
+    else
+    {
+        m_env.pFileIO->CreatePath("@root@");
+        m_env.pFileIO->CreatePath("@user@");
+        m_env.pFileIO->CreatePath("@log@");
+
+        AZ_Printf("FileSystem", "Using %s folder for asset cache.\n", m_env.pFileIO->GetAlias("@cache@"));
         m_env.pFileIO->CreatePath("@cache@");
     }
 
@@ -2991,6 +3023,13 @@ void CSystem::ShutdownFileSystem()
         g_cacheLock = INVALID_HANDLE_VALUE;
     }
 #endif
+
+    auto* aliasInterface = AZ::Interface<LmbrCentral::IAliasConfiguration>::Get();
+
+    if (aliasInterface)
+    {
+        aliasInterface->ReleaseCache();
+    }
 
     using namespace AZ::IO;
 

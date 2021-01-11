@@ -36,7 +36,7 @@ QCurveEditorImp::QCurveEditorImp(CAttributeItem* parent)
     , m_pSpline(nullptr)
     , m_splineCache(nullptr)
 {
-    m_tooltip = new QToolTipWidget(this);
+    m_tooltip = new QToolTipWrapper(this);
     EnforceTimeRange(0, 1);
     SetValueRange(0, 1);
     ZoomToTimeRange(-0.1f, 1.1f);

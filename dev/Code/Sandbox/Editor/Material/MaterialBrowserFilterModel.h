@@ -78,7 +78,7 @@ public:
         // Force an update by setting the last update time to 1 / 1 / 1
         m_lastCachedSCCAttributes = AzToolsFramework::SourceControlFileInfo();
         m_lastCachedFileAttributes = SCC_FILE_ATTRIBUTE_INVALID;
-        m_lastCheckedSCCAttributes = QDateTime(QDate(1, 1, 1));
+        m_lastCheckedSCCAttributes = QDate(1, 1, 1).startOfDay();
     }
 public:
     _smart_ptr<CMaterial> m_material = nullptr;

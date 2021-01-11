@@ -83,8 +83,7 @@ namespace ComponentEntityEditorPluginInternal
 
             if (const AZ::SerializeContext::ClassData* serializeData = serializeContext->FindClassData(componentTypeId))
             {
-                if (!AZ::EntityUtils::CheckIfClassIsDeprecated(serializeContext, componentTypeId)
-                    && !AZ::EntityUtils::CheckDeclaresSerializeBaseClass(serializeContext, typeOfAZComponent, componentTypeId))
+                if (!AZ::EntityUtils::CheckDeclaresSerializeBaseClass(serializeContext, typeOfAZComponent, componentTypeId))
                 {
                     componentsLackingBaseClass.push_back(componentDescriptor);
                 }

@@ -19,12 +19,15 @@ namespace EMotionFX
         AZ_RTTI(TestRagdoll, "{A8FCEA6D-DC28-4D7D-9284-D98AD771E944}", Physics::Ragdoll)
 
         MOCK_METHOD1(EnableSimulation, void(const Physics::RagdollState&));
+        MOCK_METHOD1(EnableSimulationQueued, void(const Physics::RagdollState&));
         MOCK_METHOD0(DisableSimulation, void());
+        MOCK_METHOD0(DisableSimulationQueued, void());
 
         MOCK_METHOD0(IsSimulated, bool());
 
         MOCK_CONST_METHOD1(GetState, void(Physics::RagdollState&));
         MOCK_METHOD1(SetState, void(const Physics::RagdollState&));
+        MOCK_METHOD1(SetStateQueued, void(const Physics::RagdollState&));
 
         MOCK_CONST_METHOD2(GetNodeState, void(size_t, Physics::RagdollNodeState&));
         MOCK_METHOD2(SetNodeState, void(size_t, const Physics::RagdollNodeState&));

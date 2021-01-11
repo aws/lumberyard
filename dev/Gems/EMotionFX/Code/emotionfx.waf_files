@@ -7,7 +7,8 @@
     },
     "auto": {
         "Include": [
-            "Include/Integration/AnimationBus.h"
+            "Include/Integration/AnimationBus.h",
+            "Include/Integration/MotionExtractionBus.h"
         ],
         "Source/System": [
             "Source/Integration/System/AnimationModule.cpp",

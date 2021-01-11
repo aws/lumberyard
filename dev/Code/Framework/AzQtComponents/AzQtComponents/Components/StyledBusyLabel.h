@@ -44,6 +44,15 @@ namespace AzQtComponents
         QSize sizeHint() const override;
 
         void SetUseNewWidget(bool usenew);
+
+        void DrawTo(QPainter* painter, const QRectF& bounds) const;
+
+    signals:
+        void repaintNeeded();
+
+    public slots:
+        void movieUpdated();
+
     private:
         friend class Style;
         void updateMovie();

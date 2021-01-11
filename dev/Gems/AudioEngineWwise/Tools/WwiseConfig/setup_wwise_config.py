@@ -138,8 +138,7 @@ def parse_wwise_project(wwise_project):
             if child:
                 values = child.findall('./ValueList/Value')
                 for val in values:
-                    if val.get('Platform'):
-                        setattr(project_platforms[val.get('Platform')], attr, val.text)
+                    setattr(project_platforms[val.get('Platform')], attr, val.text)
 
         fetch_property_for_platforms('ExternalSourcesOutputPath', 'ext_path')
         fetch_property_for_platforms('SoundBankPaths', 'bnk_path')

@@ -272,6 +272,9 @@ class ViewContext(object):
         self._output_message('\nFiles not writable:\n\n\t{}'.format('\n\t'.join(file_list)))
         return self.__confirm(None, 'Try again')
 
+    def confirm_message(self, message):
+        return self.__confirm(message, default_to_yes=False)
+
     def adding_resource(self, template_path, resource_name):
         self._output_message('Adding resource {} to template {}.'.format(resource_name, template_path))
 

@@ -16,45 +16,46 @@
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorGrid.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/Palette.h>
 #include <AzQtComponents/Components/Widgets/LogicalTabOrderingWidget.h>
+
 #include <QColor>
-#include <QSharedPointer>
 #include <QHash>
-#include <QVector>
 #include <QScopedPointer>
+#include <QSharedPointer>
+#include <QVector>
 
 class QAction;
 class QActionGroup;
+class QCheckBox;
+class QDialogButtonBox;
+class QGridLayout;
+class QHBoxLayout;
 class QMenu;
 class QScrollArea;
 class QSettings;
 class QToolButton;
-class QGridLayout;
-class QHBoxLayout;
-class QSettings;
-class QDialogButtonBox;
 class QUndoStack;
-class QCheckBox;
 class QLabel;
 
 namespace AzQtComponents
 {
+    class ColorHexEdit;
+    class ColorPreview;
+    class ColorRGBAEdit;
+    class ColorValidator;
+    class ColorWarning;
     class DoubleSpinBox;
+    class Eyedropper;
+    class GammaEdit;
     class GradientSlider;
     class HSLSliders;
     class HSVSliders;
-    class RGBSliders;
-    class ColorPreview;
-    class ColorWarning;
-    class ColorRGBAEdit;
-    class ColorHexEdit;
+    class PaletteCard;
+    class PaletteCardCollection;
     class PaletteModel;
     class PaletteView;
-    class PaletteCardCollection;
-    class Eyedropper;
-    class Style;
-    class PaletteCard;
     class QuickPaletteCard;
-    class ColorValidator;
+    class RGBSliders;
+    class Style;
 
     namespace Internal
     {
@@ -65,77 +66,97 @@ namespace AzQtComponents
         };
     }
 
-    /**
-     * Color Picker Dialog
-     *
-     * Use this under a number of different configurations to pick a color and manipulate palettes.
-     *
-     */
+    //! Allows the user to select a color via a dialog window.
     AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::LogicalTabOrderingWidget<AzQtComponents::StyledDialog>::m_entries': class 'QMap<QObject *,AzQtComponents::LogicalTabOrderingInternal::TabKeyEntry>' needs to have dll-interface to be used by clients of class 'AzQtComponents::LogicalTabOrderingWidget<AzQtComponents::StyledDialog>'
     class AZ_QT_COMPONENTS_API ColorPicker
         : public LogicalTabOrderingWidget<StyledDialog>
     {
         Q_OBJECT //AUTOMOC
-
+        
+        //! The previously selected color in the dialog. It is updated to the current color when the OK button is pressed.
         Q_PROPERTY(AZ::Color selectedColor READ selectedColor WRITE setSelectedColor NOTIFY selectedColorChanged USER true)
+        //! The current color in the dialog. Updates in real time when the user changes settings in the dialog.
         Q_PROPERTY(AZ::Color currentColor READ currentColor WRITE setCurrentColor NOTIFY currentColorChanged USER true)
 
     public:
+        //! Available color configurations.
         enum class Configuration
         {
-            RGBA,
+            RGBA,           
             RGB,
-            HueSaturation // Simplified mode for picking lighting related values
+            HueSaturation   //!< Simplified mode for picking lighting related values.
         };
 
+        //! Style configuration for the color grid.
         struct ColorGridConfig
         {
-            QSize minimumSize;
+            QSize minimumSize;                      //!< Minimum size for the color grid widget, in pixels.
         };
 
+        //! Style configuration for the dialog buttons.
         struct DialogButtonsConfig
         {
-            int topPadding;
+            int topPadding;                         //!< Top padding for the dialog buttons, in pixels.
         };
 
+        //! Style configuration for the ColorPicker class.
         struct Config
         {
-            int padding;
-            int spacing;
+            //! Maximum height of dialog content, in pixels. A scrollbar will appear if the content overflows.
             int maximumContentHeight;
-            ColorGridConfig colorGrid;
-            DialogButtonsConfig dialogButtons;
+            int padding;                            //!< Horizontal padding of the dialog window, in pixels.
+            int spacing;                            //!< Spacing between layout elements, in pixels.
+            ColorGridConfig colorGrid;              //!< Color grid style configuration.
+            DialogButtonsConfig dialogButtons;      //!< Dialog buttons style configuration.
         };
 
-        /*!
-         * Loads the color picker config data from a settings object.
-         */
+        //! Sets the ColorPicker style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the ColorPicker.
         static Config loadConfig(QSettings& settings);
-
-        /*!
-         * Returns default color picker config data.
-         */
+        //! Gets the default ColorPicker style configuration.
         static Config defaultConfig();
 
+        //! Constructor for the ColorPicker class.
+        //! @param configuration The color Configuration for the ColorPicker.
+        //! @param context Context name, used to store settings and window sizing. Leave empty to use the default context.
+        //! @param parent Pointer to the parent widget.
         explicit ColorPicker(Configuration configuration, const QString& context = QString(), QWidget* parent = nullptr);
         ~ColorPicker() override;
 
         //! Sets a comment string that will be included in the UI as a custom message that may provide some context for the user
         void setComment(QString comment);
 
-        AZ::Color currentColor() const;
+        //! Returns the previously selected color in the dialog. It is updated to the current color when the OK button is pressed.
         AZ::Color selectedColor() const;
+        //! Returns the current color in the dialog. Updates in real time when the user changes settings in the dialog.
+        AZ::Color currentColor() const;
 
+        //! Populates the palette list with the palettes stored at the folder path provided.
         void importPalettesFromFolder(const QString& path);
 
+        //! Utility function to quickly generate a ColorPicker dialog.
+        //! @param configuration The color Configuration for the ColorPicker.
+        //! @param initial The color selected by default when the dialog is opened.
+        //! @param title The title of the dialog window.
+        //! @param context Context name, used to store settings and window sizing. Leave empty to use the default context.
+        //! @param palettePaths Paths to folders containing palette files. If not empty, all files in every folder will be loaded in the dialog alongside the default palette.
+        //! @param parent Pointer to the parent widget.
+        //! @return The color selected by the user.
         static AZ::Color getColor(Configuration configuration, const AZ::Color& initial, const QString& title, const QString& context = QString(), const QStringList& palettePaths = QStringList(), QWidget* parent = nullptr);
 
     Q_SIGNALS:
+        //! Triggered when the selected color is changed.
+        //! @param color The new selected color.
         void selectedColorChanged(const AZ::Color& color);
+        //! Triggered when the current color is changed.
+        //! @param color The new current color.
         void currentColorChanged(const AZ::Color& color);
 
     public Q_SLOTS:
+        // Sets the selected color to the one provided.
         void setSelectedColor(const AZ::Color& color);
+        // Sets the current color to the one provided.
         void setCurrentColor(const AZ::Color& color);
 
     private Q_SLOTS:

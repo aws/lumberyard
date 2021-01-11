@@ -22,6 +22,7 @@
 #include <AzCore/Module/Module.h>
 #include <AzCore/Module/ModuleManagerBus.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
+#include <AzQtComponents/Components/Widgets/LineEdit.h>
 #include <AzToolsFramework/API/EditorPythonRunnerRequestsBus.h>
 
 //////////////////////////////////////////////////////////////////////////
@@ -52,6 +53,8 @@ CPythonScriptsDialog::CPythonScriptsDialog(QWidget* parent)
     , ui(new Ui::CPythonScriptsDialog)
 {
     ui->setupUi(this);
+
+    AzQtComponents::LineEdit::applySearchStyle(ui->searchField);
 
     QStringList scriptFolders;
 
@@ -94,9 +97,10 @@ CPythonScriptsDialog::CPythonScriptsDialog(QWidget* parent)
     };
     AZ::ModuleManagerRequestBus::Broadcast(&AZ::ModuleManagerRequestBus::Events::EnumerateModules, moduleCallback);
 
-    ui->treeWidget->init(scriptFolders, s_kPythonFileNameSpec, s_kRootElementName, false, false);
-    connect(ui->treeWidget, &QTreeWidget::itemDoubleClicked, this, &CPythonScriptsDialog::OnExecute);
-    connect(ui->executeButton, &QPushButton::clicked, this, &CPythonScriptsDialog::OnExecute);
+    ui->treeView->init(scriptFolders, s_kPythonFileNameSpec, s_kRootElementName, false, false);
+    QObject::connect(ui->treeView, &CFolderTreeCtrl::ItemDoubleClicked, this, &CPythonScriptsDialog::OnExecute);
+    QObject::connect(ui->executeButton, &QPushButton::clicked, this, &CPythonScriptsDialog::OnExecute);
+    QObject::connect(ui->searchField, &QLineEdit::textChanged, ui->treeView, &CFolderTreeCtrl::SetSearchFilter);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -120,18 +124,18 @@ CPythonScriptsDialog::~CPythonScriptsDialog()
 //////////////////////////////////////////////////////////////////////////
 void CPythonScriptsDialog::OnExecute()
 {
-    QList<QTreeWidgetItem*> selectedItems = ui->treeWidget->selectedItems();
-    QTreeWidgetItem* selectedItem = selectedItems.empty() ? nullptr : selectedItems.first();
+    QList<QStandardItem*> selectedItems = ui->treeView->GetSelectedItems();
+    QStandardItem* selectedItem = selectedItems.empty() ? nullptr : selectedItems.first();
 
     if (selectedItem == NULL)
     {
         return;
     }
 
-    if (ui->treeWidget->IsFile(selectedItem))
+    if (ui->treeView->IsFile(selectedItem))
     {
         QString workingDirectory = QDir::currentPath();
-        const QString scriptPath = QStringLiteral("%1/%2").arg(workingDirectory).arg(ui->treeWidget->GetPath(selectedItem));
+        const QString scriptPath = QStringLiteral("%1/%2").arg(workingDirectory).arg(ui->treeView->GetPath(selectedItem));
         using namespace AzToolsFramework;
         EditorPythonRunnerRequestBus::Broadcast(&EditorPythonRunnerRequestBus::Events::ExecuteByFilename, scriptPath.toUtf8().constData());
     }

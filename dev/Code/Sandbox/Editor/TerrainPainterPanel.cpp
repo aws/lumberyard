@@ -25,6 +25,8 @@
 #include <QAbstractListModel>
 #include <QSortFilterProxyModel>
 
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
+
 #include <ui_TerrainPainterPanel.h>
 
 Q_DECLARE_METATYPE(CLayer*);
@@ -38,24 +40,6 @@ static ColorF fromQColor(const QColor& source)
 {
     return ColorF(source.redF(), source.greenF(), source.blueF(), source.alphaF());
 }
-
-// These functions use an exponential curve set up so that for x in [0, 1.0],
-// y ~ 0.1 @ x = 0.5, y ~ 0.25 @ x = 0.75, y ~ 0.75 @ x = 0.95 & y = 1 @ x = 1
-
-static int sliderPositionFromRadius(QSlider* slider, double min, double max, double value)
-{
-    double y = (value - min) / (max - min);
-    double x = std::log(y * (std::exp(5.0) - 1.0) + 1.0) / 5.0;
-    return slider->maximum() * x;
-}
-
-static double radiusFromSliderPosition(QSlider* slider, double min, double max)
-{
-    double v = static_cast<double>(slider->value());
-    double x = v / slider->maximum();
-    return ((std::exp(5.0 * x) - 1.0) / (std::exp(5.0) - 1)) * (max - min) + min;
-}
-
 
 class TerrainTextureLayerModel
     : public QAbstractListModel
@@ -152,25 +136,30 @@ CTerrainPainterPanel::CTerrainPainterPanel(CTerrainTexturePainter& tool, QWidget
     m_ui->layerListView->setModel(filter);
     m_ui->brushColorButton->SetColor(Qt::white);
 
+    m_ui->brushRadiusSlider->setCurveMidpoint(0.25);
+    m_ui->brushColorHardnessSlider->setRange(0.0, 1.0);
+    m_ui->brushColorHardnessSlider->spinbox()->setSingleStep(0.1);
+    m_ui->brushDetailHardnessSlider->setRange(0.0, 1.0);
+    m_ui->brushDetailHardnessSlider->spinbox()->setSingleStep(0.1);
+    m_ui->brushBrightnessSlider->setRange(0.0, 255.0);
+
     // Fill layers.
     ReloadLayers();
 
     GetIEditor()->RegisterNotifyListener(this);
 
-    auto doubleChanged = static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged);
+    auto sliderDoubleComboValueChanged = static_cast<void(AzQtComponents::SliderDoubleCombo::*)()>(&AzQtComponents::SliderDoubleCombo::valueChanged);
+
     auto intChanged = static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged);
 
-    connect(m_ui->brushRadiusSpin, doubleChanged, this, &CTerrainPainterPanel::UpdateTextureBrushSettings);
-    connect(m_ui->brushRadiusSlider, &QSlider::valueChanged, this, &CTerrainPainterPanel::OnSliderChange);
-    connect(m_ui->brushColorHardnessSpin, doubleChanged, this, &CTerrainPainterPanel::UpdateTextureBrushSettings);
-    connect(m_ui->brushColorHardnessSlider, &QSlider::valueChanged, this, &CTerrainPainterPanel::OnSliderChange);
-    connect(m_ui->brushDetailHardnessSpin, doubleChanged, this, &CTerrainPainterPanel::UpdateTextureBrushSettings);
-    connect(m_ui->brushDetailHardnessSlider, &QSlider::valueChanged, this, &CTerrainPainterPanel::OnSliderChange);
+    connect(m_ui->brushRadiusSlider, sliderDoubleComboValueChanged, this, &CTerrainPainterPanel::UpdateTextureBrushSettings);
+    connect(m_ui->brushColorHardnessSlider, sliderDoubleComboValueChanged, this, &CTerrainPainterPanel::UpdateTextureBrushSettings);
+    connect(m_ui->brushDetailHardnessSlider, sliderDoubleComboValueChanged, this, &CTerrainPainterPanel::UpdateTextureBrushSettings);
     connect(m_ui->paintMaskByLayerSettingsCheck, &QCheckBox::stateChanged, this, &CTerrainPainterPanel::UpdateTextureBrushSettings);
     connect(m_ui->maskLayerIdCombo, &QComboBox::currentTextChanged, this, &CTerrainPainterPanel::UpdateTextureBrushSettings);
     connect(m_ui->brushColorButton, &ColorButton::ColorChanged, this, &CTerrainPainterPanel::UpdateTextureBrushSettings);
 
-    connect(m_ui->brushBrightnessSlider, &QSlider::valueChanged, this, &CTerrainPainterPanel::OnSliderChange);
+    connect(m_ui->brushBrightnessSlider, sliderDoubleComboValueChanged, this, &CTerrainPainterPanel::UpdateTextureBrushSettings);
     connect(m_ui->resetBrightnessButton, &QPushButton::clicked, this, &CTerrainPainterPanel::OnBrushResetBrightness);
     connect(m_ui->saveLayerButton, &QPushButton::clicked, this, &CTerrainPainterPanel::OnBnClickedBrushSettolayer);
 
@@ -195,9 +184,6 @@ CTerrainPainterPanel::~CTerrainPainterPanel()
 //////////////////////////////////////////////////////////////////////////
 void CTerrainPainterPanel::SetBrush(CTextureBrush& br)
 {
-    QSignalBlocker brushRadiusSpinBlocker(m_ui->brushRadiusSpin);
-    QSignalBlocker brushColorHardnessSpinBlocker(m_ui->brushColorHardnessSpin);
-    QSignalBlocker brushDetailHardnessSpinBlocker(m_ui->brushDetailHardnessSpin);
     QSignalBlocker paintMaskByLayerSettingsCheckBlocker(m_ui->paintMaskByLayerSettingsCheck);
     QSignalBlocker brushRadiusSliderBlocker(m_ui->brushRadiusSlider);
     QSignalBlocker brushColorHardnessSliderBlocker(m_ui->brushColorHardnessSlider);
@@ -205,33 +191,17 @@ void CTerrainPainterPanel::SetBrush(CTextureBrush& br)
     QSignalBlocker brushBrightnessSliderBlocker(m_ui->brushBrightnessSlider);
     QSignalBlocker brushMaskLayerIdComboBlocker(m_ui->maskLayerIdCombo);
 
-    m_ui->brushRadiusSpin->setRange(br.minRadius, br.maxRadius);
-    m_ui->brushRadiusSpin->setValue(br.radius);
-    m_ui->brushColorHardnessSpin->setValue(br.colorHardness);
-    m_ui->brushDetailHardnessSpin->setValue(br.detailHardness);
+    m_ui->brushRadiusSlider->setRange(br.minRadius, br.maxRadius);
+    m_ui->brushRadiusSlider->setValue(br.radius);
+    m_ui->brushColorHardnessSlider->setValue(br.colorHardness);
+    m_ui->brushDetailHardnessSlider->setValue(br.detailHardness);
+    m_ui->brushBrightnessSlider->setValue(br.brightness * 255.0);
+    AzQtComponents::CheckBox::applyToggleSwitchStyle(m_ui->paintMaskByLayerSettingsCheck);
     m_ui->paintMaskByLayerSettingsCheck->setChecked(br.maskByLayerSettings ? Qt::Checked : Qt::Unchecked);
     m_ui->brushColorButton->SetColor(fromColorF(br.filterColor));
 
-    m_ui->brushRadiusSlider->setValue(sliderPositionFromRadius(m_ui->brushRadiusSlider, br.minRadius, br.maxRadius, br.radius));
-    m_ui->brushColorHardnessSlider->setValue(br.colorHardness * 100.0);
-    m_ui->brushDetailHardnessSlider->setValue(br.detailHardness * 100.0);
-    m_ui->brushBrightnessSlider->setValue(br.brightness * 255.0);
-
     // Restore the previously selected mask layer, or select the default if we can't find it.
     SetMaskLayer(br.m_dwMaskLayerId);
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CTerrainPainterPanel::OnSliderChange()
-{
-    CTextureBrush br;
-    m_tool.GetBrush(br);
-    br.colorHardness = m_ui->brushColorHardnessSlider->value() / 100.0f;
-    br.detailHardness = m_ui->brushDetailHardnessSlider->value() / 100.0f;
-    br.brightness = m_ui->brushBrightnessSlider->value() / 255.0f;
-    br.radius = radiusFromSliderPosition(m_ui->brushRadiusSlider, br.minRadius, br.maxRadius);
-    SetBrush(br);
-    m_tool.SetBrush(br);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -344,9 +314,10 @@ void CTerrainPainterPanel::UpdateTextureBrushSettings()
     m_tool.GetBrush(br);
 
     br.maskByLayerSettings = m_ui->paintMaskByLayerSettingsCheck->isChecked();
-    br.radius = m_ui->brushRadiusSpin->value();
-    br.colorHardness = m_ui->brushColorHardnessSpin->value();
-    br.detailHardness = m_ui->brushDetailHardnessSpin->value();
+    br.radius = m_ui->brushRadiusSlider->value();
+    br.colorHardness = m_ui->brushColorHardnessSlider->value();
+    br.detailHardness = m_ui->brushDetailHardnessSlider->value();
+    br.brightness = m_ui->brushBrightnessSlider->value() / 255.0f;
     br.filterColor = fromQColor(m_ui->brushColorButton->Color());
 
     // If maskLayerIdCombo has a selected item, set our brush to it.  If it *doesn't* have
@@ -360,10 +331,6 @@ void CTerrainPainterPanel::UpdateTextureBrushSettings()
             if (current)
             {
                 br.m_dwMaskLayerId = current->GetOrRequestLayerId();
-            }
-            else
-            {
-                br.m_dwMaskLayerId = CTextureBrush::sInvalidMaskId;
             }
         }
     }

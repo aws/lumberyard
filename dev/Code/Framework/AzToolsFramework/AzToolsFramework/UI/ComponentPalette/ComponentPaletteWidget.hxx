@@ -49,7 +49,8 @@ namespace AzToolsFramework
             AZ::SerializeContext* serializeContext,
             const AzToolsFramework::EntityIdList& selectedEntityIds,
             const AzToolsFramework::ComponentFilter& componentFilter,
-            const AZStd::vector<AZ::ComponentServiceType>& serviceFilter);
+            const AZStd::vector<AZ::ComponentServiceType>& serviceFilter,
+            const AZStd::vector<AZ::ComponentServiceType>& incompatibleServiceFilter);
 
         void Present();
 
@@ -85,6 +86,7 @@ namespace AzToolsFramework
         EntityIdList m_selectedEntityIds;
         ComponentFilter m_componentFilter;
         AZStd::vector<AZ::ComponentServiceType> m_serviceFilter;
+        AZStd::vector<AZ::ComponentServiceType> m_incompatibleServiceFilter;
         AZStd::map<QString, bool> m_categoryExpandedState;
     };
 }

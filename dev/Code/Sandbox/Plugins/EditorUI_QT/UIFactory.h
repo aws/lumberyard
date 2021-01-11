@@ -40,6 +40,7 @@ public:
     static CPreviewWindowView* createPreviewWindowView(QWidget* parent);
     static QGradientColorDialog* GetGradientEditor(SCurveEditorContent content, QGradientStops stops);
     static QGradientColorDialog* GetGradientEditor();
+    // LUMBERYARD_DEPRECATED(LY-121217)
     static QCustomColorDialog* GetColorPicker(QColor startColor = Qt::white, bool allowAlpha = true);
     static QColorEyeDropper* GetColorEyeDropper();
     static QKeySequenceEditorDialog* GetHotkeyEditor();

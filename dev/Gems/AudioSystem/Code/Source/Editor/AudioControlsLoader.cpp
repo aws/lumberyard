@@ -223,7 +223,7 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     QStandardItem* CAudioControlsLoader::AddUniqueFolderPath(QStandardItem* parentItem, const QString& path)
     {
-        QStringList folderNames = path.split(QRegExp("(\\\\|\\/)"), QString::SkipEmptyParts);
+        QStringList folderNames = path.split(QRegExp("(\\\\|\\/)"), Qt::SkipEmptyParts);
         const int size = folderNames.length();
         for (int i = 0; i < size; ++i)
         {

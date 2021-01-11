@@ -652,25 +652,6 @@ AZ::Outcome<void, AZStd::string> CGameEngine::Init(
         return AZ::Failure(errorMessage);
     }
 
-    // because we're the editor here, we also give tool aliases to the original, unaltered roots:
-    string devAssetsFolder = engineConfig.m_rootFolder + "/" + engineConfig.m_gameFolder;
-    if (gEnv && gEnv->pFileIO)
-    {
-        const char* engineRoot = nullptr;
-        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(engineRoot, &AzToolsFramework::ToolsApplicationRequests::GetEngineRootPath);
-        if (engineRoot != nullptr)
-        {
-            gEnv->pFileIO->SetAlias("@engroot@", engineRoot);
-        }
-        else
-        {
-            gEnv->pFileIO->SetAlias("@engroot@", engineConfig.m_rootFolder.c_str());
-        }
-
-        gEnv->pFileIO->SetAlias("@devroot@", engineConfig.m_rootFolder.c_str());
-        gEnv->pFileIO->SetAlias("@devassets@", devAssetsFolder.c_str());
-    }
-
     // No scripts should Execute prior to this point
     if (gEnv->pScriptSystem)
     {

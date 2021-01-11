@@ -321,6 +321,9 @@ void ReflectedPropertyItem::SetVariable(IVariable *var)
     case ePropertyMotion:
         m_reflectedVarAdapter = new ReflectedVarMotionAdapter;
         break;
+    case ePropertyAsset:
+        m_reflectedVarAdapter = new ReflectedVarAssetAdapter;
+        break;
     default:
         break;
     }

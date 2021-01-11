@@ -798,10 +798,10 @@ namespace
 
     QBrush PickTrackBrush(const QPalette& palette, const STrackLayout& track)
     {
-        const QColor trackColor = InterpolateColor(palette.color(QPalette::Mid), palette.color(QPalette::Background), 0.96f);
-        const QColor descriptionTrackColor = InterpolateColor(palette.color(QPalette::Mid), palette.color(QPalette::Background), 0.9f);
-        const QColor compositeTrackColor = InterpolateColor(palette.color(QPalette::Mid), palette.color(QPalette::Background), 0.85f);
-        const QColor selectionColor = InterpolateColor(palette.color(QPalette::Highlight), palette.color(QPalette::Background), 0.5f);
+        const QColor trackColor = InterpolateColor(palette.color(QPalette::Mid), palette.color(QPalette::Window), 0.96f);
+        const QColor descriptionTrackColor = InterpolateColor(palette.color(QPalette::Mid), palette.color(QPalette::Window), 0.9f);
+        const QColor compositeTrackColor = InterpolateColor(palette.color(QPalette::Mid), palette.color(QPalette::Window), 0.85f);
+        const QColor selectionColor = InterpolateColor(palette.color(QPalette::Highlight), palette.color(QPalette::Window), 0.5f);
 
         const bool bIsDescriptionTrack = (track.pTimelineTrack->caps & STimelineTrack::CAP_DESCRIPTION_TRACK) != 0;
         const bool bIsCompositeTrack = (track.pTimelineTrack->caps & STimelineTrack::CAP_COMPOUND_TRACK) != 0;
@@ -831,7 +831,7 @@ namespace
         const int trackAreaRight = trackAreaLeft + width;
 
         const QColor textColor = palette.buttonText().color();
-        QPen descriptionTextPen = QPen(InterpolateColor(textColor, palette.color(QPalette::Background), 0.5f));
+        QPen descriptionTextPen = QPen(InterpolateColor(textColor, palette.color(QPalette::Window), 0.5f));
 
         DrawingPrimitives::STickOptions markOptions;
         markOptions.m_rect = QRect(-viewState.scrollPixels.x(), 0, width - viewState.treeWidth, 0);
@@ -878,7 +878,7 @@ namespace
                     }
 
                     const int lineY = track.rect.bottom() + 1;
-                    painter.setPen(QPen(InterpolateColor(palette.color(QPalette::Mid), palette.color(QPalette::Background), 0.75f)));
+                    painter.setPen(QPen(InterpolateColor(palette.color(QPalette::Mid), palette.color(QPalette::Window), 0.75f)));
                     painter.drawLine(QPoint(trackAreaLeft, lineY), QPoint(trackAreaRight, lineY));
 
                     if (drawMarkers && !bIsDescriptionTrack)
@@ -1087,7 +1087,7 @@ namespace
             const STrackLayout& track = tracks[i];
 
             const int lineY = track.rect.bottom() + 1;
-            painter.setPen(QPen(InterpolateColor(palette.color(QPalette::Mid), palette.color(QPalette::Background), 0.75f)));
+            painter.setPen(QPen(InterpolateColor(palette.color(QPalette::Mid), palette.color(QPalette::Window), 0.75f)));
             painter.drawLine(QPoint(0, lineY), QPoint(treeRect.width(), lineY));
         }
 
@@ -1096,7 +1096,7 @@ namespace
 
     void DrawSplitter(QPainter& painter, const QRect& splitterRect, const QPalette& palette, QWidget* timeline)
     {
-        painter.fillRect(splitterRect, palette.color(QPalette::Background));
+        painter.fillRect(splitterRect, palette.color(QPalette::Window));
 
         // Draw frame around splitter
         QStyleOptionFrame frameOpt;
@@ -2169,7 +2169,7 @@ void CTimeline::wheelEvent(QWheelEvent* ev)
 
     if (pixelDelta == 0)
     {
-        pixelDelta = ev->delta();
+        pixelDelta = ev->angleDelta().y();
     }
 
     const float fractionOfView = std::min(m_viewState.widthPixels != 0 ? float(pixelDelta) / m_viewState.widthPixels : 0.0f, 0.5f);

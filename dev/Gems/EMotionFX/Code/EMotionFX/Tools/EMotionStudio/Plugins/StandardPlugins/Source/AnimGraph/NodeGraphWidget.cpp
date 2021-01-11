@@ -197,7 +197,6 @@ namespace EMStudio
         QPainter painter(this);
 
         painter.setRenderHint(QPainter::Antialiasing);
-        painter.setRenderHint(QPainter::HighQualityAntialiasing);
         painter.setRenderHint(QPainter::TextAntialiasing);
 
         // get the width and height
@@ -1346,23 +1345,17 @@ namespace EMStudio
         // It might be relative to the window?  Jira generated.
         //        QPoint mousePos     = event->pos();
 
-        QPoint globalQtMousePos = event->globalPos();
+        QPoint globalQtMousePos = event->globalPosition().toPoint();
         QPoint globalQtMousePosInWidget = this->mapFromGlobal(globalQtMousePos);
         QPoint globalPos    = LocalToGlobal(globalQtMousePosInWidget);
 
         SetMousePos(globalPos);
 
-        // only handle vertical events
-        if (event->orientation() != Qt::Vertical)
-        {
-            return;
-        }
-
         // stop the automated zoom
         mActiveGraph->StopAnimatedZoom();
 
         // calculate the new scale value
-        const float scaleDelta = (event->delta() / 120.0f) * 0.05f;
+        const float scaleDelta = (event->angleDelta().y() / 120.0f) * 0.05f;
         float newScale = MCore::Clamp<float>(mActiveGraph->GetScale() + scaleDelta, mActiveGraph->GetLowestScale(), 1.0f);
         mActiveGraph->SetScale(newScale);
 

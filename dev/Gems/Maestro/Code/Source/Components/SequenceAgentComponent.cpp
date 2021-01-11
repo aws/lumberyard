@@ -135,6 +135,11 @@ namespace Maestro
         SequenceAgent::GetAssetDuration(returnValue, componentId, assetId);
     }
 
+    void SequenceAgentComponent::GetAssetTypeName(AZStd::string& returnValue, const AnimatablePropertyAddress& animatableAddress)
+    {
+        SequenceAgent::GetAssetTypeName(returnValue, GetEntityId(), animatableAddress);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceAgentComponent::GetEntityComponents(AZ::Entity::ComponentArrayType& entityComponents) const
     {

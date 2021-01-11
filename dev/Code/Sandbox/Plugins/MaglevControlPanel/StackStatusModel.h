@@ -168,7 +168,7 @@ private:
         {
             pendingActionItem->setText(AWSUtil::MakePrettyPendingActionText(pendingAction));
             pendingActionItem->setData(AWSUtil::MakePrettyPendingReasonTooltip(map["PendingReason"].toString()), Qt::ToolTipRole);
-            pendingActionItem->setData(AWSUtil::MakePrettyPendingActionColor(pendingAction), Qt::TextColorRole);
+            pendingActionItem->setData(AWSUtil::MakePrettyPendingActionColor(pendingAction), Qt::ForegroundRole);
         }
 
 
@@ -186,7 +186,7 @@ private:
             stackStatusItem->setData(AWSUtil::MakePrettyResourceStatusText(stackStatus), Qt::DisplayRole);
             stackStatusItem->setData(stackStatus, BaseType::ActualValueRole);
             stackStatusItem->setData(AWSUtil::MakePrettyResourceStatusTooltip(stackStatus, map["StackStatusReason"].toString()), Qt::ToolTipRole);
-            stackStatusItem->setData(AWSUtil::MakePrettyResourceStatusColor(stackStatus), Qt::TextColorRole);
+            stackStatusItem->setData(AWSUtil::MakePrettyResourceStatusColor(stackStatus), Qt::ForegroundRole);
         }
 
         // id
@@ -248,7 +248,7 @@ private:
 
         // status color
 
-        BaseType::item(0, BaseType::StackStatusColumn)->setData(AWSUtil::MakePrettyColor("Default"), Qt::TextColorRole);
+        BaseType::item(0, BaseType::StackStatusColumn)->setData(AWSUtil::MakePrettyColor("Default"), Qt::ForegroundRole);
 
         // id text
 
@@ -276,5 +276,5 @@ private:
     bool m_isReady {
         false
     };
-    QTime m_lastRefreshTime;
+    QElapsedTimer m_lastRefreshTime;
 };

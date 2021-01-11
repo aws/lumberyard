@@ -1315,7 +1315,7 @@ bool CStatObj::CanMergeSubObjects()
         return false;
     }
 
-    if (!m_clothInverseMasses.empty())
+    if (!m_clothData.empty())
     {
         return false;
     }
@@ -1336,7 +1336,7 @@ bool CStatObj::CanMergeSubObjects()
             // Conditions to not merge subobjects
             if (pStatObj->m_pMaterial != m_pMaterial ||  // Different materials
                 pStatObj->m_nSpines ||                   // It's bendable foliage
-                !pStatObj->m_clothInverseMasses.empty()) // It's cloth
+                !pStatObj->m_clothData.empty())          // It's cloth
             {
                 return false;
             }

@@ -56,7 +56,14 @@ namespace {
         }
         else
         {
+           // There is an issue with assigning std::numeric_limits<int>::max() to a float
+            // A float can't actually represent the value of 2147483647 and clang
+            // compilers actually warn on this fact.
+            // A static_cast is used here to indicate explicit acceptance of the value change here
+            /* The clang compiler warning is below
+              ../Code/Sandbox/Editor/Controls/ReflectedPropertyControl/ReflectedVarWrapper.cpp:59:38: error: implicit conversion from 'int' to 'float' changes value from 2147483647 to 2147483648 [-Werror,-Wimplicit-int-float-conversion]
               reflectedVar->m_maxVal = std::numeric_limits<int>::max();
+            */
             reflectedVar->m_maxVal = static_cast<float>(std::numeric_limits<int>::max());
         }
         reflectedVar->m_stepSize = step;
@@ -672,6 +679,29 @@ void ReflectedVarMotionAdapter::SyncReflectedVarToIVar(IVariable *pVariable)
 }
 
 void ReflectedVarMotionAdapter::SyncIVarToReflectedVar(IVariable *pVariable)
+{
+    pVariable->SetUserData(m_reflectedVar->m_assetId.m_subId);
+    pVariable->SetDisplayValue(m_reflectedVar->m_assetId.m_guid.ToString<AZStd::string>().c_str());
+}
+
+void ReflectedVarAssetAdapter::SetVariable(IVariable* pVariable)
+{
+    m_reflectedVar.reset(new CReflectedVarAsset(pVariable->GetHumanName().toUtf8().data()));
+
+    SyncReflectedVarToIVar(pVariable);
+}
+
+void ReflectedVarAssetAdapter::SyncReflectedVarToIVar(IVariable* pVariable)
+{
+    // Set the asset id
+    AZStd::string stringGuid = pVariable->GetDisplayValue().toUtf8().data();
+    AZ::Uuid guid(stringGuid.c_str(), stringGuid.length());
+    AZ::u32 subId = pVariable->GetUserData().value<AZ::u32>();
+    m_reflectedVar->m_assetId = AZ::Data::AssetId(guid, subId);
+    m_reflectedVar->m_assetTypeName = pVariable->GetDescription().toUtf8().data();
+}
+
+void ReflectedVarAssetAdapter::SyncIVarToReflectedVar(IVariable* pVariable)
 {
     pVariable->SetUserData(m_reflectedVar->m_assetId.m_subId);
     pVariable->SetDisplayValue(m_reflectedVar->m_assetId.m_guid.ToString<AZStd::string>().c_str());

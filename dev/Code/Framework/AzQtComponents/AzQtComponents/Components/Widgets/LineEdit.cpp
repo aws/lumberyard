@@ -318,14 +318,24 @@ namespace AzQtComponents
 
         const bool isFocused = option->state.testFlag(QStyle::State_HasFocus);
         const bool isHovered = option->state.testFlag(QStyle::State_MouseOver) && option->state.testFlag(QStyle::State_Enabled);
+        const int defaultLineWidth = 1;
 
-        return hasError
-                ? errorLineWidth
-                : (isFocused || dropTarget
-                    ? focusedLineWidth
-                    : (isHovered
-                        ? hoverLineWidth
-                        : 0));
+        if (hasError)
+        {
+            return errorLineWidth;
+        }
+
+        if (isFocused || dropTarget)
+        {
+            return focusedLineWidth;
+        }
+
+        if (isHovered)
+        {
+            return hoverLineWidth;
+        }
+
+        return defaultLineWidth;
     }
 
     QColor LineEdit::Config::getBorderColor(const QStyleOption* option, bool hasError, bool dropTarget) const
@@ -442,6 +452,7 @@ namespace AzQtComponents
         ConfigHelpers::read<int>(settings, QStringLiteral("ErrorLineWidth"), config.errorLineWidth);
         ConfigHelpers::read<QColor>(settings, QStringLiteral("PlaceHolderTextColor"), config.placeHolderTextColor);
         ConfigHelpers::read<QString>(settings, QStringLiteral("ClearImage"), config.clearImage);
+        ConfigHelpers::read<QString>(settings, QStringLiteral("ClearImageDisabled"), config.clearImageDisabled);
         ConfigHelpers::read<QSize>(settings, QStringLiteral("ClearImageSize"), config.clearImageSize);
         ConfigHelpers::read<QString>(settings, QStringLiteral("ErrorImage"), config.errorImage);
         ConfigHelpers::read<QSize>(settings, QStringLiteral("ErrorImageSize"), config.errorImageSize);
@@ -471,6 +482,7 @@ namespace AzQtComponents
         config.errorLineWidth = 2;
         config.placeHolderTextColor = QColor("#888888");
         config.clearImage = QStringLiteral(":/stylesheet/img/UI20/lineedit-close.svg");
+        config.clearImageDisabled = QStringLiteral(":/stylesheet/img/UI20/lineedit-close-disabled.svg");
         config.clearImageSize = {14, 14};
         config.errorImage = QStringLiteral(":/stylesheet/img/UI20/lineedit-error.svg");
         config.errorImageSize = {14, 14};
@@ -667,7 +679,7 @@ namespace AzQtComponents
                 Style::drawFrame(painter, borderRect, Qt::NoPen, frameColor);
             }
 
-            const auto frameRect = style->lineEditRect(option->rect, config.borderRadius, config.borderRadius);
+            const auto frameRect = style->lineEditRect(option->rect, lineWidth, config.borderRadius);
             Style::drawFrame(painter, frameRect, Qt::NoPen, backgroundColor);
 
             if (validDropTarget)
@@ -728,7 +740,7 @@ namespace AzQtComponents
 
         QIcon icon;
         icon.addFile(config.clearImage, config.clearImageSize, QIcon::Normal);
-        icon.addFile(config.clearImage, config.clearImageSize, QIcon::Disabled);
+        icon.addFile(config.clearImageDisabled, config.clearImageSize, QIcon::Disabled);
         return icon;
     }
 

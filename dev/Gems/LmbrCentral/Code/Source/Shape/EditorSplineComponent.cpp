@@ -281,10 +281,15 @@ namespace LmbrCentral
         }
         else if (spline->RTTI_IsTypeOf(AZ::CatmullRomSpline::RTTI_Type()))
         {
-            // Catmull-Rom splines use the first and last points as control points only, omit those for display
-            DrawSpline(
-                *spline, spline->IsClosed() ? 1 : 2, spline->IsClosed() ? vertexCount + 1 : vertexCount - 1,
-                m_cachedUniformScaleTransform, debugDisplay);
+            // the minimum number of control points for a Catmull-Rom spline is 4; do not attempt to render the spline
+            // unless this condition is met
+            if (spline->GetVertexCount() >= 4)
+            {
+                // a Catmull-Rom spline uses the first and last points as control points only, omit them from display
+                DrawSpline(
+                    *spline, spline->IsClosed() ? 1 : 2, spline->IsClosed() ? vertexCount + 1 : vertexCount - 1,
+                    m_cachedUniformScaleTransform, debugDisplay);
+            }
 
             if (!inComponentMode)
             {

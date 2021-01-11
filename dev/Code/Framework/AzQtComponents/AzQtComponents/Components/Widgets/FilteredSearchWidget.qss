@@ -40,8 +40,8 @@ AzQtComponents--FilterCriteriaButton
 
 AzQtComponents--FilterCriteriaButton QPushButton#closeTag
 {
-    qproperty-icon: url(:/stylesheet/img/close.svg);
-    qproperty-iconSize: 16px 16px;
+    qproperty-icon: url(:/stylesheet/img/close_x.svg);
+    qproperty-iconSize: 10px 10px;
     qproperty-flat: true;
     background-color: transparent;
     padding: 0px;

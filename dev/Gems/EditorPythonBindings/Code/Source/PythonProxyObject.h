@@ -72,6 +72,12 @@ namespace EditorPythonBindings
         };
         bool DoComparisonEvaluation(pybind11::object pythonOther, Comparison comparison);
 
+        //! Gets the wrapped object's __repr__
+        pybind11::object GetWrappedObjectRepr();
+
+        //! Gets the wrapped object's __str__
+        pybind11::object GetWrappedObjectStr();
+
     protected:
         void PrepareWrappedObject(const AZ::BehaviorClass& behaviorClass);
         void ReleaseWrappedObject();
@@ -79,6 +85,7 @@ namespace EditorPythonBindings
         void PopulateMethodsAndProperties(const AZ::BehaviorClass& behaviorClass);
         void PopulateComparisonOperators(const AZ::BehaviorClass& behaviorClass);
         bool CanConvertPythonToBehaviorValue(const AZ::BehaviorParameter& behaviorArg, pybind11::object pythonArg) const;
+        
 
     private:
         enum class Ownership
@@ -90,6 +97,7 @@ namespace EditorPythonBindings
 
         AZ::BehaviorObject m_wrappedObject;
         AZStd::string m_wrappedObjectTypeName;
+        AZStd::string m_wrappedObjectCachedRepr;
         Ownership m_ownership = Ownership::None;
         AZStd::unordered_map<AZ::Crc32, AZ::BehaviorMethod*> m_methods;
         AZStd::unordered_map<AZ::Crc32, AZ::BehaviorProperty*> m_properties;

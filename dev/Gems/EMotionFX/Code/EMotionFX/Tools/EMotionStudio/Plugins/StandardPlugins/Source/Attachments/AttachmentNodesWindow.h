@@ -22,7 +22,7 @@
 // qt forward declarations
 QT_FORWARD_DECLARE_CLASS(QLineEdit)
 QT_FORWARD_DECLARE_CLASS(QCheckBox)
-QT_FORWARD_DECLARE_CLASS(QPushButton)
+QT_FORWARD_DECLARE_CLASS(QToolButton)
 QT_FORWARD_DECLARE_CLASS(QTableWidget)
 QT_FORWARD_DECLARE_CLASS(QTableWidgetItem)
 
@@ -77,9 +77,9 @@ namespace EMStudio
 
         // widgets
         QTableWidget*               mNodeTable;
-        QPushButton*                mSelectNodesButton;
-        QPushButton*                mAddNodesButton;
-        QPushButton*                mRemoveNodesButton;
+        QToolButton*                mSelectNodesButton;
+        QToolButton*                mAddNodesButton;
+        QToolButton*                mRemoveNodesButton;
     };
 } // namespace EMStudio
 

@@ -109,6 +109,7 @@ private:
     QPoint m_mousePos;
     QPoint m_prevMousePos;
     Vec3 m_pointerPos;
+    Vec3 m_manipulatorOffset = ZERO;
     bool m_mouseOverPaintableSurface;
     static float m_brushRadius;
 

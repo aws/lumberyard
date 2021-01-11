@@ -17,6 +17,7 @@
 #include <API/EditorAssetSystemAPI.h>
 
 #include <AssetEditor/AssetEditorBus.h>
+#include <AssetEditor/AssetEditorHeader.h>
 #include <AssetEditor/Resources/rcc_AssetEditorResources.h>
 AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <AssetEditor/ui_AssetEditorToolbar.h>
@@ -178,13 +179,19 @@ namespace AzToolsFramework
             AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
             AZ_Assert(m_serializeContext, "Failed to retrieve serialize context.");
 
+            setObjectName("AssetEditorWidget");
             m_propertyEditor = new ReflectedPropertyEditor(this);
+            m_propertyEditor->setObjectName("AssetEditorWidgetPropertyEditor");
             m_propertyEditor->Setup(m_serializeContext, this, true, 250);
             m_propertyEditor->show();
 
             QVBoxLayout* mainLayout = new QVBoxLayout();
             mainLayout->setContentsMargins(0, 0, 0, 0);
             mainLayout->setSpacing(0);
+
+            m_header = new Ui::AssetEditorHeader(this);
+            mainLayout->addWidget(m_header);
+            m_header->show();
 
             m_propertyEditor->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
             mainLayout->addWidget(m_propertyEditor);
@@ -286,6 +293,8 @@ namespace AzToolsFramework
 
             UpdatePropertyEditor(m_inMemoryAsset);
 
+            SetupHeader();
+
             if (!m_sourceAssetId.IsValid())
             {
                 SetStatusText(Status::assetCreated);
@@ -325,6 +334,10 @@ namespace AzToolsFramework
             m_saveAssetAction->setEnabled(false);
             m_propertyEditor->ClearInstances();
 
+            if (AZ::Data::AssetBus::Handler::BusIsConnectedId(asset.GetId()))
+            {
+                AZ::Data::AssetBus::Handler::BusDisconnect(asset.GetId());
+            }
             QString errString = tr("Failed to load %1!").arg(asset.GetHint().c_str());
             AZ_Error("Asset Editor", false, errString.toUtf8());
             QMessageBox::warning(this, tr("Error!"), errString);
@@ -492,6 +505,12 @@ namespace AzToolsFramework
 
         void AssetEditorWidget::OpenAsset(const AZ::Data::Asset<AZ::Data::AssetData> asset)
         {
+            // If we're already editing this asset, don't do anything.
+            if (m_sourceAssetId == asset.GetId())
+            {
+                return;
+            }
+
             // If an unsaved asset is open, ask.
             if (TrySave([this]() { OpenAssetWithDialog(); }))
             {
@@ -807,6 +826,7 @@ namespace AzToolsFramework
 
             ExpandAll();
             SetStatusText(Status::assetCreated);
+            SetupHeader();
         }
 
         void AssetEditorWidget::AfterPropertyModified(InstanceDataNode* /*node*/)
@@ -901,6 +921,31 @@ namespace AzToolsFramework
 
             AZ::SystemTickBus::Handler::BusDisconnect();
 
+        }
+
+        void AssetEditorWidget::SetupHeader()
+        {            
+            QString nameString = QString("%1").arg(m_currentAsset).arg(m_queuedAssetStatus);
+
+            m_header->setName(nameString);
+
+            AZStd::string assetPath;
+            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, m_sourceAssetId);
+
+            // Add the asset location to the right of the header. Location is relative to the Project directory.
+            QString pathAndAsset = assetPath.c_str();
+            int seperatorPos = pathAndAsset.lastIndexOf('/');
+            if (seperatorPos < 0)
+            {
+                m_header->setLocation("");
+            }
+            else
+            {
+                m_header->setLocation(pathAndAsset.left(seperatorPos));
+            }
+            
+            m_header->setIcon(QIcon(QStringLiteral(":/AssetEditor/default_document.svg")));
+            m_header->show();
         }
 
         void AssetEditorWidget::SetStatusText(const QString& assetStatus)

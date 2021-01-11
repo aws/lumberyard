@@ -37,6 +37,7 @@ def build(bld):
                                    'ZSTD',
                                    'MD5'],
         includes                = [bld.Path('Code/Tools/GemRegistry/include'),
+                                   bld.Path('Gems/LmbrCentral/Code/include'),
                                    bld.Path('Code/CryEngine/CryCommon')
                                   ],
         features                = ['link_running_program'],

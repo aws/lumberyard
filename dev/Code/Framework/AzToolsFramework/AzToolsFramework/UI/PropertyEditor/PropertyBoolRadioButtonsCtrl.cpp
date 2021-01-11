@@ -48,7 +48,7 @@ namespace AzToolsFramework
         setFocusProxy(falseBtn);
         setFocusPolicy(falseBtn->focusPolicy());
 
-        connect(m_buttonGroup, static_cast<void(QButtonGroup::*)(int)>(&QButtonGroup::buttonClicked), this, &PropertyBoolRadioButtonsCtrl::onRadioButtonSelected);
+        connect(m_buttonGroup, static_cast<void(QButtonGroup::*)(int)>(&QButtonGroup::idClicked), this, &PropertyBoolRadioButtonsCtrl::onRadioButtonSelected);
     };
 
     void PropertyBoolRadioButtonsCtrl::setValue(bool value)

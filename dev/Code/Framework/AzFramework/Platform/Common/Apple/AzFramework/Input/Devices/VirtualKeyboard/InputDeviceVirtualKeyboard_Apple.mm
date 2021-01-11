@@ -200,6 +200,14 @@ namespace AzFramework
         //! Destructor
         ~InputDeviceVirtualKeyboardApple() override;
 
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Enable the idle sleep timer on the input device.
+        void EnableIdleSleepTimer(bool enabled);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Get the safe frame without keyboard on the input device.
+        void GetSafeFrame(float& left, float& top, float& right, float& bottom);
+
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceVirtualKeyboard::Implementation::IsConnected
@@ -276,6 +284,45 @@ namespace AzFramework
             [m_textField removeFromSuperview];
             [m_textField release];
             m_textField = nullptr;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceVirtualKeyboardApple::EnableIdleSleepTimer(bool enabled)
+    {
+        [UIApplication sharedApplication].idleTimerDisabled = enabled ? NO : YES;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceVirtualKeyboardApple::GetSafeFrame(float& left, float& top, float& right, float& bottom)
+    {
+        UIWindow* foundWindow = nil;
+        #if defined(__IPHONE_13_0) || defined(__TVOS_13_0)
+                if(@available(iOS 13.0, tvOS 13.0, *))
+                {
+                    NSArray* windows = [[UIApplication sharedApplication] windows];
+                    for (UIWindow* window in windows)
+                    {
+                        if (window.isKeyWindow)
+                        {
+                            foundWindow = window;
+                            break;
+                        }
+                    }
+                }
+        #else
+                foundWindow = [[UIApplication sharedApplication] keyWindow];
+        #endif
+        if (@available(iOS 11.0, *))
+        {
+            top = foundWindow.safeAreaInsets.top;
+            bottom = foundWindow.safeAreaInsets.bottom;
+            left = foundWindow.safeAreaInsets.left;
+            right = foundWindow.safeAreaInsets.right;
+        }
+        else
+        {
+            top = bottom = left = right = 0.0f;
         }
     }
 
@@ -362,4 +409,6 @@ namespace AzFramework
         // so we now just need to process any raw events that have been queued since the last frame
         ProcessRawEventQueues();
     }
+
+
 } // namespace AzFramework

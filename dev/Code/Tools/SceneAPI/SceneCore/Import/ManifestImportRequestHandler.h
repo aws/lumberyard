@@ -40,6 +40,7 @@ namespace AZ
                 
             private:
                 static const char* s_extension;
+                static const char* s_generated;
             };
         } // namespace Import
     } // namespace SceneAPI

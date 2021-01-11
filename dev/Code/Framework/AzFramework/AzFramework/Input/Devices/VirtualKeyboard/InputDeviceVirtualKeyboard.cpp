@@ -154,6 +154,24 @@ namespace AzFramework
         }
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceVirtualKeyboard::EnableIdleSleepTimer(bool enabled)
+    {
+        if (m_pimpl)
+        {
+            m_pimpl->EnableIdleSleepTimer(enabled);
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceVirtualKeyboard::GetSafeFrame(float& left, float& top, float& right, float& bottom)
+    {
+        if (m_pimpl)
+        {
+            m_pimpl->GetSafeFrame(left, top, right, bottom);
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceVirtualKeyboard::Implementation::Implementation(InputDeviceVirtualKeyboard& inputDevice)
         : m_inputDevice(inputDevice)
@@ -182,6 +200,21 @@ namespace AzFramework
     void InputDeviceVirtualKeyboard::Implementation::QueueRawTextEvent(const AZStd::string& textUTF8)
     {
         m_rawTextEventQueue.push_back(textUTF8);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceVirtualKeyboard::Implementation::EnableIdleSleepTimer(bool enabled)
+    {
+        if (enabled)
+        {
+            return;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceVirtualKeyboard::Implementation::GetSafeFrame(float& left, float& top, float& right, float& bottom)
+    {
+        top = bottom = left = right = 0.0f;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

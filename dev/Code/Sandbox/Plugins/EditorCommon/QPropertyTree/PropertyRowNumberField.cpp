@@ -257,7 +257,7 @@ PropertyRowWidgetNumber::PropertyRowWidgetNumber(PropertyTreeModel* model, Prope
     connect(entry_, SIGNAL(editingFinished()), this, SLOT(onEditingFinished()));
     connect(entry_, &QLineEdit::textChanged, this, [this, tree] {
         QFontMetrics fm(entry_->font());
-        int contentWidth = min((int)fm.width(entry_->text()) + 8, tree->width() - entry_->x());
+        int contentWidth = min((int)fm.horizontalAdvance(entry_->text()) + 8, tree->width() - entry_->x());
         if (contentWidth > entry_->width())
             entry_->resize(contentWidth, entry_->height());
     });

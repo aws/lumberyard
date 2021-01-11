@@ -10,8 +10,6 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 
 #include <LmbrCentral/Rendering/MeshComponentBus.h>

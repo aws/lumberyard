@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#include <AzCore/std/chrono/clocks.h>
+
 /**
  * This file is to be included from the mutex.h only. It should NOT be included by the user.
  */
@@ -48,7 +50,7 @@ namespace AZStd
         pthread_cond_wait(&m_cond_var, lock.mutex()->native_handle());
     }
     template <class Predicate>
-    inline void condition_variable::wait(unique_lock<mutex>& lock, Predicate pred)
+    AZ_FORCE_INLINE void condition_variable::wait(unique_lock<mutex>& lock, Predicate pred)
     {
         while (!pred())
         {
@@ -57,7 +59,7 @@ namespace AZStd
     }
 
     template <class Clock, class Duration>
-    inline bool condition_variable::wait_until(unique_lock<mutex>& lock, const chrono::time_point<Clock, Duration>& abs_time)
+    AZ_FORCE_INLINE cv_status condition_variable::wait_until(unique_lock<mutex>& lock, const chrono::time_point<Clock, Duration>& abs_time)
     {
         const auto now = chrono::system_clock::now();
         if (now < abs_time)
@@ -65,38 +67,41 @@ namespace AZStd
             return wait_for(lock, abs_time - now);
         }
 
-        return false;
+        return cv_status::timeout;
     }
     template <class Clock, class Duration, class Predicate>
-    inline bool condition_variable::wait_until(unique_lock<mutex>& lock, const chrono::time_point<Clock, Duration>& abs_time, Predicate pred)
-    {
-        const auto now = chrono::system_clock::now();
-        if (now < abs_time)
-        {
-            return wait_for(lock, abs_time - now, pred);
-        }
-
-        return false;
-    }
-    template <class Rep, class Period>
-    inline bool condition_variable::wait_for(unique_lock<mutex>& lock, const chrono::duration<Rep, Period>& rel_time)
-    {
-        timespec ts = Internal::CurrentTimeAndOffset(rel_time);
-
-        int ret = pthread_cond_timedwait(&m_cond_var, lock.mutex()->native_handle(), &ts);
-        return (ret == ETIMEDOUT);
-    }
-    template <class Rep, class Period, class Predicate>
-    inline bool condition_variable::wait_for(unique_lock<mutex>& lock, const chrono::duration<Rep, Period>& rel_time, Predicate pred)
+    AZ_FORCE_INLINE bool condition_variable::wait_until(unique_lock<mutex>& lock, const chrono::time_point<Clock, Duration>& abs_time, Predicate pred)
     {
         while (!pred())
         {
-            if (!wait_for(lock, rel_time))
+            if (wait_until(lock, abs_time) == cv_status::timeout)
             {
                 return pred();
             }
         }
-        return pred();
+        return true;
+    }
+
+    // all the other functions eventually call this one,  which invokes pthread.  Pthread wil try its best to wait
+    // until the specified time arrives (but it may wake up spuriously if cancelled!).  According to the standard,
+    // we return timeout if the reason we woke up  was a time out, and no_timeout in all other situations.
+    template <class Rep, class Period>
+    AZ_FORCE_INLINE cv_status condition_variable::wait_for(unique_lock<mutex>& lock, const chrono::duration<Rep, Period>& rel_time)
+    {
+        timespec ts = Internal::CurrentTimeAndOffset(rel_time);
+
+        int ret = pthread_cond_timedwait(&m_cond_var, lock.mutex()->native_handle(), &ts);
+        // this assert catches the situation where you've given an invalid value
+        // to 'ts', such as nanoseconds > 999999999.
+        AZ_Assert(ret != EINVAL && ret != EPERM, "Invalid return from pthread_cond_timedwait - %i errorno: %s\n", ret, strerror(errno));
+        // note that the other possible error code is EINTR (interrupted by signal), but in this case, we have to allow it to proceed anyway
+
+        return ret == ETIMEDOUT ? cv_status::timeout : cv_status::no_timeout;
+    }
+    template <class Rep, class Period, class Predicate>
+    AZ_FORCE_INLINE bool condition_variable::wait_for(unique_lock<mutex>& lock, const chrono::duration<Rep, Period>& rel_time, Predicate pred)
+    {
+        return wait_until(lock, chrono::system_clock::now() + rel_time, move(pred));
     }
     condition_variable::native_handle_type
     inline condition_variable::native_handle()
@@ -139,7 +144,7 @@ namespace AZStd
     }
 
     template<class Lock>
-    inline void condition_variable_any::wait(Lock& lock)
+    AZ_FORCE_INLINE void condition_variable_any::wait(Lock& lock)
     {
         pthread_mutex_lock(&m_mutex);
         lock.unlock();
@@ -149,7 +154,7 @@ namespace AZStd
         lock.lock();
     }
     template <class Lock, class Predicate>
-    inline void condition_variable_any::wait(Lock& lock, Predicate pred)
+    AZ_FORCE_INLINE void condition_variable_any::wait(Lock& lock, Predicate pred)
     {
         while (!pred())
         {
@@ -157,29 +162,34 @@ namespace AZStd
         }
     }
     template <class Lock, class Clock, class Duration>
-    inline bool condition_variable_any::wait_until(Lock& lock, const chrono::time_point<Clock, Duration>& abs_time)
+    AZ_FORCE_INLINE cv_status condition_variable_any::wait_until(Lock& lock, const chrono::time_point<Clock, Duration>& abs_time)
     {
-        chrono::milliseconds now = chrono::system_clock::now().time_since_epoch();
+        const auto now = chrono::system_clock::now();
         if (now < abs_time)
         {
+            // note that wait_for will either time out, in which case we should return time out, or it will return
+            // without timing out which means either an error occurred, or we got the signal we were waiting for.
+            // This means that either way, there is no point in having a while loop here.
             return wait_for(lock, abs_time - now);
         }
 
-        return false;
+        // if we started with the timeout already passed, we are immediately timed out.
+        return cv_status::timeout;
     }
     template <class Lock, class Clock, class Duration, class Predicate>
-    inline bool condition_variable_any::wait_until(Lock& lock, const chrono::time_point<Clock, Duration>& abs_time, Predicate pred)
+    AZ_FORCE_INLINE bool condition_variable_any::wait_until(Lock& lock, const chrono::time_point<Clock, Duration>& abs_time, Predicate pred)
     {
-        chrono::milliseconds now = chrono::system_clock::now().time_since_epoch();
-        if (now < abs_time)
+        while (!pred())
         {
-            return wait_for(lock, abs_time - now, pred);
+            if (wait_until(lock, abs_time) == cv_status::timeout)
+            {
+                return pred();
+            }
         }
-
-        return false;
+        return true;
     }
     template <class Lock, class Rep, class Period>
-    inline bool condition_variable_any::wait_for(Lock& lock, const chrono::duration<Rep, Period>& rel_time)
+    AZ_FORCE_INLINE cv_status condition_variable_any::wait_for(Lock& lock, const chrono::duration<Rep, Period>& rel_time)
     {
         pthread_mutex_lock(&m_mutex);
         lock.unlock();
@@ -191,19 +201,14 @@ namespace AZStd
 
         pthread_mutex_unlock(&m_mutex);
         lock.lock();
-        return (ret == ETIMEDOUT);
+        
+        return ret == ETIMEDOUT ? cv_status::timeout : cv_status::no_timeout;
     }
+
     template <class Lock, class Rep, class Period, class Predicate>
-    inline bool condition_variable_any::wait_for(Lock& lock, const chrono::duration<Rep, Period>& rel_time, Predicate pred)
+    AZ_FORCE_INLINE bool condition_variable_any::wait_for(Lock& lock, const chrono::duration<Rep, Period>& rel_time, Predicate pred)
     {
-        while (!pred())
-        {
-            if (!wait_for(lock, rel_time))
-            {
-                return pred();
-            }
-        }
-        return pred();
+        return wait_until(lock, chrono::system_clock::now() + rel_time, move(pred));
     }
     condition_variable_any::native_handle_type
     inline condition_variable_any::native_handle()

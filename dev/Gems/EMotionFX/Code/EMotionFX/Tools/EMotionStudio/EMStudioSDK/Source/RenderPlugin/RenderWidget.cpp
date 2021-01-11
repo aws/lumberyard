@@ -714,19 +714,15 @@ namespace EMStudio
     void RenderWidget::OnWheelEvent(QWidget* renderWidget, QWheelEvent* event)
     {
         MCORE_UNUSED(renderWidget);
-        //const int numDegrees = event->delta() / 8;
-        //const int numSteps = numDegrees / 15;
 
-        if (event->orientation() == Qt::Vertical)
-        {
-            mCamera->ProcessMouseInput(0,
-                event->delta(),
-                false,
-                false,
-                true);
+        mCamera->ProcessMouseInput(0,
+            event->angleDelta().y(),
+            false,
+            false,
+            true
+        );
 
-            mCamera->Update();
-        }
+        mCamera->Update();
     }
 
 

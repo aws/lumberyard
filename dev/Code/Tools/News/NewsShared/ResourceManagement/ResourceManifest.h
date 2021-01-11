@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <QList>
 #include <QStack>
 #include <functional>
 

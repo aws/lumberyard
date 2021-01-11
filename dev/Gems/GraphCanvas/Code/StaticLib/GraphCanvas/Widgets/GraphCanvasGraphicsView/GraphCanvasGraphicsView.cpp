@@ -682,7 +682,7 @@ namespace GraphCanvas
 
             QPainter localPainter;
             localPainter.begin(image);
-            localPainter.setRenderHint(QPainter::HighQualityAntialiasing);
+            localPainter.setRenderHint(QPainter::Antialiasing);
 
             graphicsView->render(&localPainter, QRectF(0, 0, windowSize.width(), windowSize.height()), viewportRect);
             localPainter.end();
@@ -766,7 +766,16 @@ namespace GraphCanvas
             return;
         }
 
-        QWheelEvent ev(QPoint(0, 0), WHEEL_ZOOM, Qt::NoButton, Qt::NoModifier);
+        QWheelEvent ev(
+            QPoint(0, 0),
+            mapToGlobal(QPoint(0, 0)),
+            QPoint(0, WHEEL_ZOOM),
+            QPoint(0,0),
+            Qt::NoButton,
+            Qt::NoModifier,
+            Qt::NoScrollPhase,
+            false
+        );
         wheelEvent(&ev);
     }
 
@@ -777,8 +786,18 @@ namespace GraphCanvas
             // There's no scene.
             return;
         }
+        
 
-        QWheelEvent ev(QPoint(0, 0), -WHEEL_ZOOM, Qt::NoButton, Qt::NoModifier);
+        QWheelEvent ev(
+            QPoint(0, 0),
+            mapToGlobal(QPoint(0, 0)),
+            QPoint(0, -WHEEL_ZOOM),
+            QPoint(0,0),
+            Qt::NoButton,
+            Qt::NoModifier,
+            Qt::NoScrollPhase,
+            false
+        );
         wheelEvent(&ev);
     }
 
@@ -1162,8 +1181,6 @@ namespace GraphCanvas
                 setInteractive(true);
                 setDragMode(QGraphicsView::RubberBandDrag);
 
-                // If this ever moves off of the right mouse button, we need to not signal this.
-                SceneRequestBus::Event(m_sceneId, &SceneRequests::SuppressNextContextMenu);
                 SaveViewParams();
                 return;
             }
@@ -1187,7 +1204,7 @@ namespace GraphCanvas
             // Scale the view / do the zoom
             // delta is 1/8th of a degree. We want to change the zoom in or out 0.01 per degree.
             // so: 1/8/100 = 1/800 = 0.00125
-            qreal scaleFactor = 1.0 + (event->delta() * 0.00125);
+            qreal scaleFactor = 1.0 + (event->angleDelta().y() * 0.00125);
             qreal newScale = m_viewParams.m_scale * scaleFactor;
 
             if (newScale < m_minZoom)

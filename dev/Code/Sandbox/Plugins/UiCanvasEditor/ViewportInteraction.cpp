@@ -726,8 +726,8 @@ void ViewportInteraction::MouseWheelEvent(QWheelEvent* ev)
 
         static const float zoomMultiplier = 1 / 100.0f;
         Vec2i pivotPoint(
-            static_cast<int>(ev->posF().x()),
-            static_cast<int>(ev->posF().y()));
+            static_cast<int>(ev->position().x()),
+            static_cast<int>(ev->position().y()));
 
         float newScale = m_canvasViewportMatrixProps.scale + numScrollDegress * zoomMultiplier;
 

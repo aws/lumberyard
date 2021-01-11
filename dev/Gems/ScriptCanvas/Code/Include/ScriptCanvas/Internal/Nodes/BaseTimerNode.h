@@ -53,6 +53,7 @@ namespace ScriptCanvas
                 virtual ~BaseTimerNode();
 
                 // Node
+                void OnActivate() override;
                 void OnInit() override;
                 void OnConfigured() override;
                 void OnDeactivate() override;
@@ -101,6 +102,10 @@ namespace ScriptCanvas
                 virtual void ConfigureTimeSlot(DataSlotConfiguration& configuration);
 
                 SlotId              m_timeSlotId;
+
+                // performance timing related events
+                AZ::Event<size_t>* m_latentStartTimerEvent = nullptr;
+                AZ::Event<size_t>* m_latentStopTimerEvent = nullptr;
                 
             private:
 

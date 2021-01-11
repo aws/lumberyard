@@ -17,10 +17,10 @@
 #endif
 
 #include "QColorSwatchWidget.h"
-#include "qmessagebox.h"
-#include "qfile.h"
-#include "qxmlstream.h"
-#include "qsettings.h"
+#include <qmessagebox.h>
+#include <qfile.h>
+#include <qxmlstream.h>
+#include <qsettings.h>
 
 
 QColorSelectorWidget::QColorSelectorWidget(QWidget* parent /*= 0*/)

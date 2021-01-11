@@ -134,6 +134,8 @@ Qt5OpenGL
 Qt5Positioning
 Qt5PrintSupport
 Qt5Qml
+Qt5QmlModels
+Qt5QmlWorkerScript
 Qt5QuickParticles
 Qt5Quick
 Qt5QuickTest
@@ -148,6 +150,7 @@ Qt5WebEngine
 Qt5WebEngineCore
 Qt5WebEngineWidgets
 Qt5WebChannel
+Qt5WebSockets
 Qt5Widgets
 Qt5WinExtras
 Qt5X11Extras
@@ -160,6 +163,7 @@ QT5_WEBENGINE_DLLS = [
 'Qt5Network',
 'Qt5Positioning',
 'Qt5Qml',
+'Qt5QmlModels',
 'Qt5Quick',
 'Qt5WebChannel',
 'Qt5WebEngineCore'
@@ -1049,6 +1053,8 @@ def find_qt5_binaries(self, platform):
                 try:
                     version = self.cmd_and_log([qmake] + ['-query', 'QT_VERSION']).strip()
                 except self.errors.WafError:
+                    print("{} was found, but QT_VERSION could not be retrieved by executing qmake. Retrying with logs enabled for debugging:".format(qmk))
+                    subprocess.run(qmake + ' -query QT_VERSION', shell=True)
                     pass
                 else:
                     if version:
@@ -1096,7 +1102,7 @@ def find_qt5_binaries(self, platform):
     def _get_qtlib_subfolder(name):
         qt_subdir = os.path.join(qtdir, name)
         if not os.path.exists(qt_subdir):
-            self.fatal('Unable to find QT lib folder {}'.format(name))
+            self.fatal('Unable to find QT lib folder {}: "{}"'.format(name, qt_subdir))
         return qt_subdir
 
     # generate symlinks for the library files within the lib folder
@@ -1431,6 +1437,8 @@ WINDOWS_MAIN_QT_DLLS = [
     "Qt5OpenGL",
     "Qt5Positioning",
     "Qt5PrintSupport",
+    "Qt5QmlModels",
+    "Qt5QmlWorkerScript",
     "Qt5QuickParticles",
     "Qt5QuickTest",
     "Qt5Script",
@@ -1442,6 +1450,7 @@ WINDOWS_MAIN_QT_DLLS = [
     "Qt5WebChannel",
     "Qt5WebKit",
     "Qt5WebKitWidgets",
+    "Qt5WebSockets",
     "Qt5WinExtras",
     "Qt5XmlPatterns",
     "Qt5Xml",

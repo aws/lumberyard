@@ -1,0 +1,9 @@
+{
+    "name": "ASIO",
+    "source": "@GEM@/External/asio-1.12.2",
+    "description": "ASIO Library",
+    "header_only": "True",
+    "includes": [
+        "include"
+    ]
+}

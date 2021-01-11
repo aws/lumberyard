@@ -29,7 +29,6 @@ def build(bld):
 
     nvcloth_file_list = []
     nvcloth_file_list_editor = []
-    nvcloth_pch = "Source/NvCloth_precompiled.cpp"
     if bld.env['PLATFORM'] == 'project_generator' or isinstance(bld,Configure.ConfigurationContext):
         nvcloth_file_list.extend(['nvcloth.waf_files',
                                   'nvcloth_unsupported.waf_files'])
@@ -44,22 +43,23 @@ def build(bld):
         else:
             nvcloth_file_list.extend(['nvcloth_unsupported.waf_files'])
             nvcloth_file_list_editor.extend(['nvcloth_unsupported.waf_files'])
-            nvcloth_pch = "Source/NvClothUnsupported_precompiled.cpp"
     
     bld.DefineGem(
         file_list               = nvcloth_file_list,
-        pch                     = nvcloth_pch,
+        disable_pch             = True,
         win_features            = ['crcfix'],
         includes                = [bld.Path('Code/CryEngine/CryCommon')],
         
         # Dependencies
         use                     = ['EMotionFXStaticLib'],
+        test_all_use            = ['AzTestShared'],
         uselib                  = nvcloth_uselib,
         win_lib                 = nvcloth_win_lib,
         
         # Editor Module
         editor = dict(
             file_list           = nvcloth_file_list_editor,
+            disable_pch         = True,
             win_features        = ['crcfix'],
             defines             = ['NVCLOTH_EDITOR'],
             includes            = [bld.Path('Code/Tools'),

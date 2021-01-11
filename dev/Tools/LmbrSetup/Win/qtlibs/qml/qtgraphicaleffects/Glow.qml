@@ -177,6 +177,10 @@ Item {
         The values range from 0.0 to 1.0. By default, the property is set to \c
         0.5.
 
+        \note The implementation is optimized for medium and low spread values.
+        Depending on the source, spread values closer to 1.0 may yield visually
+        asymmetrical results.
+
         \table
         \header
         \li Output examples with different spread values

@@ -25,6 +25,7 @@
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
+
 #include <Cry_Math.h>
 #include <I3DEngine.h>
 #include <IStatObj.h>
@@ -221,6 +222,15 @@ namespace LmbrCentral
                 ->Event("GetPointAttenuationBulbSize", &EditorLightComponentRequestBus::Events::GetPointAttenuationBulbSize)
                 ->Event("SetPointAttenuationBulbSize", &EditorLightComponentRequestBus::Events::SetPointAttenuationBulbSize)
                 ->VirtualProperty("PointAttenuationBulbSize", "GetPointAttenuationBulbSize", "SetPointAttenuationBulbSize")
+                ->Event("GetAnimIndex", &EditorLightComponentRequestBus::Events::GetAnimIndex)
+                ->Event("SetAnimIndex", &EditorLightComponentRequestBus::Events::SetAnimIndex)
+                ->VirtualProperty("AnimIndex", "GetAnimIndex", "SetAnimIndex")
+                ->Event("GetAnimSpeed", &EditorLightComponentRequestBus::Events::GetAnimSpeed)
+                ->Event("SetAnimSpeed", &EditorLightComponentRequestBus::Events::SetAnimSpeed)
+                ->VirtualProperty("AnimSpeed", "GetAnimSpeed", "SetAnimSpeed")
+                ->Event("GetAnimPhase", &EditorLightComponentRequestBus::Events::GetAnimPhase)
+                ->Event("SetAnimPhase", &EditorLightComponentRequestBus::Events::SetAnimPhase)
+                ->VirtualProperty("AnimPhase", "GetAnimPhase", "SetAnimPhase")
                 ;
 
             // Area Light EBus reflection and VirtualProperties
@@ -252,6 +262,15 @@ namespace LmbrCentral
                 ->Event("GetAreaFOV", &LightComponentEditorRequestBus::Events::GetAreaFOV)
                 ->Event("SetAreaFOV", &LightComponentEditorRequestBus::Events::SetAreaFOV)
                 ->VirtualProperty("AreaFOV", "GetAreaFOV", "SetAreaFOV")
+                ->Event("GetAnimIndex", &EditorLightComponentRequestBus::Events::GetAnimIndex)
+                ->Event("SetAnimIndex", &EditorLightComponentRequestBus::Events::SetAnimIndex)
+                ->VirtualProperty("AnimIndex", "GetAnimIndex", "SetAnimIndex")
+                ->Event("GetAnimSpeed", &EditorLightComponentRequestBus::Events::GetAnimSpeed)
+                ->Event("SetAnimSpeed", &EditorLightComponentRequestBus::Events::SetAnimSpeed)
+                ->VirtualProperty("AnimSpeed", "GetAnimSpeed", "SetAnimSpeed")
+                ->Event("GetAnimPhase", &EditorLightComponentRequestBus::Events::GetAnimPhase)
+                ->Event("SetAnimPhase", &EditorLightComponentRequestBus::Events::SetAnimPhase)
+                ->VirtualProperty("AnimPhase", "GetAnimPhase", "SetAnimPhase")
                 ;
 
             // Projector Light Ebus reflection and VirtualProperties
@@ -283,6 +302,15 @@ namespace LmbrCentral
                 ->Event("GetProjectorNearPlane", &EditorLightComponentRequestBus::Events::GetProjectorNearPlane)
                 ->Event("SetProjectorNearPlane", &EditorLightComponentRequestBus::Events::SetProjectorNearPlane)
                 ->VirtualProperty("ProjectorNearPlane", "GetProjectorNearPlane", "SetProjectorNearPlane")
+                ->Event("GetAnimIndex", &EditorLightComponentRequestBus::Events::GetAnimIndex)
+                ->Event("SetAnimIndex", &EditorLightComponentRequestBus::Events::SetAnimIndex)
+                ->VirtualProperty("AnimIndex", "GetAnimIndex", "SetAnimIndex")
+                ->Event("GetAnimSpeed", &EditorLightComponentRequestBus::Events::GetAnimSpeed)
+                ->Event("SetAnimSpeed", &EditorLightComponentRequestBus::Events::SetAnimSpeed)
+                ->VirtualProperty("AnimSpeed", "GetAnimSpeed", "SetAnimSpeed")
+                ->Event("GetAnimPhase", &EditorLightComponentRequestBus::Events::GetAnimPhase)
+                ->Event("SetAnimPhase", &EditorLightComponentRequestBus::Events::SetAnimPhase)
+                ->VirtualProperty("AnimPhase", "GetAnimPhase", "SetAnimPhase")
                 ;
 
             // Environment Probe Light Ebus reflection and VirtualProperties
@@ -323,6 +351,15 @@ namespace LmbrCentral
                 ->Event("GetProbeFade", &LightComponentEditorRequestBus::Events::GetProbeFade)
                 ->Event("SetProbeFade", &LightComponentEditorRequestBus::Events::SetProbeFade)
                 ->VirtualProperty("ProbeFade", "GetProbeFade", "SetProbeFade")
+                ->Event("GetAnimIndex", &EditorLightComponentRequestBus::Events::GetAnimIndex)
+                ->Event("SetAnimIndex", &EditorLightComponentRequestBus::Events::SetAnimIndex)
+                ->VirtualProperty("AnimIndex", "GetAnimIndex", "SetAnimIndex")
+                ->Event("GetAnimSpeed", &EditorLightComponentRequestBus::Events::GetAnimSpeed)
+                ->Event("SetAnimSpeed", &EditorLightComponentRequestBus::Events::SetAnimSpeed)
+                ->VirtualProperty("AnimSpeed", "GetAnimSpeed", "SetAnimSpeed")
+                ->Event("GetAnimPhase", &EditorLightComponentRequestBus::Events::GetAnimPhase)
+                ->Event("SetAnimPhase", &EditorLightComponentRequestBus::Events::SetAnimPhase)
+                ->VirtualProperty("AnimPhase", "GetAnimPhase", "SetAnimPhase")
                 ;
         }
     }
@@ -587,6 +624,9 @@ namespace LmbrCentral
                     DataElement(0, &LightConfiguration::m_affectsThisAreaOnly, "Affects this area only", "Light only affects this area")->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
 
+                    DataElement(0, &LightConfiguration::m_clipVolumeEntity, "Clip volume entity", "The entity containing the clip volume to use.")->
+                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
+
                     ClassElement(AZ::Edit::ClassElements::Group, "Advanced")->
 
                     DataElement(0, &LightConfiguration::m_deferred, "Deferred", "Deferred light")->
@@ -793,6 +833,7 @@ namespace LmbrCentral
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
+        ClipVolumeComponentNotificationBus::Handler::BusConnect(m_configuration.m_clipVolumeEntity);
     }
 
     void EditorLightComponent::Deactivate()
@@ -804,6 +845,7 @@ namespace LmbrCentral
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
+        ClipVolumeComponentNotificationBus::Handler::BusDisconnect();
 
         gEnv->p3DEngine->FreeRenderNodeState(&m_cubemapPreview);
 
@@ -836,7 +878,10 @@ namespace LmbrCentral
 
         configuration.m_visible = visible && configuration.m_visible;
 
+        // Reconnect the bus so the newly created internal light instance receives the clip volume
+        ClipVolumeComponentNotificationBus::Handler::BusDisconnect();
         m_light.UpdateRenderLight(configuration);
+        ClipVolumeComponentNotificationBus::Handler::BusConnect(m_configuration.m_clipVolumeEntity);
     }
 
     IRenderNode* EditorLightComponent::GetRenderNode()
@@ -1065,6 +1110,16 @@ namespace LmbrCentral
     const LightConfiguration& EditorLightComponent::GetConfiguration() const
     {
         return m_configuration;
+    }
+
+    void EditorLightComponent::OnClipVolumeCreated(IClipVolume* clipVolume)
+    {
+        m_light.SetClipVolume(clipVolume);
+    }
+
+    void EditorLightComponent::OnClipVolumeDestroyed(IClipVolume* clipVolume)
+    {
+        m_light.ClearClipVolume(clipVolume);
     }
 
     ////////////////////////////////////////////////////////////

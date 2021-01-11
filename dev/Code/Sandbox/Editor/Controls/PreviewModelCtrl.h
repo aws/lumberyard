@@ -25,7 +25,7 @@ class CPreviewModelCtrl
 {
     Q_OBJECT
 public:
-    explicit CPreviewModelCtrl(QWidget* parent = nullptr, Qt::WindowFlags f = 0);
+    explicit CPreviewModelCtrl(QWidget* parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
 
     QSize minimumSizeHint() const override;
 

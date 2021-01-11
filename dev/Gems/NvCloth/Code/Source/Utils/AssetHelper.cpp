@@ -10,8 +10,6 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
 #include <Utils/AssetHelper.h>
 
 #include <Utils/MeshAssetHelper.h>

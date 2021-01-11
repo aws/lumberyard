@@ -1517,7 +1517,7 @@ namespace LegacyConversionInternal
 
         //Actually apply everything to the object
         LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetVisible, visible);
-        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetMinSpec, minSpec);
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetMinSpec, minSpec);
 
         if (materialOverride)
         {
@@ -1525,7 +1525,7 @@ namespace LegacyConversionInternal
         }
 
         LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetLoop, loop);
-        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetPlayOnStart, playOnStart);
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetPlayOnStart, playOnStart);
         LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetStartTime, startTime);
 
         LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetFirstFrameStandIn, firstFrameStandin);
@@ -1534,11 +1534,11 @@ namespace LegacyConversionInternal
 
         LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetStandInDistance, standinDistance);
         LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetStreamInDistance, streamInDistance);
-        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetMaxViewDistance, maxViewDistance);
-        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetViewDistanceMultiplier, viewDistanceMultiplier);
-        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetLODDistanceRatio, lodDistanceRatio);
-        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetCastShadows, castShadows);
-        LmbrCentral::EditorGeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::EditorGeometryCacheComponentRequestBus::Events::SetUseVisAreas, useVisAreas);
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetMaxViewDistance, maxViewDistance);
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetViewDistanceMultiplier, viewDistanceMultiplier);
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetLODDistanceRatio, lodDistanceRatio);
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetCastShadows, castShadows);
+        LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetUseVisAreas, useVisAreas);
 
         LmbrCentral::GeometryCacheComponentRequestBus::Event(entityId, &LmbrCentral::GeometryCacheComponentRequestBus::Events::SetGeomCacheAsset, geomCacheAssetId);
 

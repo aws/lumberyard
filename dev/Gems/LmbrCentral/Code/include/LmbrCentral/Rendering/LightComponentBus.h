@@ -67,6 +67,13 @@ namespace LmbrCentral
         virtual void SetAmbient(bool isAmbient) { (void)isAmbient; }
         virtual bool GetAmbient() { return true; }
 
+        virtual void SetAnimIndex(AZ::u32 /*animIndex*/) {}
+        virtual AZ::u32 GetAnimIndex() { return 0; }
+        virtual void SetAnimSpeed(float /*animSpeed*/) {}
+        virtual float GetAnimSpeed() { return 0; }
+        virtual void SetAnimPhase(float /*animPhase*/) {}
+        virtual float GetAnimPhase() { return 0; }
+
         // Point Light Specific Modifiers
         virtual void SetPointMaxDistance(float newMaxDistance) { (void)newMaxDistance; };
         virtual float GetPointMaxDistance() { return FLT_MAX; }

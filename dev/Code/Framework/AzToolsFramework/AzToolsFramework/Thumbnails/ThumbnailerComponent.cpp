@@ -92,6 +92,13 @@ namespace AzToolsFramework
             return it->second->GetThumbnail(key);
         }
 
+        bool ThumbnailerComponent::IsLoading(SharedThumbnailKey key, const char* contextName)
+        {
+            auto it = m_thumbnails.find(contextName);
+            AZ_Assert(it != m_thumbnails.end(), "Context %s not registered", contextName);
+            return it->second->IsLoading(key);
+        }
+
     } // namespace Thumbnailer
 } // namespace AzToolsFramework
 

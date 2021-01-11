@@ -14,6 +14,7 @@
 #include <AzCore/Jobs/JobCompletion.h>
 #include <AzCore/Jobs/JobCompletionSpin.h>
 #include <AzCore/Jobs/JobFunction.h>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 #include <AzCore/Jobs/JobManager.h>
 #include <AzCore/Jobs/task_group.h>
 #include <AzCore/Jobs/Algorithms.h>
@@ -34,6 +35,8 @@
 #include <AzCore/std/time.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/UnitTest/TestTypes.h>
+
+#include <random>
 
 #if AZ_TRAIT_SUPPORTS_MICROSOFT_PPL
 // Enable this to test against Microsoft PPL, keep in mind you MUST have Exceptions enabled to use PPL
@@ -1397,4 +1400,621 @@ namespace UnitTest
     {
         run();
     }
-}
+
+    using JobLegacyJobExecutorIsRunning = DefaultJobManagerSetupFixture;
+    TEST_F(JobLegacyJobExecutorIsRunning, Test)
+    {
+        // Note: Legacy JobExecutor exists as an adapter to Legacy CryEngine jobs.
+        // When writing new jobs instead favor direct use of the AZ::Job type family
+        AZ::LegacyJobExecutor jobExecutor;
+        EXPECT_FALSE(jobExecutor.IsRunning());
+
+        // Completion fences and IsRunning()
+        {
+            jobExecutor.PushCompletionFence();
+            EXPECT_TRUE(jobExecutor.IsRunning());
+            jobExecutor.PopCompletionFence();
+            EXPECT_FALSE(jobExecutor.IsRunning());
+        }
+
+        AZStd::atomic_bool jobExecuted{ false };
+        AZStd::binary_semaphore jobSemaphore;
+
+        jobExecutor.StartJob([&jobSemaphore, &jobExecuted]
+            {
+                // Wait until the test thread releases
+                jobExecuted = true;
+                jobSemaphore.acquire();
+            }
+        );
+        EXPECT_TRUE(jobExecutor.IsRunning());
+
+        // Allow the job to complete
+        jobSemaphore.release();
+
+        // Wait for completion
+        jobExecutor.WaitForCompletion();
+        EXPECT_FALSE(jobExecutor.IsRunning());
+        EXPECT_TRUE(jobExecuted);
+    }
+
+    using JobLegacyJobExecutorWaitForCompletion = DefaultJobManagerSetupFixture;
+    TEST_F(JobLegacyJobExecutorWaitForCompletion, Test)
+    {
+        // Note: Legacy JobExecutor exists as an adapter to Legacy CryEngine jobs.
+        // When writing new jobs instead favor direct use of the AZ::Job type family
+        AZ::LegacyJobExecutor jobExecutor;
+
+        // Semaphores used to park job threads until released
+        const AZ::u32 numParkJobs = AZ::JobContext::GetGlobalContext()->GetJobManager().GetNumWorkerThreads();
+        AZStd::vector<AZStd::binary_semaphore> jobSemaphores(numParkJobs);
+
+        // Data destination for workers
+        const AZ::u32 workJobCount = numParkJobs * 2;
+        AZStd::vector<AZ::u32> jobData(workJobCount, 0);
+
+        // Touch completion multiple times as a test of correctly transitioning in and out of the all jobs completed state
+        AZ::u32 NumCompletionCycles = 5;
+        for (AZ::u32 completionItrIdx = 0; completionItrIdx < NumCompletionCycles; ++completionItrIdx)
+        {
+            // Intentionally park every job thread
+            for (auto& jobSemaphore : jobSemaphores)
+            {
+                jobExecutor.StartJob([&jobSemaphore]
+                {
+                    jobSemaphore.acquire();
+                }
+                );
+            }
+            EXPECT_TRUE(jobExecutor.IsRunning());
+
+            // Kick off verifiable "work" jobs
+            for (AZ::u32 i = 0; i < workJobCount; ++i)
+            {
+                jobExecutor.StartJob([i, &jobData]
+                {
+                    jobData[i] = i + 1;
+                }
+                );
+            }
+            EXPECT_TRUE(jobExecutor.IsRunning());
+
+            // Now released our parked job threads
+            for (auto& jobSemaphore : jobSemaphores)
+            {
+                jobSemaphore.release();
+            }
+
+            // And wait for all jobs to finish
+            jobExecutor.WaitForCompletion();
+            EXPECT_FALSE(jobExecutor.IsRunning());
+
+            // Verify our workers ran and clear data
+            for (size_t i = 0; i < workJobCount; ++i)
+            {
+                EXPECT_EQ(jobData[i], i + 1);
+                jobData[i] = 0;
+            }
+        }
+    }
+
+    class JobCompletionCompleteNotScheduled
+        : public DefaultJobManagerSetupFixture
+    {
+    public:
+        JobCompletionCompleteNotScheduled()
+            : DefaultJobManagerSetupFixture(1) // Only 1 worker to serialize job execution
+        {
+        }
+
+        void run()
+        {
+            AZStd::atomic_int32_t testSequence{0};
+
+            JobCompletion jobCompletion;
+
+            Job* firstJob = CreateJobFunction([&testSequence]
+                {
+                    ++testSequence; // 0 => 1
+                },
+                true
+            );
+            firstJob->SetDependent(&jobCompletion);
+            firstJob->Start();
+
+            AZStd::binary_semaphore testThreadSemaphore;
+            AZStd::binary_semaphore jobSemaphore;
+
+            JobCompletion secondJobCompletion;
+            Job* secondJob = CreateJobFunction([&testSequence, &testThreadSemaphore, &jobSemaphore]
+                {
+                    testThreadSemaphore.release();
+                    jobSemaphore.acquire();
+                    ++testSequence; // 1 => 2
+                },
+                true
+            );
+            secondJob->SetDependent(&secondJobCompletion);
+            secondJob->Start();
+
+            // guarantee the parkedJob has started, with only 1 job thread this means firstJob must be complete
+            testThreadSemaphore.acquire();
+
+            // If waiting on completion is unscheduled and executes immediately, then the value of sequence will be 1
+            jobCompletion.StartAndWaitForCompletion();
+            EXPECT_EQ(testSequence, 1); 
+
+            // Allow the second job to finish
+            jobSemaphore.release();
+
+            // Safety sync before exiting this scope
+            secondJobCompletion.StartAndWaitForCompletion();
+            EXPECT_EQ(testSequence, 2);
+        }
+    };
+
+    TEST_F(JobCompletionCompleteNotScheduled, Test)
+    {
+        run();
+    }
+    
+    class TestJobWithPriority : public Job
+    {
+    public:
+        static AZStd::atomic<AZ::s32> s_numIncompleteJobs;
+
+        AZ_CLASS_ALLOCATOR(TestJobWithPriority, ThreadPoolAllocator, 0)
+
+        TestJobWithPriority(AZ::s8 priority, const char* name, JobContext* context, AZStd::binary_semaphore& binarySemaphore, AZStd::vector<AZStd::string>& namesOfProcessedJobs)
+            : Job(true, context, false, priority)
+            , m_name(name)
+            , m_binarySemaphore(binarySemaphore)
+            , m_namesOfProcessedJobs(namesOfProcessedJobs)
+        {
+            ++s_numIncompleteJobs;
+        }
+
+        void Process() override
+        {
+            // Ensure the job does not complete until it is able to acquire the semaphore,
+            // then add its name to the vector of processed jobs.
+            m_binarySemaphore.acquire();
+            m_namesOfProcessedJobs.push_back(m_name);
+            m_binarySemaphore.release();
+            --s_numIncompleteJobs;
+        }
+
+    private:
+        const AZStd::string m_name;
+        AZStd::binary_semaphore& m_binarySemaphore;
+        AZStd::vector<AZStd::string>& m_namesOfProcessedJobs;
+    };
+    AZStd::atomic<AZ::s32> TestJobWithPriority::s_numIncompleteJobs = 0;
+
+    class JobPriorityTestFixture : public DefaultJobManagerSetupFixture
+    {
+    public:
+        JobPriorityTestFixture() : DefaultJobManagerSetupFixture(1) // Only 1 worker to serialize job execution
+        {
+        }
+
+        void RunTest()
+        {
+            AZStd::vector<AZStd::string> namesOfProcessedJobs;
+
+            // The queue is empty, and calling 'Start' on a job inserts it into the job queue, but it won't necesarily begin processing immediately.
+            // So we need to set the priority of the first job queued to the highest available, ensuring it will get processed first even if the lone
+            // worker thread active in this test does not inspect the queue until after all the jobs below have been 'started' (this is guaranteed by
+            // the fact that jobs with equal priority values are processed in FIFO order).
+            //
+            // The binary semaphore ensures that this first job does not complete until we've finished queuing all the other jobs.
+            //
+            // All jobs that we start in this test have the 'isAutoDelete' param set to true, so we don't have to store them or clean up.
+            AZStd::binary_semaphore binarySemaphore;
+            (aznew TestJobWithPriority(127, "FirstJobQueued", m_jobContext, binarySemaphore, namesOfProcessedJobs))->Start();
+
+            // Queue a number of other jobs before releasing the semaphore that will allow "FirstJobQueued" to complete.
+            // These additional jobs should be processed in order of their priority, or where the priority is equal in the order they were queued.
+            (aznew TestJobWithPriority(-128, "LowestPriority", m_jobContext, binarySemaphore, namesOfProcessedJobs))->Start();
+            (aznew TestJobWithPriority(-1, "LowPriority1", m_jobContext, binarySemaphore, namesOfProcessedJobs))->Start();
+            (aznew TestJobWithPriority(-1, "LowPriority2", m_jobContext, binarySemaphore, namesOfProcessedJobs))->Start();
+            (aznew TestJobWithPriority(-1, "LowPriority3", m_jobContext, binarySemaphore, namesOfProcessedJobs))->Start();
+            (aznew TestJobWithPriority(0, "DefaultPriority1", m_jobContext, binarySemaphore, namesOfProcessedJobs))->Start();
+            (aznew TestJobWithPriority(0, "DefaultPriority2", m_jobContext, binarySemaphore, namesOfProcessedJobs))->Start();
+            (aznew TestJobWithPriority(0, "DefaultPriority3", m_jobContext, binarySemaphore, namesOfProcessedJobs))->Start();
+            (aznew TestJobWithPriority(1, "HighPriority1", m_jobContext, binarySemaphore, namesOfProcessedJobs))->Start();
+            (aznew TestJobWithPriority(1, "HighPriority2", m_jobContext, binarySemaphore, namesOfProcessedJobs))->Start();
+            (aznew TestJobWithPriority(1, "HighPriority3", m_jobContext, binarySemaphore, namesOfProcessedJobs))->Start();
+            (aznew TestJobWithPriority(127, "HighestPriority", m_jobContext, binarySemaphore, namesOfProcessedJobs))->Start();
+
+            // Release the binary semaphore so the first queued job will complete. The rest of the queued jobs should now complete in order of their priority.
+            binarySemaphore.release();
+
+            // Wait until all the jobs have completed. Ideally we would start one last job (with the lowest priority so it is guaranteed to be processed last
+            // even if the jobs started above have yet to complete) and wait until it has completed, but this results in this main thread picking up jobs and
+            // throwing all the careful scheduling on the one worker thread active in this test out the window (please see Job::StartAndAssistUntilComplete).
+            while (TestJobWithPriority::s_numIncompleteJobs > 0) {}
+
+            // Verify that the jobs were completed in the expected order.
+            EXPECT_EQ(namesOfProcessedJobs[0], "FirstJobQueued");
+            EXPECT_EQ(namesOfProcessedJobs[1], "HighestPriority");
+            EXPECT_EQ(namesOfProcessedJobs[2], "HighPriority1");
+            EXPECT_EQ(namesOfProcessedJobs[3], "HighPriority2");
+            EXPECT_EQ(namesOfProcessedJobs[4], "HighPriority3");
+            EXPECT_EQ(namesOfProcessedJobs[5], "DefaultPriority1");
+            EXPECT_EQ(namesOfProcessedJobs[6], "DefaultPriority2");
+            EXPECT_EQ(namesOfProcessedJobs[7], "DefaultPriority3");
+            EXPECT_EQ(namesOfProcessedJobs[8], "LowPriority1");
+            EXPECT_EQ(namesOfProcessedJobs[9], "LowPriority2");
+            EXPECT_EQ(namesOfProcessedJobs[10], "LowPriority3");
+            EXPECT_EQ(namesOfProcessedJobs[11], "LowestPriority");
+        }
+    };
+
+    TEST_F(JobPriorityTestFixture, Test)
+    {
+        RunTest();
+    }
+} // UnitTest
+
+#if defined(HAVE_BENCHMARK)
+namespace Benchmark
+{
+    double CalculatePi(AZ::u32 depth)
+    {
+        double pi = 0.0;
+        for (AZ::u32 i = 0; i < depth; ++i)
+        {
+            const double numerator = static_cast<double>(((i % 2) * 2) - 1);
+            const double denominator = static_cast<double>((2 * i) - 1);
+            pi += numerator / denominator;
+        }
+        return (pi - 1.0) * 4;
+    }
+
+    class TestJobCalculatePi : public Job
+    {
+    public:
+        static AZStd::atomic<AZ::s32> s_numIncompleteJobs;
+
+        AZ_CLASS_ALLOCATOR(TestJobCalculatePi, ThreadPoolAllocator, 0)
+
+        TestJobCalculatePi(AZ::u32 depth, AZ::s8 priority, JobContext* context)
+            : Job(true, context, false, priority)
+            , m_depth(depth)
+        {
+            ++s_numIncompleteJobs;
+        }
+
+        void Process() override
+        {
+            benchmark::DoNotOptimize(CalculatePi(m_depth));
+            --s_numIncompleteJobs;
+        }
+    private:
+        const AZ::u32 m_depth;
+    };
+    AZStd::atomic<AZ::s32> TestJobCalculatePi::s_numIncompleteJobs = 0;
+
+    class JobBenchmarkFixture : public ::benchmark::Fixture
+    {
+    public:
+        static const AZ::s32 LIGHT_WEIGHT_JOB_CALCULATE_PI_DEPTH = 1;
+        static const AZ::s32 MEDIUM_WEIGHT_JOB_CALCULATE_PI_DEPTH = 1024;
+        static const AZ::s32 HEAVY_WEIGHT_JOB_CALCULATE_PI_DEPTH = 1048576;
+
+        static const AZ::u32 SMALL_NUMBER_OF_JOBS = 10;
+        static const AZ::u32 MEDIUM_NUMBER_OF_JOBS = 1024;
+        static const AZ::u32 LARGE_NUMBER_OF_JOBS = 16384;
+
+        void SetUp(::benchmark::State& state) override
+        {
+            AllocatorInstance<PoolAllocator>::Create();
+            AllocatorInstance<ThreadPoolAllocator>::Create();
+
+            JobManagerDesc desc;
+            JobManagerThreadDesc threadDesc;
+#if AZ_TRAIT_SET_JOB_PROCESSOR_ID
+            threadDesc.m_cpuId = 0; // Don't set processors IDs on windows
+#endif // AZ_TRAIT_SET_JOB_PROCESSOR_ID
+
+            const AZ::u32 numWorkerThreads = AZStd::thread::hardware_concurrency();
+            for (AZ::u32 i = 0; i < numWorkerThreads; ++i)
+            {
+                desc.m_workerThreads.push_back(threadDesc);
+#if AZ_TRAIT_SET_JOB_PROCESSOR_ID
+                threadDesc.m_cpuId++;
+#endif // AZ_TRAIT_SET_JOB_PROCESSOR_ID
+            }
+
+            m_jobManager = aznew JobManager(desc);
+            m_jobContext = aznew JobContext(*m_jobManager);
+
+            JobContext::SetGlobalContext(m_jobContext);
+
+            // Generate some random priorities
+            m_randomPriorities.resize(LARGE_NUMBER_OF_JOBS);
+            std::mt19937_64 randomPriorityGenerator(1); // Always use the same seed
+            std::uniform_int_distribution<> randomPriorityDistribution(std::numeric_limits<AZ::s8>::min(),
+                                                                       std::numeric_limits<AZ::s8>::max());
+            std::generate(m_randomPriorities.begin(), m_randomPriorities.end(), [&randomPriorityDistribution, &randomPriorityGenerator]()
+            {
+                return randomPriorityDistribution(randomPriorityGenerator);
+            });
+
+            // Generate some random depths
+            m_randomDepths.resize(LARGE_NUMBER_OF_JOBS);
+            std::mt19937_64 randomDepthGenerator(1); // Always use the same seed
+            std::uniform_int_distribution<> randomDepthDistribution(LIGHT_WEIGHT_JOB_CALCULATE_PI_DEPTH,
+                                                                    HEAVY_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+            std::generate(m_randomDepths.begin(), m_randomDepths.end(), [&randomDepthDistribution, &randomDepthGenerator]()
+            {
+                return randomDepthDistribution(randomDepthGenerator);
+            });
+        }
+
+        void TearDown(::benchmark::State& state) override
+        {
+            JobContext::SetGlobalContext(nullptr);
+
+            // We must clear these vectors before destroying the allocators. 
+            m_randomPriorities = {};
+            m_randomDepths = {};
+            delete m_jobContext;
+            delete m_jobManager;
+
+            AllocatorInstance<ThreadPoolAllocator>::Destroy();
+            AllocatorInstance<PoolAllocator>::Destroy();
+        }
+
+    protected:
+        inline void RunCalculatePiJob(AZ::s32 depth, AZ::s8 priority)
+        {
+            (aznew TestJobCalculatePi(depth, priority, m_jobContext))->Start();
+        }
+
+        inline void RunMultipleCalculatePiJobsWithDefaultPriority(AZ::u32 numberOfJobs, AZ::s32 depth)
+        {
+            for (AZ::u32 i = 0; i < numberOfJobs; ++i)
+            {
+                RunCalculatePiJob(depth, 0);
+            }
+
+            // Wait until all the jobs have completed.
+            while (TestJobCalculatePi::s_numIncompleteJobs > 0) {}
+        }
+
+        inline void RunMultipleCalculatePiJobsWithRandomPriority(AZ::u32 numberOfJobs, AZ::s32 depth)
+        {
+            for (AZ::u32 i = 0; i < numberOfJobs; ++i)
+            {
+                RunCalculatePiJob(depth, m_randomPriorities[i]);
+            }
+
+            // Wait until all the jobs have completed.
+            while (TestJobCalculatePi::s_numIncompleteJobs > 0) {}
+        }
+
+        inline void RunMultipleCalculatePiJobsWithRandomDepthAndDefaultPriority(AZ::u32 numberOfJobs)
+        {
+            for (AZ::u32 i = 0; i < numberOfJobs; ++i)
+            {
+                RunCalculatePiJob(m_randomDepths[i], 0);
+            }
+
+            // Wait until all the jobs have completed.
+            while (TestJobCalculatePi::s_numIncompleteJobs > 0) {}
+        }
+
+        inline void RunMultipleCalculatePiJobsWithRandomDepthAndRandomPriority(AZ::u32 numberOfJobs)
+        {
+            for (AZ::u32 i = 0; i < numberOfJobs; ++i)
+            {
+                RunCalculatePiJob(m_randomDepths[i],m_randomPriorities[i]);
+            }
+
+            // Wait until all the jobs have completed.
+            while (TestJobCalculatePi::s_numIncompleteJobs > 0) {}
+        }
+
+    protected:
+        JobManager* m_jobManager = nullptr;
+        JobContext* m_jobContext = nullptr;
+        AZStd::vector<AZ::u32> m_randomDepths;
+        AZStd::vector<AZ::s8> m_randomPriorities;
+    };
+
+    BENCHMARK_F(JobBenchmarkFixture, RunSmallNumberOfLightWeightJobsWithDefaultPriority)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithDefaultPriority(SMALL_NUMBER_OF_JOBS, LIGHT_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunMediumNumberOfLightWeightJobsWithDefaultPriority)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithDefaultPriority(MEDIUM_NUMBER_OF_JOBS, LIGHT_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunLargeNumberOfLightWeightJobsWithDefaultPriority)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithDefaultPriority(LARGE_NUMBER_OF_JOBS, LIGHT_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunSmallNumberOfMediumWeightJobsWithDefaultPriority)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithDefaultPriority(SMALL_NUMBER_OF_JOBS, MEDIUM_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunMediumNumberOfMediumWeightJobsWithDefaultPriority)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithDefaultPriority(MEDIUM_NUMBER_OF_JOBS, MEDIUM_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunLargeNumberOfMediumWeightJobsWithDefaultPriority)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithDefaultPriority(LARGE_NUMBER_OF_JOBS, MEDIUM_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunSmallNumberOfHeavyWeightJobsWithDefaultPriority)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithDefaultPriority(SMALL_NUMBER_OF_JOBS, HEAVY_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunMediumNumberOfHeavyWeightJobsWithDefaultPriority)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithDefaultPriority(MEDIUM_NUMBER_OF_JOBS, HEAVY_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunLargeNumberOfHeavyWeightJobsWithDefaultPriority)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithDefaultPriority(LARGE_NUMBER_OF_JOBS, HEAVY_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunSmallNumberOfRandomWeightJobsWithDefaultPriority)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomDepthAndDefaultPriority(SMALL_NUMBER_OF_JOBS);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunMediumNumberOfRandomWeightJobsWithDefaultPriority)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomDepthAndDefaultPriority(MEDIUM_NUMBER_OF_JOBS);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunLargeNumberOfRandomWeightJobsWithDefaultPriority)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomDepthAndDefaultPriority(LARGE_NUMBER_OF_JOBS);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunSmallNumberOfLightWeightJobsWithRandomPriorities)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomPriority(SMALL_NUMBER_OF_JOBS, LIGHT_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunMediumNumberOfLightWeightJobsWithRandomPriorities)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomPriority(MEDIUM_NUMBER_OF_JOBS, LIGHT_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunLargeNumberOfLightWeightJobsWithRandomPriorities)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomPriority(LARGE_NUMBER_OF_JOBS, LIGHT_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunSmallNumberOfMediumWeightJobsWithRandomPriorities)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomPriority(SMALL_NUMBER_OF_JOBS, MEDIUM_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunMediumNumberOfMediumWeightJobsWithRandomPriorities)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomPriority(MEDIUM_NUMBER_OF_JOBS, MEDIUM_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunLargeNumberOfMediumWeightJobsWithRandomPriorities)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomPriority(LARGE_NUMBER_OF_JOBS, MEDIUM_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunSmallNumberOfHeavyWeightJobsWithRandomPriorities)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomPriority(SMALL_NUMBER_OF_JOBS, HEAVY_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunMediumNumberOfHeavyWeightJobsWithRandomPriorities)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomPriority(MEDIUM_NUMBER_OF_JOBS, HEAVY_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunLargeNumberOfHeavyWeightJobsWithRandomPriorities)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomPriority(LARGE_NUMBER_OF_JOBS, HEAVY_WEIGHT_JOB_CALCULATE_PI_DEPTH);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunSmallNumberOfRandomWeightJobsWithRandomPriorities)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomDepthAndRandomPriority(SMALL_NUMBER_OF_JOBS);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunMediumNumberOfRandomWeightJobsWithRandomPriorities)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomDepthAndRandomPriority(MEDIUM_NUMBER_OF_JOBS);
+        }
+    }
+
+    BENCHMARK_F(JobBenchmarkFixture, RunLargeNumberOfRandomWeightJobsWithRandomPriorities)(benchmark::State& state)
+    {
+        for (auto _ : state)
+        {
+            RunMultipleCalculatePiJobsWithRandomDepthAndRandomPriority(LARGE_NUMBER_OF_JOBS);
+        }
+    }
+} // Benchmark
+
+#endif // HAVE_BENCHMARK

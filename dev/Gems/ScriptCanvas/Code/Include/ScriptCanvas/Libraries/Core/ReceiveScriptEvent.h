@@ -136,6 +136,9 @@ namespace ScriptCanvas
 
                 bool m_connected;
 
+                // performance timing related events
+                AZ::Event<size_t>* m_latentStartTimerEvent = nullptr;
+                AZ::Event<size_t>* m_latentStopTimerEvent = nullptr;
             };
         } // namespace Core
     } // namespace Nodes

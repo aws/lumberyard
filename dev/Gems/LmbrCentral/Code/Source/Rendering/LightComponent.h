@@ -22,6 +22,7 @@
 #include <LmbrCentral/Rendering/LightComponentBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/MaterialAsset.h>
+#include <LmbrCentral/Rendering/ClipVolumeComponentBus.h>
 
 #include "LightInstance.h"
 
@@ -137,6 +138,8 @@ namespace LmbrCentral
         // Need to keep a unique Id to use as cubemap name
         AZ::Uuid m_cubemapId;
 
+        AZ::EntityId m_clipVolumeEntity;
+
         // \todo clip bounds - artists aren't using it. Includes fade dimensions.
 
         AZ::EntityId m_editorEntityId; // Editor-only, not reflected.
@@ -168,6 +171,7 @@ namespace LmbrCentral
         : public AZ::Component
         , public LightComponentRequestBus::Handler
         , public RenderNodeRequestBus::Handler
+        , public ClipVolumeComponentNotificationBus::Handler
     {
     public:
 
@@ -191,6 +195,10 @@ namespace LmbrCentral
         bool TurnOnLight() override;
         bool TurnOffLight() override;
         void ToggleLight() override;
+
+        // ClipVolumeComponentNotificationBus::Handler
+        void OnClipVolumeCreated(IClipVolume* clipVolume) override;
+        void OnClipVolumeDestroyed(IClipVolume* clipVolume) override;
 
         ////////////////////////////////////
         // Modifiers
@@ -263,6 +271,17 @@ namespace LmbrCentral
 
         void SetProbeFade(float fade) override;
         float GetProbeFade() override;
+
+        //! Animation parameters
+        void SetAnimIndex(AZ::u32 animIndex) override;
+        AZ::u32 GetAnimIndex() override;
+
+        void SetAnimSpeed(float animSpeed) override;
+        float GetAnimSpeed() override;
+
+        void SetAnimPhase(float animPhase) override;
+        float GetAnimPhase() override;
+
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

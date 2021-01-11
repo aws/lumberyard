@@ -15,6 +15,21 @@
 
 namespace UnitTest
 {
+    enum class TestEnum
+    {
+        One = 1,
+        Two = 2
+    };
+}
+
+// give the enum values types
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(UnitTest::TestEnum, "{F8EBD52B-D805-4A47-82CA-41E1DC176BCD}")
+}
+
+namespace UnitTest
+{
     using Counter0 = CreationCounter<16, 0>;
 
     struct TypingStruct
@@ -500,5 +515,41 @@ namespace UnitTest
         AZ_TEST_START_TRACE_SUPPRESSION;
         scriptContext.BindTo(&m_behaviorContext);
         AZ_TEST_STOP_TRACE_SUPPRESSION(0);
+    }
+
+    class ClassWithEnumClass
+    {
+    public:
+        AZ_TYPE_INFO(ClassWithEnumClass, "{DF867F22-00B6-4D8B-9967-B17E3CBA6AFC}");
+
+        TestEnum m_testEnumValue = TestEnum::Two;
+    };
+
+    TEST_F(BehaviorContextTestFixture, DISABLED_ClassWithEnumClass_CanAccessEnumClass_WhenBound)
+    {
+        m_behaviorContext.Class<ClassWithEnumClass>("ClassWithEnumClass")
+            ->Property("TestEnumValue", BehaviorValueProperty(&ClassWithEnumClass::m_testEnumValue))
+            ;
+
+        AZ::BehaviorClass* behaviorClass = m_behaviorContext.m_classes["ClassWithEnumClass"];
+        AZ::BehaviorProperty* behaviorProperty = behaviorClass->m_properties["TestEnumValue"];
+        AZ::BehaviorObject instance = behaviorClass->Create();
+
+        // read the property that stores a class enum value
+        {
+            TestEnum enumValue = TestEnum::One;
+            EXPECT_TRUE(behaviorProperty->m_getter->InvokeResult(enumValue, instance));
+            EXPECT_EQ(TestEnum::Two, enumValue);
+        }
+
+        // now set the property to One and validate it
+        {
+            TestEnum enumValue = TestEnum::Two;
+            EXPECT_TRUE(behaviorProperty->m_setter->Invoke(instance, TestEnum::One));
+            EXPECT_TRUE(behaviorProperty->m_getter->InvokeResult(enumValue, instance));
+            EXPECT_EQ(TestEnum::One, enumValue);
+        }
+
+        behaviorClass->Destroy(instance);
     }
 }

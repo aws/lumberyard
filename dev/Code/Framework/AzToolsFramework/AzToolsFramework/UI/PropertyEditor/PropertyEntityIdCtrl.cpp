@@ -46,6 +46,7 @@ namespace AzToolsFramework
 {
     PropertyEntityIdCtrl::PropertyEntityIdCtrl(QWidget* pParent)
         : QWidget(pParent)
+        , m_enableLayerAssignment(false)
         , m_acceptedEntityContextId(AzFramework::EntityContextId::CreateNull())
     {
         // create the gui, it consists of a layout, and in that layout, a text field for the value
@@ -131,15 +132,19 @@ namespace AzToolsFramework
                 });
             }
 
+            PickModeConfiguration pickModeConfiguration;
+
+            pickModeConfiguration.m_enableLayerPicking = m_enableLayerAssignment;
+
             if (!pickModeEntityContextId.IsNull())
             {
                 EditorPickModeNotificationBus::Event(
-                    pickModeEntityContextId, &EditorPickModeNotifications::OnEntityPickModeStarted);
+                    pickModeEntityContextId, &EditorPickModeNotifications::OnEntityPickModeStarted, pickModeConfiguration);
             }
             else
             {
                 // Broadcast if the entity context is unknown
-                EditorPickModeNotificationBus::Broadcast(&EditorPickModeNotifications::OnEntityPickModeStarted);
+                EditorPickModeNotificationBus::Broadcast(&EditorPickModeNotifications::OnEntityPickModeStarted, pickModeConfiguration);
             }
         }
     }
@@ -223,22 +228,29 @@ namespace AzToolsFramework
 
         if (EntityIdsFromMimeData(*event->mimeData(), &entityIdListContainer))
         {
-            SetCurrentEntityId(entityIdListContainer.m_entityIds[0], true, "");
+            AZStd::vector< AZ::EntityId > entityIdList = entityIdListContainer.m_entityIds;
 
-            if (entityIdListContainer.m_entityIds.size() > 1)
+            if (m_enableLayerAssignment)
+            {
+                entityIdList.insert(entityIdList.end(), entityIdListContainer.m_layerIds.begin(), entityIdListContainer.m_layerIds.end());
+            }
+
+            SetCurrentEntityId(entityIdList[0], true, "");
+
+            if (entityIdList.size() > 1)
             {
                 // Pop the first element off the list (handled above) and then request new elements for the rest of the list
-                entityIdListContainer.m_entityIds.erase(entityIdListContainer.m_entityIds.begin());
+                entityIdList.erase(entityIdList.begin());
 
                 // Need to pass this up to my parent if it is a container to properly handle this request
                 AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::Bus::Events::AddElementsToParentContainer, const_cast<PropertyEntityIdCtrl*>(this), entityIdListContainer.m_entityIds.size(),
-                    [&entityIdListContainer](void* dataPtr, const AZ::SerializeContext::ClassElement* classElement, bool noDefaultData, AZ::SerializeContext*) -> bool
+                    [&entityIdList](void* dataPtr, const AZ::SerializeContext::ClassElement* classElement, bool noDefaultData, AZ::SerializeContext*) -> bool
                 {
                     (void)noDefaultData;
                     if (classElement->m_typeId == azrtti_typeid<AZ::EntityId>())
                     {
-                        *reinterpret_cast<AZ::EntityId*>(dataPtr) = entityIdListContainer.m_entityIds[0];
-                        entityIdListContainer.m_entityIds.erase(entityIdListContainer.m_entityIds.begin());
+                        *reinterpret_cast<AZ::EntityId*>(dataPtr) = entityIdList[0];
+                        entityIdList.erase(entityIdList.begin());
                         return true;
                     }
                     return false;
@@ -282,16 +294,30 @@ namespace AzToolsFramework
             return false;
         }
 
-        if (entityIdListContainer->m_entityIds.empty())
+        // Early out check for determining if there is data that we can use inside of the mime data.
+        //
+        // Need to special case out layers, since we might not always want to assign them.
+        if (entityIdListContainer->m_entityIds.empty() && (!m_enableLayerAssignment || entityIdListContainer->m_layerIds.empty()))
         {
             return false;
+        }
+
+        AZ::EntityId targetId;
+
+        if (!entityIdListContainer->m_entityIds.empty())
+        {
+            targetId = entityIdListContainer->m_entityIds[0];
+        }
+        else if (!entityIdListContainer->m_layerIds.empty())
+        {
+            targetId = entityIdListContainer->m_layerIds[0];
         }
 
         if (!m_acceptedEntityContextId.IsNull())
         {
             // Check that the entity's owning context matches the one that this control accepts
             AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
-            AzFramework::EntityIdContextQueryBus::EventResult(contextId, entityIdListContainer->m_entityIds[0], &AzFramework::EntityIdContextQueryBus::Events::GetOwningContextId);
+            AzFramework::EntityIdContextQueryBus::EventResult(contextId, targetId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningContextId);
 
             if (contextId != m_acceptedEntityContextId)
             {
@@ -476,6 +502,11 @@ namespace AzToolsFramework
         m_pickButton->setVisible(supportsViewportEntityIdPicking);
     }
 
+    void PropertyEntityIdCtrl::SetAllowLayerAssignment(bool enableLayerAssignment)
+    {
+        m_enableLayerAssignment = enableLayerAssignment;
+    }
+
     QWidget* EntityIdPropertyHandler::CreateGUI(QWidget* pParent)
     {
         PropertyEntityIdCtrl* newCtrl = aznew PropertyEntityIdCtrl(pParent);
@@ -518,6 +549,14 @@ namespace AzToolsFramework
             else if (attrValue->template Read<decltype(incompatibleServices)>(incompatibleServices))
             {
                 GUI->SetIncompatibleServices(incompatibleServices);
+            }            
+        }
+        else if (attrib == AZ::Edit::Attributes::EnableLayerAssignment)
+        {
+            bool enableLayerAssignment = false;
+            if (attrValue->template Read<bool>(enableLayerAssignment))
+            {
+                GUI->SetAllowLayerAssignment(enableLayerAssignment);
             }
         }
     }

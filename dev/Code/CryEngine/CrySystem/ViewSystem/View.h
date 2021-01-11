@@ -124,6 +124,12 @@ public:
     const CCamera& GetCamera() const override { return m_camera; }
     void UpdateAudioListener(const Matrix34& rMatrix) override;
 
+    virtual bool ProjectWorldPointToScreen(const AZ::Vector3& worldPoint, AZ::Vector3& outScreenPoint);
+    virtual bool UnprojectScreenPointToWorld(const AZ::Vector3& screenPoint, AZ::Vector3& outWorldPoint);
+    virtual bool ProjectWorldPointToViewport(const AZ::Vector3& worldPoint, const AZ::Vector4& viewport, AZ::Vector3& outViewportPoint);
+    virtual bool UnprojectViewportPointToWorld(const AZ::Vector3& viewportPoint, const AZ::Vector4& viewport, AZ::Vector3& outWorldPoint);
+    virtual void GetProjectionMatrix(const float nearClipPlane, const float farClipPlane, AZ::Matrix4x4& outProjectionMatrix);
+
     void GetMemoryUsage(ICrySizer* s) const;
 
 protected:

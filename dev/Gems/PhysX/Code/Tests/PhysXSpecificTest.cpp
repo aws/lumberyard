@@ -411,12 +411,11 @@ namespace PhysX
         EXPECT_TRUE(strcmp(nativePointer->getConcreteTypeName(), "PxRigidDynamic") == 0);
     }
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     TEST_F(PhysXSpecificTest, TriggerArea_RigidBodyEnteringAndLeavingTrigger_EnterLeaveCallbackCalled)
     {
         // set up a trigger box
         auto triggerBox = TestUtils::CreateTriggerAtPosition<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 12.0f));
-        auto triggerBody = triggerBox->FindComponent<BoxColliderComponent>()->GetStaticRigidBody();
+        auto triggerBody = triggerBox->FindComponent<StaticRigidBodyComponent>()->GetStaticRigidBody();
         auto triggerShape = triggerBody->GetShape(0);
 
         TestTriggerAreaNotificationListener testTriggerAreaNotificationListener(triggerBox->GetId());
@@ -451,7 +450,6 @@ namespace PhysX
         EXPECT_EQ(exitedEvents[0].m_otherBody, testBoxBody);
         EXPECT_EQ(exitedEvents[0].m_otherShape, testBoxShape.get());
     }
-    AZ_POP_DISABLE_WARNING
 
     TEST_F(PhysXSpecificTest, TriggerArea_RigidBodiesEnteringAndLeavingTriggers_EnterLeaveCallbackCalled)
     {
@@ -556,14 +554,13 @@ namespace PhysX
         EXPECT_EQ(collisionEnd02.m_shape2, shape01);
     }
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     TEST_F(PhysXSpecificTest, RigidBody_CollisionCallback_SimpleCallbackSphereFallingOnStaticBox)
     {
         auto obj01 = TestUtils::AddUnitTestObject<SphereColliderComponent>(AZ::Vector3(0.0f, 0.0f, 10.0f), "TestSphere01");
         auto obj02 = TestUtils::AddStaticUnitTestObject<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 0.0f), "TestBox01");
 
         auto body01 = obj01->FindComponent<RigidBodyComponent>()->GetRigidBody();
-        auto body02 = obj02->FindComponent<BoxColliderComponent>()->GetStaticRigidBody();
+        auto body02 = obj02->FindComponent<StaticRigidBodyComponent>()->GetStaticRigidBody();
 
         auto shape01 = body01->GetShape(0).get();
         auto shape02 = body02->GetShape(0).get();
@@ -594,7 +591,6 @@ namespace PhysX
         EXPECT_EQ(listener02.m_beginCollisions[0].m_body2, body01);
         EXPECT_EQ(listener02.m_beginCollisions[0].m_shape2, shape01);
     }
-    AZ_POP_DISABLE_WARNING
 
     TEST_F(PhysXSpecificTest, RigidBody_CollisionCallback_SimpleCallbackSphereFallingOnTerrain)
     {
@@ -772,12 +768,11 @@ namespace PhysX
         EXPECT_TRUE(com.IsClose(AZ::Vector3::CreateOne(), PhysXSpecificTest::tolerance));
     }
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     TEST_F(PhysXSpecificTest, TriggerArea_BodyDestroyedInsideTrigger_OnTriggerExitEventRaised)
     {
         // set up a trigger box
         auto triggerBox = TestUtils::CreateTriggerAtPosition<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 0.0f));
-        auto triggerBody = triggerBox->FindComponent<BoxColliderComponent>()->GetStaticRigidBody();
+        auto triggerBody = triggerBox->FindComponent<StaticRigidBodyComponent>()->GetStaticRigidBody();
 
         // Create a test box above the trigger so when it falls down it'd enter and leave the trigger box
         auto testBox = TestUtils::AddUnitTestObject(AZ::Vector3(0.0f, 0.0f, 1.5f), "TestBox");
@@ -819,7 +814,7 @@ namespace PhysX
     {
         // Set up a static non trigger box
         auto staticBox = TestUtils::AddStaticUnitTestObject<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 0.0f));
-        auto staticBody = staticBox->FindComponent<BoxColliderComponent>()->GetStaticRigidBody();
+        auto staticBody = staticBox->FindComponent<StaticRigidBodyComponent>()->GetStaticRigidBody();
 
         // Create a test trigger box above the static box so when it falls down it'd enter and leave the trigger box
         auto dynamicTrigger = TestUtils::CreateDynamicTriggerAtPosition<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 5.0f));
@@ -856,7 +851,6 @@ namespace PhysX
         EXPECT_EQ(exitedEvents[0].m_triggerBody, dynamicBody);
         EXPECT_EQ(exitedEvents[0].m_otherBody, staticBody);
     }
-    AZ_POP_DISABLE_WARNING
 
     TEST_F(PhysXSpecificTest, TriggerArea_BodyDestroyedOnTriggerEnter_DoesNotCrash)
     {

@@ -279,11 +279,16 @@ namespace JsonSerializationTests
     {
     public:
         using Container = AZStd::vector<SimpleClass>;
+        using BaseClassContainer = AZStd::vector<AZStd::shared_ptr<BaseClass>>;
 
         void RegisterAdditional(AZStd::unique_ptr<AZ::SerializeContext>& serializeContext) override
         {
             SimpleClass::Reflect(serializeContext, true);
+            SimpleInheritence::Reflect(serializeContext, true);
             serializeContext->RegisterGenericType<Container>();
+            serializeContext->RegisterGenericType<AZStd::shared_ptr<BaseClass>>();
+            serializeContext->RegisterGenericType<AZStd::shared_ptr<SimpleInheritence>>();
+            serializeContext->RegisterGenericType<BaseClassContainer>();
         }
     };
 
@@ -300,6 +305,34 @@ namespace JsonSerializationTests
         Expect_DocStrEq("[{}]");
     }
 
+    TEST_F(JsonVectorSerializerTests, Store_NonEmptyVectorWhoseElementsHaveAllDefaults_ReturnsDefaultsUsed)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        BaseClassContainer instance;
+        instance.emplace_back(AZStd::make_shared<BaseClass>());
+        instance.emplace_back(AZStd::make_shared<BaseClass>());
+
+        ResultCode result = m_serializer->Store(*m_jsonDocument, &instance, nullptr, azrtti_typeid(&instance), *m_jsonSerializationContext);
+        EXPECT_EQ(Processing::Completed, result.GetProcessing());
+        EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
+        Expect_DocStrEq("[{},{}]");
+    }
+
+    TEST_F(JsonVectorSerializerTests, Store_VectorValuesAreInheritedClassWithAllDefaults_DoesNotReturnDefaultsUsed)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        BaseClassContainer instance;
+        instance.emplace_back(AZStd::make_shared<SimpleInheritence>());
+        instance.emplace_back(AZStd::make_shared<SimpleInheritence>());
+
+        ResultCode result = m_serializer->Store(*m_jsonDocument, &instance, nullptr, azrtti_typeid(&instance), *m_jsonSerializationContext);
+        EXPECT_EQ(Processing::Completed, result.GetProcessing());
+        EXPECT_EQ(Outcomes::PartialDefaults, result.GetOutcome());
+        EXPECT_NE(Outcomes::DefaultsUsed, result.GetOutcome());
+        Expect_DocStrEq(R"([{"$type": "SimpleInheritence"},{"$type": "SimpleInheritence"}])");
+    }
 
     // Specific tests for AZStd::fixed_vector
 

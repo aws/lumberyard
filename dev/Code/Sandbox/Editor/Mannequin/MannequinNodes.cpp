@@ -106,10 +106,13 @@ public:
     bool canDropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) const override
     {
         if (!QAbstractItemModel::canDropMimeData(data, action, row, column, parent))
+        {
             return false;
+        }
+        
         if (data->hasFormat(EditorDragDropHelpers::GetAnimationNameClipboardFormat()))
         {
-            QModelIndex i = parent.child(row, column);
+            QModelIndex i = index(row, column, parent);
             return m_widget->IsPointValidForAnimationInContextDrop(i, data);
         }
         else if (data->hasFormat(QStringLiteral("application/x-mannequin-track-index")))
@@ -131,7 +134,14 @@ public:
         }
         if (data->hasFormat(EditorDragDropHelpers::GetAnimationNameClipboardFormat()))
         {
-            return m_widget->CreatePointForAnimationInContextDrop(m_widget->IsPointValidForAnimationInContextDrop(parent.child(row, column), data), QPoint(), data);
+            return m_widget->CreatePointForAnimationInContextDrop(
+                m_widget->IsPointValidForAnimationInContextDrop(
+                    index(row, column, parent),
+                    data
+                ),
+                QPoint(),
+                data
+            );
         }
         else if (data->hasFormat(QStringLiteral("application/x-mannequin-track-index")))
         {
@@ -152,7 +162,7 @@ public:
             QModelIndex target = parent;
             if (row >= 0 && row < rowCount(parent))
             {
-                target = parent.child(row, 0);
+                target = index(row, 0, parent);
             }
             m_widget->OnDragAndDrop(indexes, target);
             return true;
@@ -200,7 +210,7 @@ public:
             sequenceTrack->OnChange();
         }
         endInsertRows();
-        return nodeIndex.child(count, 0);
+        return index(count, 0, nodeIndex);
     }
 
     void setTrackVisible(CSequencerNode* node, CSequencerTrack* track, bool visible)
@@ -260,7 +270,7 @@ public:
     bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override
     {
         CSequencerNode* node = parent.data(NodeRole).value<CSequencerNode*>();
-        CSequencerTrack* track = parent.child(row, 0).data(TrackRole).value<CSequencerTrack*>();
+        CSequencerTrack* track = index(row, 0, parent).data(TrackRole).value<CSequencerTrack*>();
         if (!node || !track)
         {
             return false;
@@ -595,7 +605,8 @@ protected:
         int numRecords = rowCount(index);
         for (int i = 0; i < numRecords; ++i)
         {
-            muteNodesRecursive(index.child(i, 0), bMute);
+            const QModelIndex& child = index.model()->index(1, 0, index);
+            muteNodesRecursive(child, bMute);
         }
     }
 
@@ -611,7 +622,7 @@ protected:
         int numRecords = rowCount(index);
         for (uint32 i = 0; i < numRecords; ++i)
         {
-            const QModelIndex child = index.child(i, 0);
+            const QModelIndex child = index.model()->index(i, 0, index);
             if (CSequencerTrack* track = child.data(TrackRole).value<CSequencerTrack*>())
             {
                 switch (track->GetParameterType())
@@ -898,7 +909,7 @@ void CMannNodesWidget::SelectNode(const char* sName)
     const int count = m_model->rowCount(root);
     for (int i = 0; i < count; ++i)
     {
-        const QModelIndex index = root.child(i, 0);
+        const QModelIndex index = root.model()->index(i, 0, root);
         CSequencerNode* node = index.data(MannNodesTreeModel::NodeRole).value<CSequencerNode*>();
         if (node != nullptr && _stricmp(node->GetName(), sName) == 0)
         {

@@ -1,0 +1,24 @@
+{
+    "Dependencies": [
+        {
+            "Uuid": "c7d1af5bc3eb423193bd9100c32d26cd",
+            "VersionConstraints": [
+                ">=0.1"
+            ],
+            "_comment": "Websockets"
+        }
+    ],
+    "GemFormatVersion": 4,
+    "Uuid": "025f343454f8495bb26bebffeb2103a6",
+    "Name": "TwitchChatPlay",
+    "DisplayName": "Twitch Chat API",
+    "Version": "0.1.0",
+    "Summary": "Connects to the Twitch IRC chat and allows interactions with the community.",
+    "Tags": ["Networking, Twitch, WebsocketsGem"],
+    "IconPath": "preview.png",
+    "Modules": [
+        {
+            "Type": "GameModule"
+        }
+    ]
+}

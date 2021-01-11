@@ -135,7 +135,7 @@ namespace AssetProcessor
         QVariant leftData = sourceModel()->data(left);
         QVariant rightData = sourceModel()->data(right);
 
-        return rightData < leftData;
+        return rightData.toString() < leftData.toString();
     }
 
     void AssetTreeFilterModel::ForceModelIndexVisible(const QModelIndex& sourceIndex)

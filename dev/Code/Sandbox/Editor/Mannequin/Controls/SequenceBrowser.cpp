@@ -52,8 +52,8 @@ CSequenceBrowser::CSequenceBrowser(CPreviewerPage& previewerPage, QWidget* paren
     QStringList folders;
     folders.push_back(GetSequenceFolder());
     ui->TREE->init(folders, kSequenceFileNameSpec, kRootElementName);
-    connect(ui->TREE, &QTreeWidget::itemDoubleClicked, this, &CSequenceBrowser::OnTreeDoubleClicked);
-    connect(ui->OPEN, &QPushButton::clicked, this, &CSequenceBrowser::OnOpen);
+    QObject::connect(ui->TREE, &CFolderTreeCtrl::ItemDoubleClicked, this, &CSequenceBrowser::OnTreeDoubleClicked);
+    QObject::connect(ui->OPEN, &QPushButton::clicked, this, &CSequenceBrowser::OnOpen);
 }
 
 void CSequenceBrowser::OnTreeDoubleClicked()
@@ -63,8 +63,8 @@ void CSequenceBrowser::OnTreeDoubleClicked()
 
 void CSequenceBrowser::OnOpen()
 {
-    QList<QTreeWidgetItem*> selectedItems = ui->TREE->selectedItems();
-    QTreeWidgetItem* selectedItem = selectedItems.empty() ? nullptr : selectedItems.first();
+    QList<QStandardItem*> selectedItems = ui->TREE->GetSelectedItems();
+    QStandardItem* selectedItem = selectedItems.empty() ? nullptr : selectedItems.first();
 
     if (selectedItem == NULL)
     {

@@ -281,6 +281,8 @@ namespace ScriptCanvasEditor
 
             double m_snapDistance;
 
+            bool m_enableGroupDoubleClickCollapse;
+
             bool m_allowBookmarkViewpointControl;
             bool m_allowNodeNudging;
 

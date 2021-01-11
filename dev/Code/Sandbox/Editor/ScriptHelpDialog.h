@@ -43,6 +43,8 @@ public:
 Q_SIGNALS:
     void commandFilterChanged(const QString& text);
     void moduleFilterChanged(const QString& text);
+    void descriptionFilterChanged(const QString& text);
+    void exampleFilterChanged(const QString& text);
 private Q_SLOTS:
     void repositionLineEdits();
 protected:
@@ -50,6 +52,8 @@ protected:
 private:
     QLineEdit* const m_commandFilter;
     QLineEdit* const m_moduleFilter;
+    QLineEdit* const m_descriptionFilter;
+    QLineEdit* const m_exampleFilter;
     int m_lineEditHeightOffset;
 };
 
@@ -63,9 +67,13 @@ public:
 
     void setCommandFilter(const QString&);
     void setModuleFilter(const QString&);
+    void setDescriptionFilter(const QString& text);
+    void setExampleFilter(const QString& text);
 private:
     QString m_commandFilter;
     QString m_moduleFilter;
+    QString m_descriptionFilter;
+    QString m_exampleFilter;
 };
 
 class ScriptHelpModel
@@ -78,7 +86,6 @@ public:
         ColumnCommand,
         ColumnModule,
         ColumnDescription,
-        ColumnExample,
         ColumnCount // keep at end, for iteration purposes
     };
 

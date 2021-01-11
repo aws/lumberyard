@@ -3,6 +3,7 @@
     {
         "Tests": 
         [
+            "Tests/ActorBusTests.cpp",
             "Tests/ActorComponentBusTests.cpp",
             "Tests/ActorFixture.cpp",
             "Tests/ActorFixture.h",
@@ -80,6 +81,7 @@
             "Tests/MorphSkinAttachmentTests.cpp",
             "Tests/MotionEventCommandTests.cpp",
             "Tests/MotionEventTrackTests.cpp",
+            "Tests/MotionExtractionBusTests.cpp",
             "Tests/MotionExtractionTests.cpp",
             "Tests/MotionInstanceTests.cpp",
             "Tests/MotionSamplingTests.cpp",
@@ -90,7 +92,9 @@
             "Tests/RagdollCommandTests.cpp",
             "Tests/RandomMotionSelectionTests.cpp",
             "Tests/RenderBackendManagerTests.cpp",
+	          "Tests/SelectionListTests.cpp",
             "Tests/SkeletalLODTests.cpp",
+            "Tests/SkeletonNodeSearchTests.cpp",
             "Tests/SimpleMotionComponentBusTests.cpp",
             "Tests/SimulatedObjectCommandTests.cpp",
             "Tests/SimulatedObjectSerializeTests.cpp",

@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
+
 #include <QProxyStyle>
 
 class QSettings;
@@ -23,27 +24,26 @@ namespace AzQtComponents
 {
     class Style;
 
+    //! Class to handle styling and painting of QToolButton controls.
     class AZ_QT_COMPONENTS_API ToolButton
     {
     public:
+        //! Style configuration for the ToolButton class.
         struct Config
         {
-            int buttonIconSize;
-            int defaultButtonMargin;
-            int menuIndicatorWidth;
-            QColor checkedStateBackgroundColor;
-            QString menuIndicatorIcon;
-            QSize menuIndicatorIconSize;
+            int buttonIconSize;                     //!< The default size of button icons in pixels.
+            int defaultButtonMargin;                //!< Margin around ToolButton controls, in pixels. All directions get the same margin.
+            int menuIndicatorWidth;                 //!< Width of the menu indicator arrow in pixels.
+            QColor checkedStateBackgroundColor;     //!< Background color for checkable ToolButtons set to the checked state.
+            QString menuIndicatorIcon;              //!< Path to the indicator icon. Svg images recommended.
+            QSize menuIndicatorIconSize;            //!< Size of the indicator icon. Size must be proportional to the icon's ratio.
         };
 
-        /*!
-        * Loads the button config data from a settings object.
-        */
+        //! Sets the ToolButton style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the ToolButton.
         static Config loadConfig(QSettings& settings);
-
-        /*!
-        * Returns default button config data.
-        */
+        //! Gets the default ToolButton style configuration.
         static Config defaultConfig();
 
     private:

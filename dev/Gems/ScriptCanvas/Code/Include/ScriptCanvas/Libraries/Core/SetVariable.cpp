@@ -19,7 +19,6 @@
 #include <ScriptCanvas/Libraries/Core/SetVariable.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
 
-
 namespace ScriptCanvas
 {
     namespace Nodes
@@ -281,6 +280,11 @@ namespace ScriptCanvas
                                 varNameToIdList.emplace_back(variablePair.first, variablePair.second.GetVariableName());
                             }
                         }
+
+                        AZStd::sort(varNameToIdList.begin(), varNameToIdList.end(), [](const AZStd::pair<VariableId, AZStd::string>& lhs, const AZStd::pair<VariableId, AZStd::string>& rhs)
+                        {
+                            return lhs.second < rhs.second;
+                        });
                     }
                 }
 

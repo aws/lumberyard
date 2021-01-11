@@ -662,10 +662,13 @@ namespace GraphModelIntegration
         AZ::EntityId connectionUiId = m_elementMap.Find(connection);
         if (connectionUiId.IsValid())
         {
-            bool success = false;
-            GraphCanvas::SceneRequestBus::EventResult(success, GetGraphCanvasSceneId(), &GraphCanvas::SceneRequests::RemoveConnection, connectionUiId);
+            AZStd::unordered_set<AZ::EntityId> deleteIds = { connectionUiId };
 
-            return success;
+            // This general Delete method will in turn call SceneRequests::RemoveConnection,
+            // but just calling RemoveConnection by itself won't actually delete the ConnectionComponent itself.
+            GraphCanvas::SceneRequestBus::Event(GetGraphCanvasSceneId(), &GraphCanvas::SceneRequests::Delete, deleteIds);
+
+            return true;
         }
 
         return false;

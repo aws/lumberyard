@@ -197,7 +197,10 @@ namespace AudioControls
             TImplControlType type = GetControlType(pItem);
             EACEControlType compatibleType = pAudioSystemEditorImpl->ImplTypeToATLType(type);
 
-            pItem->setIcon(0, QIcon(QString(pAudioSystemEditorImpl->GetTypeIcon(type).data())));
+            QIcon icon(QString(pAudioSystemEditorImpl->GetTypeIcon(type).data()));
+            icon.addFile(QString(pAudioSystemEditorImpl->GetTypeIconSelected(type).data()), QSize(), QIcon::Selected);
+            
+            pItem->setIcon(0, icon);
             pItem->setFlags(pItem->flags() & ~Qt::ItemIsDropEnabled);
 
             if (compatibleType != eACET_NUM_TYPES)

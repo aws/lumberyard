@@ -28,7 +28,7 @@ public:
         const QString& defaultSuffix = {},
         const QString& directory = {},
         const QString& filter = {},
-        QFileDialog::Options options = 0,
+        QFileDialog::Options options = QFileDialog::Options(),
         const QString& caption = {},
         QWidget* parent = nullptr);
     virtual ~CAutoDirectoryRestoreFileDialog() {}

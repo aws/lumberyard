@@ -159,7 +159,7 @@ Vec3 CSetVectorDlg::GetVectorFromString(const QString& vecString)
     const int maxCoordinates = 3;
     float vec[maxCoordinates] = { 0, 0, 0 };
 
-    const QStringList parts = vecString.split(QRegularExpression("[\\s,;\\t]"), QString::SkipEmptyParts);
+    const QStringList parts = vecString.split(QRegularExpression("[\\s,;\\t]"), Qt::SkipEmptyParts);
     const int checkCoords = AZStd::GetMin(parts.count(), maxCoordinates);
     for (int k = 0; k < checkCoords; ++k)
     {

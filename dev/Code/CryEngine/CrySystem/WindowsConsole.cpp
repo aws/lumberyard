@@ -781,6 +781,8 @@ void CWindowsConsole::CleanUp()
 
 void CWindowsConsole::DrawFull()
 {
+    m_fullScreenBuffer.Clear(); 
+
     for (DynArray< SConDrawCmd >::iterator iter = m_drawCmds.begin(); iter != m_drawCmds.end(); ++iter)
     {
         m_fullScreenBuffer.PutText(iter->x, iter->y, iter->text);

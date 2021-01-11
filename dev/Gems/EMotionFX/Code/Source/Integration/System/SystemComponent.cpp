@@ -54,6 +54,7 @@
 #include <Integration/System/SystemComponent.h>
 
 #include <AzFramework/Physics/World.h>
+#include <Integration/MotionExtractionBus.h>
 
 
 #if defined(EMOTIONFXANIMATION_EDITOR) // EMFX tools / editor includes
@@ -699,15 +700,17 @@ namespace EMotionFX
                         const AZ::EntityId entityId = entity->GetId();
 
                         // Check if we have any physics character controllers.
+                        bool hasCustomMotionExtractionController = false;
                         bool hasPhysicsController = false;
-                        bool hasCryPhysicsController = false;
+
                         Physics::CharacterRequestBus::EventResult(hasPhysicsController, entityId, &Physics::CharacterRequests::IsPresent);
-#if ENABLE_CRY_PHYSICS
-                        LmbrCentral::CryCharacterPhysicsRequestBus::EventResult(hasCryPhysicsController, entityId, &LmbrCentral::CryCharacterPhysicsRequests::IsCryCharacterControllerPresent);
-#endif
+                        if (!hasPhysicsController)
+                        {
+                            hasCustomMotionExtractionController = MotionExtractionRequestBus::FindFirstHandler(entityId) != nullptr;
+                        }
 
                         // If we have a physics controller.
-                        if (hasPhysicsController || hasCryPhysicsController)
+                        if (hasCustomMotionExtractionController || hasPhysicsController)
                         {
                             const float deltaTimeInv = (timeDelta > 0.0f) ? (1.0f / timeDelta) : 0.0f;
 
@@ -725,14 +728,11 @@ namespace EMotionFX
                                 // delaying the calculation until the next physics system update. Thus, we will need to get the updated current transform.
                                 AZ::TransformBus::EventResult(currentTransform, entityId, &AZ::TransformBus::Events::GetWorldTM);
                             }
-#if ENABLE_CRY_PHYSICS
-                            else if (hasCryPhysicsController)
+                            else if (hasCustomMotionExtractionController)
                             {
-                                const AZ::Vector3 scale = currentTransform.ExtractScaleExact();
-                                const AZ::Vector3 velocity = positionDelta * scale * deltaTimeInv;
-                                EBUS_EVENT_ID(entityId, LmbrCentral::CryCharacterPhysicsRequestBus, RequestVelocity, velocity, 0);
+                                MotionExtractionRequestBus::Event(entityId, &MotionExtractionRequestBus::Events::ExtractMotion, positionDelta, timeDelta);
+                                AZ::TransformBus::EventResult(currentTransform, entityId, &AZ::TransformBus::Events::GetWorldTM);
                             }
-#endif
 
                             // Calculate the difference in rotation and apply that to the entity transform.
                             const AZ::Quaternion actorInstanceRotation = actorInstance->GetWorldSpaceTransform().mRotation;

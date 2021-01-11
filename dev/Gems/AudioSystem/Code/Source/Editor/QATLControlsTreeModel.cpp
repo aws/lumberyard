@@ -192,11 +192,11 @@ namespace AudioControls
         // Delete children first and in reverse order
         // of their row (so that we can undo them in the same order)
         AZStd::vector<QModelIndex> childs;
-        QModelIndex child = root.child(0, 0);
+        QModelIndex child = index(0, 0, root);
         for (int i = 1; child.isValid(); ++i)
         {
             childs.push_back(child);
-            child = root.child(i, 0);
+            child = index(i, 0, root);
         }
 
         const size_t size = childs.size();

@@ -13,6 +13,8 @@
 
 #include <qlineedit.h>
 
+#include <AzCore/Component/TickBus.h>
+
 #include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
 
 #include <GraphCanvas/Components/NodePropertyDisplay/StringDataInterface.h>
@@ -59,7 +61,8 @@ namespace GraphCanvas
     }
     
     class StringNodePropertyDisplay
-        : public NodePropertyDisplay 
+        : public NodePropertyDisplay
+        , public AZ::SystemTickBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(StringNodePropertyDisplay, AZ::SystemAllocator, 0);
@@ -79,8 +82,13 @@ namespace GraphCanvas
         void OnDragDropStateStateChanged(const DragDropState& dragState) override;
         ////
 
+        // AZ::SystemTickBus::Handler
+        void OnSystemTick();
+        ////
+
     private:
 
+        void OnFocusOut();
         void EditStart();
         void SubmitValue();
         void EditFinished();

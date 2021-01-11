@@ -154,7 +154,7 @@ protected:
         {
             return 0;
         }
-        else if (aData < bData)
+        else if (aData.toString() < bData.toString())
         {
             return -1;
         }
@@ -396,10 +396,10 @@ public:
     {
         auto compare = [column](const QVariant& v1, const QVariant& v2)
             {
-                return GetProperty(v1, column) < GetProperty(v2, column);
+                return GetProperty(v1, column).toString() < GetProperty(v2, column).toString();
             };
 
-        qSort(list.begin(), list.end(), compare);
+        std::sort(list.begin(), list.end(), compare);
     }
 
     // State

@@ -89,7 +89,7 @@ namespace PhysXCharacters
         void SetSlopeLimitDegrees(float slopeLimitDegrees) override;
         AZ::Vector3 GetVelocity() const override;
         AZ::Vector3 TryRelativeMove(const AZ::Vector3& deltaPosition, float deltaTime) override;
-        bool IsPresent() const override { return true; }
+        bool IsPresent() const override { return IsPhysicsEnabled(); }
 
         // WorldBodyRequestBus
         void EnablePhysics() override;

@@ -41,8 +41,9 @@ namespace Maestro
         bool SetAnimatedPropertyValue(AZ::EntityId entityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress, const Maestro::SequenceComponentRequests::AnimatedValue& value);
 
         void GetAssetDuration(Maestro::SequenceComponentRequests::AnimatedValue& returnValue, AZ::ComponentId componentId, const AZ::Data::AssetId& assetId);
+        void GetAssetTypeName(AZStd::string& returnValue, AZ::EntityId entityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress);
 
-        AZStd::unordered_map<Maestro::SequenceComponentRequests::AnimatablePropertyAddress, AZ::BehaviorEBus::VirtualProperty*> m_addressToBehaviorVirtualPropertiesMap;        
+        AZStd::unordered_map<Maestro::SequenceComponentRequests::AnimatablePropertyAddress, AZ::BehaviorEBus::VirtualProperty*> m_addressToBehaviorVirtualPropertiesMap;
         AZStd::unordered_map<AZ::ComponentId, AZ::BehaviorEBusEventSender*> m_addressToGetAssetDurationMap;
     };
 } // namespace Maestro

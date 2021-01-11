@@ -443,12 +443,12 @@ namespace AZ
             struct AssetConnectionPolicy
                 : public EBusConnectionPolicy<Bus>
             {
-                static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
+                static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, typename Bus::Context::ConnectLockGuard& connectLock, const typename Bus::BusIdType& id = 0)
                 {
                     // It's possible for users to open a level while the AP is still processing and as such not all legacy asset ids were known at the time
                     // of loading. Check now to see if the assets have been compiled and find the actual asset id to connect to.
                     typename Bus::BusIdType actualId = AssetInternal::ResolveAssetId(id);
-                    EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, actualId);
+                    EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, connectLock, actualId);
 
                     // If the asset is ready, notify this handler manually.
                     // It is safe to do this because we know that if the asset
@@ -458,11 +458,14 @@ namespace AZ
                     Asset<AssetData> assetData(AssetInternal::GetAssetData(actualId));
                     if (assetData)
                     {
-                        if (assetData->GetStatus() == AssetData::AssetStatus::Ready)
+                        auto curStatus = assetData->GetStatus();
+                        bool isError = assetData->IsError();
+                        connectLock.unlock();
+                        if (curStatus == AssetData::AssetStatus::Ready)
                         {
                             handler->OnAssetReady(assetData);
                         }
-                        else if (assetData->IsError())
+                        else if (isError)
                         {
                             handler->OnAssetError(assetData);
                         }

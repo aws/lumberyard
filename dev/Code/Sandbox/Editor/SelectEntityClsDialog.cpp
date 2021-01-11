@@ -184,7 +184,7 @@ void SelectEntityClsModel::ReloadEntities()
         QString clsFile = scripts[i]->GetFile();
         clsFile.replace("Scripts/Default/Entities/", "");
 
-        QStringList tokens = clsFile.split('/', QString::SkipEmptyParts);
+        QStringList tokens = clsFile.split('/', Qt::SkipEmptyParts);
         if (!tokens.isEmpty())
         {
             tokens.pop_back();

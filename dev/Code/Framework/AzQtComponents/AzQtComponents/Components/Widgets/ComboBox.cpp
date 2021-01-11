@@ -16,15 +16,15 @@
 #include <AzQtComponents/Components/ConfigHelpers.h>
 
 AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
-#include <QComboBox>
-#include <QStyledItemDelegate>
 #include <QAbstractItemView>
+#include <QApplication>
+#include <QComboBox>
+#include <QDebug>
+#include <QDesktopWidget>
 #include <QGraphicsDropShadowEffect>
 #include <QLineEdit>
 #include <QSettings>
-#include <QDebug>
-#include <QApplication>
-#include <QDesktopWidget>
+#include <QStyledItemDelegate>
 #include <QToolButton>
 
 #include <QtWidgets/private/qstylesheetstyle_p.h>
@@ -35,6 +35,21 @@ namespace AzQtComponents
     const int g_errorBorderWidth = 1;
 
     static const QString g_customCheckStateClass = QStringLiteral("CustomCheckState");
+
+    ComboBoxValidator::ComboBoxValidator(QObject* parent)
+        : QValidator(parent)
+    {
+    }
+
+    QValidator::State ComboBoxValidator::validateIndex(int) const
+    {
+        return QValidator::Acceptable;
+    }
+
+    QValidator::State ComboBoxValidator::validate(QString&, int&) const
+    {
+        return QValidator::Acceptable;
+    }
 
     class ComboBoxWatcher : public QObject
     {
@@ -447,7 +462,7 @@ namespace AzQtComponents
 
         if (opt->checkState != Qt::Unchecked)
         {
-            style->QProxyStyle::drawPrimitive(QStyle::PE_IndicatorViewItemCheck, opt, painter, widget);
+            style->QProxyStyle::drawPrimitive(QStyle::PE_IndicatorItemViewItemCheck, opt, painter, widget);
         }
 
         return true;

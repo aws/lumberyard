@@ -40,7 +40,7 @@ CoordinateSystemToolbarSection::CoordinateSystemToolbarSection(QToolBar* parent,
     {
         parent->addWidget(m_combobox);
 
-        for (const auto& s : ViewportInteraction::CoordinateSystem())
+        for (const auto s : ViewportInteraction::CoordinateSystem())
         {
             m_combobox->addItem(ViewportHelpers::CoordinateSystemToString((int)s), (int)s);
         }

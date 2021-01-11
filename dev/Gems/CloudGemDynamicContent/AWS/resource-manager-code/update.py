@@ -12,9 +12,14 @@
 
 import content_manifest
 import dynamic_content_settings
+import dynamic_content_migrator
+
+def before_this_resource_group_updated(hook, deployment_name, **kwargs):
+    dynamic_content_migrator.export_current_table_entries(hook.context, deployment_name)
 
 
 def after_this_resource_group_updated(hook, deployment_name, **kwargs):
+    dynamic_content_migrator.import_table_entries_from_backup(hook.context, deployment_name)
 
     if not content_manifest.validate_writable(hook.context, None):
         # Not raising here - we want to continue and let the user upload after

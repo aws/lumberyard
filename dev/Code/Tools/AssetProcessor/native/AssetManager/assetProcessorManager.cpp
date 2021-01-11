@@ -1310,12 +1310,29 @@ namespace AssetProcessor
 
                 WriteProductTableInfo(pair, newLegacySubIDs[productIdx], dependencySet, job.m_platform);
 
-                // Add the resolved path dependencies to the dependency container
+                // Add the resolved path dependencies to the dependency set
                 for (const auto& resolvedPathDep : resolvedDependencies)
                 {
                     dependencySet.emplace(pair.first.m_productID, resolvedPathDep.m_dependencyId.m_guid, resolvedPathDep.m_dependencyId.m_subId, resolvedPathDep.m_flags, job.m_platform, false);
                 }
 
+                // Ensure this product does not list itself as a product dependency
+                auto conflictItr = find_if(dependencySet.begin(), dependencySet.end(),
+                    [&](AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& dependencyEntry)
+                    {
+                        return dependencyEntry.m_dependencySubID == pair.first.m_subID
+                            && dependencyEntry.m_dependencySourceGuid == source.m_sourceGuid; 
+                    });
+
+                if (conflictItr != dependencySet.end())
+                {
+                    dependencySet.erase(conflictItr);
+                    AZ_Warning(AssetProcessor::ConsoleChannel, false,
+                        "Invalid dependency: Product Asset ( %s ) has listed itself as one of its own Product Dependencies.",
+                        pair.first.m_productName.c_str());
+                }
+
+                // Add all dependencies to the dependency container
                 AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer dependencyContainer;
                 dependencyContainer.reserve(dependencySet.size());
 

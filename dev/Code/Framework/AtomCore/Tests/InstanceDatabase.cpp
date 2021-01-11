@@ -261,7 +261,7 @@ namespace UnitTest
         while (threadCount > 0 && !timedOut)
         {
             AZStd::unique_lock<AZStd::mutex> lock(mutex);
-            timedOut = cv.wait_until(lock, AZStd::chrono::system_clock::now() + AZStd::chrono::seconds(durationSeconds * 2));
+            timedOut = (AZStd::cv_status::timeout == cv.wait_until(lock, AZStd::chrono::system_clock::now() + AZStd::chrono::seconds(durationSeconds * 2)));
         }
 
         EXPECT_TRUE(threadCount == 0) << "One or more threads appear to be deadlocked at " << timer.GetDeltaTimeInSeconds() << " seconds";

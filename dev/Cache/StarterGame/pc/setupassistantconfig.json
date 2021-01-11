@@ -119,7 +119,7 @@
             "categories" : ["compiler"],
             "hosts" : [ "windows" ],
             "wafPlatforms": ["win_x64_vs2017"],
-            "default" : true
+            "default" : false
         },
         {
             "identifier" : "vc142",
@@ -497,7 +497,7 @@
                 {
                     "hostOS": ["macOS"],
                     "source": "./$TOOLSFOLDERNAME$/Python/python3.sh",
-                    "params": "$TOOLSFOLDERNAME$/Redistributables/FbxSdk/2016.1.2-az.1/fbx_install_mac.py \"$THIRDPARTYFOLDERPATH$/FbxSdk/2016.1.2-az.1\""
+                    "params": "$TOOLSFOLDERNAME$/Redistributables/FbxSdk/2016.1.2-az.1/fbx_install_mac.py $THIRDPARTYFOLDERPATH$/FbxSdk/2016.1.2-az.1"
                 }
             ],
             "symlinks" :
@@ -810,8 +810,8 @@
         {
             "identifier": "qt",
             "name": "qtName",
-            "version": "5.12.4.1-az",
-            "source": "Qt/5.12.4.1-az",
+            "version": "5.15.1.1-az",
+            "source": "Qt/5.15.1.1-az",
             "optional": 0,
             "description": "qtDescriptionSummary",
             "detailedInstructions": "qtDetailedInstructions",
@@ -820,25 +820,25 @@
             "symlinks":
             [
                 {
-                    "source": "Qt/5.12.4.1-az",
+                    "source": "Qt/5.15.1.1-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "LICENSE"
                 },
                 {
                     "compilers": [ "vc141", "vc142" ],
-                    "source": "Qt/5.12.4.1-az",
+                    "source": "Qt/5.15.1.1-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
-                    "exampleFile": "msvc2017_64/bin/moc.exe"
+                    "exampleFile": "msvc2019_64/bin/moc.exe"
                 },
                 {
                     "hostOS": [ "macOS" ],
-                    "source": "Qt/5.12.4.1-az",
+                    "source": "Qt/5.15.1.1-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "clang_64/bin/moc"
                 },
                 {
                     "hostOS": [ "linux" ],
-                    "source": "Qt/5.12.4.1-az",
+                    "source": "Qt/5.15.1.1-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "gcc_64/bin/moc"
                 }
@@ -929,8 +929,8 @@
         {
            "identifier" : "GameLiftServerSDK",
             "name" : "GameLiftServerSDKName",
-            "version": "3.4.0",
-            "source":  "AWS/GameLift/3.4.0",
+            "version": "3.4.1",
+            "source":  "AWS/GameLift/3.4.1",
             "optional" : 0,
             "description" : "GameLiftServerSDKDescriptionSummary",
             "detailedInstructions" : "GameLiftServerSDKDetailedInstructions",
@@ -939,18 +939,18 @@
             [
                 {
                     "compilers" : ["vc141", "vc142"],
-                    "source" : "AWS/GameLift/3.4.0/",
+                    "source" : "AWS/GameLift/3.4.1/",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GameLiftServerSDK",
                     "exampleFile" : "bin/windows/intel64/vs2017/Release/aws-cpp-sdk-gamelift-server.lib"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source" : "AWS/GameLift/3.4.0/",
+                    "source" : "AWS/GameLift/3.4.1/",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GameLiftServerSDK",
                     "exampleFile" : "lib/linux/libcxx/intel64/clang-6.0.0/Release/libaws-cpp-sdk-gamelift-server.a"
                 },
                 {
-                    "source" : "AWS/GameLift/3.4.0/",
+                    "source" : "AWS/GameLift/3.4.1/",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GameLiftServerSDK",
                     "exampleFile" : "include/aws/gamelift/server/GameLiftServerAPI.h"
                 }
@@ -1362,6 +1362,40 @@
                     "source": "NvCloth/1.1.6-az.3/NvCloth",
                     "destination": "$CODEFOLDERNAME$/SDKs/NvCloth/NvCloth",
                     "exampleFile": "lib/linux64-cmake/libNvCloth.a"
+                }
+            ]
+        },
+        {
+            "identifier" : "BLASTLIB",
+            "name" : "BLASTLIBName",
+            "version" : "1.1.6-az.1",
+            "source" : "Blast/1.1.6-az.1",
+            "description" : "BLASTLIBDescriptionSummary",
+            "detailedInstructions" : "BLASTLIBDetailedInstructions",
+            "roles" : ["compilegame", "compileengine", "compilesandbox"],
+            "symlinks" :
+            [
+                {
+                    "source" : "Blast/1.1.6-az.1/sdk",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/Blast/sdk",
+                    "exampleFile" : "toolkit/include/NvBlastTk.h"
+                },
+                {
+                    "source" : "Blast/1.1.6-az.1/shared",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/Blast/shared",
+                    "exampleFile" : "utils/AssetGenerator.h"
+                },
+                {
+                    "compilers" : ["vc141", "vc142"],
+                    "source": "Blast/1.1.6-az.1/bin",
+                    "destination": "$CODEFOLDERNAME$/SDKs/Blast/bin",
+                    "exampleFile": "vc15win64-cmake/NvBlast_x64.dll"
+                },
+                {
+                    "compilers" : ["vc141", "vc142"],
+                    "source": "Blast/1.1.6-az.1/lib",
+                    "destination": "$CODEFOLDERNAME$/SDKs/Blast/lib",
+                    "exampleFile": "vc15win64-cmake/NvBlastTk_x64.lib"
                 }
             ]
         },

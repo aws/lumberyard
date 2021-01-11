@@ -167,6 +167,55 @@ namespace EditorPythonBindingsUnitTests
         EXPECT_TRUE(behaviorContext->m_methods.find("get_hidemask") != behaviorContext->m_methods.end());
     }
 
+    TEST_F(EditorPythonBindingsFixture, EditorPythonBindingsComponent_ApiExists)
+    {
+        AZ::BehaviorContext* behaviorContext = m_app.GetBehaviorContext();
+        ASSERT_TRUE(behaviorContext);
+
+        auto itPythonEditorBus = behaviorContext->m_ebuses.find("PythonEditorBus");
+        if (itPythonEditorBus != behaviorContext->m_ebuses.end())
+        {
+            AZ::BehaviorEBus* behaviorBus = itPythonEditorBus->second;
+            EXPECT_TRUE(behaviorBus->m_events.find("GetCVar") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetCVar") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetCVarFromString") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetCVarFromInteger") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetCVarFromFloat") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("PyRunConsole") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("EnterGameMode") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("IsInGameMode") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("ExitGameMode") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("EnterSimulationMode") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("IsInSimulationMode") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("ExitSimulationMode") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("RunLua") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("RunFile") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("RunFileParameters") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("ExecuteCommand") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("MessageBoxOkCancel") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("MessageBoxYesNo") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("MessageBoxOk") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("EditBox") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("EditBoxCheckDataType") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("OpenFileBox") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("GetAxisConstraint") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetAxisConstraint") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("GetEditMode") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetEditMode") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("GetPakFromFile") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("Log") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("Undo") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("Redo") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("DrawLabel") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("ComboBox") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetHidemaskAll") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetHidemaskNone") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetHidemaskInvert") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetHidemask") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("GetHidemask") != behaviorBus->m_events.end());
+        }
+    }
+
     TEST_F(EditorPythonBindingsFixture, EditorUtilityCommands_set_cvar_integer)
     {
         RunEditorUtilityCommandTest([](AZ::BehaviorContext* context)

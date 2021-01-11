@@ -30,7 +30,7 @@ namespace AzToolsFramework
         const int AssetBrowserModel::m_column = static_cast<int>(AssetBrowserEntry::Column::DisplayName);
 
         AssetBrowserModel::AssetBrowserModel(QObject* parent)
-            : QAbstractTableModel(parent)
+            : QAbstractItemModel(parent)
             , m_rootEntry(nullptr)
             , m_loaded(false)
             , m_addingEntry(false)
@@ -140,7 +140,7 @@ namespace AzToolsFramework
             {
                 return 0;
             }
-
+            
             if (parent.isValid())
             {
                 if ((parent.column() != static_cast<int>(AssetBrowserEntry::Column::DisplayName)) &&
@@ -149,7 +149,7 @@ namespace AzToolsFramework
                     return 0;
                 }
             }
-
+            
             AssetBrowserEntry* parentAssetEntry;
             if (!parent.isValid())
             {

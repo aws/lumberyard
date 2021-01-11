@@ -100,7 +100,7 @@ namespace AzToolsFramework
             switch (index.column())
             {
                 case ColumnType:
-                    return QDateTime::fromMSecsSinceEpoch(m_lines[index.row()].GetLogTime()).toString(Qt::SystemLocaleShortDate);
+                    return QLocale::system().toString(QDateTime::fromMSecsSinceEpoch(m_lines[index.row()].GetLogTime()), QLocale::ShortFormat).toUtf8().data();
                 case ColumnWindow:
                     return m_lines[index.row()].GetLogWindow().c_str();
                 case ColumnMessage:

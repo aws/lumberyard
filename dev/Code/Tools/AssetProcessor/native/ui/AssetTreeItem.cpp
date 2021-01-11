@@ -37,9 +37,11 @@ namespace AssetProcessor
         AssetTreeItem* parentItem) :
         m_data(data),
         m_parent(parentItem),
-        m_errorIcon(errorIcon) // QIcon is implicitily shared.
+        m_errorIcon(errorIcon), // QIcon is implicitily shared.
+        m_folderIcon(QIcon(QStringLiteral(":/Gallery/Asset_Folder.svg"))),
+        m_fileIcon(QIcon(QStringLiteral(":/Gallery/Asset_File.svg")))
     {
-
+        m_folderIcon.addFile(QStringLiteral(":/Gallery/Asset_Folder.svg"), QSize(), QIcon::Selected);
     }
 
     AssetTreeItem::~AssetTreeItem()
@@ -123,7 +125,7 @@ namespace AssetProcessor
         return QVariant();
     }
 
-    QIcon AssetTreeItem::GetIcon(const QFileIconProvider& iconProvider) const
+    QIcon AssetTreeItem::GetIcon() const
     {
         if (!m_data)
         {
@@ -135,11 +137,11 @@ namespace AssetProcessor
         }
         if (m_data->m_isFolder)
         {
-            return iconProvider.icon(QFileIconProvider::Folder);
+            return m_folderIcon;
         }
         else
         {
-            return iconProvider.icon(QFileIconProvider::File);
+            return m_fileIcon;
         }
     }
 

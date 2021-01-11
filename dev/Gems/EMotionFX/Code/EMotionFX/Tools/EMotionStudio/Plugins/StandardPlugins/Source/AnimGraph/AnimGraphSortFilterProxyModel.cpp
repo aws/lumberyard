@@ -133,7 +133,7 @@ namespace EMStudio
                 const int rows = index.model()->rowCount(index);
                 for (int i = 0; i < rows; ++i)
                 {
-                    if (!IsFiltered(index.child(i, 0), recursiveMode))
+                    if (!IsFiltered(index.model()->index(i, 0, index), recursiveMode))
                     {
                         filtered = false;
                         break;

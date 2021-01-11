@@ -134,9 +134,6 @@ namespace PhysX
         void zoneEnd(void* profilerData, const char* eventName, bool detached, uint64_t contextId) override;
     };
 
-    // This disables the warning about calling deprecated functions.  It is necessary because several functions from
-    // ConfigurationRequestBus have been deprecated, and the bus handling causes these functions to be called here.
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     /// System component for PhysX.
     /// The system component handles underlying tasks such as initialization and shutdown of PhysX, managing a
     /// Lumberyard memory allocator for PhysX allocations, scheduling for PhysX jobs, and connections to the PhysX
@@ -210,9 +207,11 @@ namespace PhysX
         physx::PxTriangleMesh* CreateTriangleMeshFromCooked(const void* cookedMeshData, AZ::u32 bufferSize) override;
         bool ConnectToPvd() override;
         void DisconnectFromPvd() override;
+
         // Expose shared allocator and error callbacks for other Gems that need to initialize their own instances of the PhysX SDK.
         physx::PxAllocatorCallback* GetPhysXAllocatorCallback() override;
         physx::PxErrorCallback* GetPhysXErrorCallback() override;
+        physx::PxCpuDispatcher* GetCpuDispatcher() override;
 
         bool CookConvexMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount) override;
         
@@ -235,14 +234,6 @@ namespace PhysX
         void UpdateColliderProximityVisualization(bool enabled, const AZ::Vector3& cameraPosition, float radius) override;
 
         // PhysX::ConfigurationRequestBus
-        // LUMBERYARD_DEPRECATED(LY-109358)
-        /// @deprecated Please use the alternative configuration getters instead.
-        AZ_DEPRECATED(void SetConfiguration(const Configuration&) override;,
-            "SetConfiguration is deprecated, please use the alternative configuration getters instead.")
-        // LUMBERYARD_DEPRECATED(LY-109358)
-        /// @deprecated Please use the alternative configuration setters instead.
-        AZ_DEPRECATED(const Configuration& GetConfiguration() override;,
-            "GetConfiguration is deprecated, please use the alternative configuration setters instead.")
         void SetPhysXConfiguration(const PhysXConfiguration&) override;
         const PhysXConfiguration& GetPhysXConfiguration() override;
 
@@ -337,7 +328,6 @@ private:
 
         bool m_enabled; ///< If false, this component will not activate itself in the Activate() function.
         AZStd::string m_configurationPath;
-        Configuration m_configuration;
         PhysXConfiguration m_physxConfiguration;
         PhysicsConfiguration m_physicsConfiguration;
         AZ::Vector3 m_cameraPositionCache = AZ::Vector3::CreateZero();
@@ -345,7 +335,6 @@ private:
 
         AZStd::unique_ptr<WindProvider> m_windProvider;
     };
-    AZ_POP_DISABLE_WARNING
 
     /// Return PxCookingParams better suited for use at run-time, these parameters will improve cooking time.
     /// Reference: https://docs.nvidia.com/gameworks/content/gameworkslibrary/physx/guide/Manual/Geometry.html#triangle-meshes

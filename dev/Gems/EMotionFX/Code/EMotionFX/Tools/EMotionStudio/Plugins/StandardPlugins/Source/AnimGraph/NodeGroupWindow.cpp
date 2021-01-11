@@ -379,9 +379,9 @@ namespace EMStudio
             mTableWidget->setItem(i, 2, nameItem);
 
             // set the item selected
-            mTableWidget->setItemSelected(visibilityCheckboxItem, itemSelected);
-            mTableWidget->setItemSelected(colorItem, itemSelected);
-            mTableWidget->setItemSelected(nameItem, itemSelected);
+            visibilityCheckboxItem->setSelected(itemSelected);
+            colorItem->setSelected(itemSelected);
+            nameItem->setSelected(itemSelected);
 
             // set the row height
             mTableWidget->setRowHeight(i, 21);

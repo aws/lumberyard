@@ -16,13 +16,13 @@
 #include <CurveEditor.h>
 #include "QCustomGradientWidget.h"
 #include "ISplines.h"
-#include "qgridlayout.h"
+#include <qgridlayout.h>
 #include "CurveEditorContent.h"
-#include "qbrush.h"
+#include <qbrush.h>
 #include "../Utils.h"
 
 #include "SplineInterpolators.h"
-#include "qpropertyanimation.h"
+#include <qpropertyanimation.h>
 
 
 #define QTUI_SIMPLE_GRADIENT_PREVIEW_ALPHA_STEP 0.05f

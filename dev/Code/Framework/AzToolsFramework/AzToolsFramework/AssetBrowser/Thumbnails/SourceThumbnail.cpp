@@ -45,7 +45,7 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // SourceThumbnail
         //////////////////////////////////////////////////////////////////////////
-        static const char* DEFAULT_FILE_ICON_PATH = "Editor/Icons/AssetBrowser/Default_16.png";
+        static const char* DEFAULT_FILE_ICON_PATH = "Editor/Icons/AssetBrowser/Default_16.svg";
         QMutex SourceThumbnail::m_mutex;
 
         SourceThumbnail::SourceThumbnail(SharedThumbnailKey key, int thumbnailSize)
@@ -95,11 +95,10 @@ namespace AzToolsFramework
                         AzFramework::StringFunc::Path::Join(watchFolder.c_str(), assetInfo.m_relativePath.c_str(), finalPath);
                         iconPathToUse = QString::fromUtf8(finalPath.c_str());
                     }
-                    
                 }
             }
 
-            m_pixmap = QPixmap(iconPathToUse);
+            m_icon = QIcon(iconPathToUse);
         }
 
         //////////////////////////////////////////////////////////////////////////

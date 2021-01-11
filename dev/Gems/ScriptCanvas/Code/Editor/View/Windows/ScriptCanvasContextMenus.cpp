@@ -220,12 +220,18 @@ namespace ScriptCanvasEditor
     void ConvertVariableNodeToReferenceAction::RefreshAction(const GraphCanvas::GraphId& graphId, const AZ::EntityId& targetId)
     {
         bool hasMultipleSelection = false;
-        GraphCanvas::SceneRequestBus::EventResult(hasMultipleSelection, graphId, &GraphCanvas::SceneRequests::HasMultipleSelection);
-
-        // This item is added only when it's valid.
-        setEnabled(!hasMultipleSelection);
+        GraphCanvas::SceneRequestBus::EventResult(hasMultipleSelection, graphId, &GraphCanvas::SceneRequests::HasMultipleSelection);        
 
         m_targetId = targetId;
+
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphId);
+
+        bool canConvertNode = false;
+        EditorGraphRequestBus::EventResult(canConvertNode, scriptCanvasId, &EditorGraphRequests::CanConvertVariableNodeToReference, m_targetId);
+
+        // This item is added only when it's valid
+        setEnabled(canConvertNode && !hasMultipleSelection);
     }
 
     GraphCanvas::ContextMenuAction::SceneReaction ConvertVariableNodeToReferenceAction::TriggerAction(const GraphCanvas::GraphId& graphId, const AZ::Vector2& scenePos)
@@ -446,38 +452,13 @@ namespace ScriptCanvasEditor
         ScriptCanvas::ScriptCanvasId scriptCanvasId;
         GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphId);
 
-        bool isEnabled = false;
-        EditorGraphRequestBus::EventResult(isEnabled, scriptCanvasId, &EditorGraphRequests::IsFunctionGraph);
-
         GraphCanvas::NodeId nodeId;
         GraphCanvas::SlotRequestBus::EventResult(nodeId, targetId, &GraphCanvas::SlotRequests::GetNode);
 
-        GraphCanvas::SlotType slotType;
-        GraphCanvas::SlotRequestBus::EventResult(slotType, targetId, &GraphCanvas::SlotRequests::GetSlotType);
+        bool canExposeSlot = false;
+        EditorGraphRequestBus::EventResult(canExposeSlot, scriptCanvasId, &EditorGraphRequests::CanExposeEndpoint, GraphCanvas::Endpoint(nodeId, targetId ));        
 
-        if (slotType == GraphCanvas::SlotTypes::DataSlot)
-        {
-            GraphCanvas::DataSlotType dataSlotType = GraphCanvas::DataSlotType::Unknown;
-            GraphCanvas::DataSlotRequestBus::EventResult(dataSlotType, targetId, &GraphCanvas::DataSlotRequests::GetDataSlotType);
-
-            if (dataSlotType != GraphCanvas::DataSlotType::Value)
-            {
-                isEnabled = false;
-            }
-
-            bool hasConnections = false;
-            GraphCanvas::SlotRequestBus::EventResult(hasConnections, targetId, &GraphCanvas::SlotRequests::HasConnections);
-
-            if (hasConnections)
-            {
-                isEnabled = false;
-            }
-        }
-
-        bool isNodeling = false;
-        NodeDescriptorRequestBus::EventResult(isNodeling, nodeId, &NodeDescriptorRequests::IsType, NodeDescriptorType::ExecutionNodeling);
-
-        setEnabled(isEnabled && !isNodeling);
+        setEnabled(canExposeSlot);
     }
 
     void ExposeSlotMenuAction::CreateNodeling(const GraphCanvas::GraphId& graphId, AZ::EntityId scriptCanvasGraphId, GraphCanvas::GraphId slotId, const AZ::Vector2& scenePos, GraphCanvas::ConnectionType connectionType)

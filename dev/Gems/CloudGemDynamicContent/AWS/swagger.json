@@ -184,7 +184,7 @@
             "type": "object",
             "properties": {
                 "status": {
-					"description": "The status of the service api.",
+                    "description": "The status of the service api.",
                     "type": "string"
                 }
             },
@@ -211,10 +211,10 @@
             "type": "object",
             "properties": {
                 "FileList": {
-					"description": "An array of pak file names to read. Example. ['file1.shared.pak','file2.shared.pak']",
+                    "description": "An array of pak file names to read. Example. ['file1.shared.pak','file2.shared.pak']",
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/RequestDataItem"
                     }
                 },
                 "ManifestData": {
@@ -224,6 +224,22 @@
             },
             "required": [
                 "FileList"
+            ]
+        },
+        "RequestDataItem": {
+            "type": "object",
+            "properties": {
+                "FileName": {
+                    "description": "Name of the pak file. Example: 'file1.shared.pak'",
+                    "type": "string"
+                },
+                "FileVersion": {
+                    "description": "Version of the pak file.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "FileName"
             ]
         },
         "FileRequestResults": {
@@ -244,7 +260,7 @@
             "type": "object",
             "properties": {
                 "results": {
-					"description": "An array of portal file info objects. Example. [{'FileName': 'file1.shared.pak', 'StagingStatus': '[PRIVATE|WINDOW|PUBLIC]', 'StagingStart':'Jul 20 2017 01:10', 'StagingEnd':'Jul 20 2017 19:00', 'Parent': 'file1parent.shared.pak'}]",
+                    "description": "An array of portal file info objects. Example. [{'FileName': 'file1.shared.pak', 'StagingStatus': '[PRIVATE|WINDOW|PUBLIC]', 'StagingStart':'Jul 20 2017 01:10', 'StagingEnd':'Jul 20 2017 19:00', 'Parent': 'file1parent.shared.pak'}]",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/PortalFileInfo"
@@ -258,13 +274,13 @@
         "FileRequestResult": {
             "type": "object",
             "properties": {
-                "FileName": {					
+                "FileName": {
                     "type": "string"
                 },
-                "FileStatus": {				
+                "FileStatus": {
                     "type": "string"
                 },
-                "PresignedURL": {					
+                "PresignedURL": {
                     "type": "string"
                 },
                 "Signature": {
@@ -286,23 +302,23 @@
             "type": "object",
             "properties": {
                 "FileName": {
-					"description": "The pak file name. Example.  file1.shared.pak",
+                    "description": "The pak file name. Example.  file1.shared.pak",
                     "type": "string"
                 },
                 "StagingStatus": {
-					"description": "The file status [PRIVATE|WINDOW|PUBLIC]. Example.  PRIVATE",
+                    "description": "The file status [PRIVATE|WINDOW|PUBLIC]. Example.  PRIVATE",
                     "type": "string"
                 },
                 "StagingStart": {
-					"description": "The start date of when the content is available.  Example.  Jul 20 2017 01:10",
+                    "description": "The start date of when the content is available.  Example.  Jul 20 2017 01:10",
                     "type": "string"
                 },
                 "StagingEnd": {
-					"description": "The end date of when the content is available.  Example.  Jul 20 2017 19:00",
+                    "description": "The end date of when the content is available.  Example.  Jul 20 2017 19:00",
                     "type": "string"
                 },
                 "Parent": {
-					"description": "The parent pak of this pak.  Example.  file1parent.shared.pak",
+                    "description": "The parent pak of this pak.  Example.  file1parent.shared.pak",
                     "type": "string"
                 }
             },
@@ -315,7 +331,7 @@
             "type": "object",
             "properties": {
                 "FileList": {
-					"description": "An array of portal file info objects. Example. [{'FileName': 'file1.shared.pak', 'StagingStatus': '[PRIVATE|WINDOW|PUBLIC]', 'StagingStart':'Jul 20 2017 01:10', 'StagingEnd':'Jul 20 2017 19:00'}]",
+                    "description": "An array of portal file info objects. Example. [{'FileName': 'file1.shared.pak', 'StagingStatus': '[PRIVATE|WINDOW|PUBLIC]', 'StagingStart':'Jul 20 2017 01:10', 'StagingEnd':'Jul 20 2017 19:00'}]",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/PortalFileRequest"
@@ -330,19 +346,19 @@
             "type": "object",
             "properties": {
                 "FileName": {
-					"description": "The pak file name. Example.  file1.shared.pak",
+                    "description": "The pak file name. Example.  file1.shared.pak",
                     "type": "string"
                 },
                 "StagingStatus": {
-					"description": "The file status [PRIVATE|WINDOW|PUBLIC]. Example.  PRIVATE",
+                    "description": "The file status [PRIVATE|WINDOW|PUBLIC]. Example.  PRIVATE",
                     "type": "string"
                 },
                 "StagingStart": {
-					"description": "The start date of when the content is available.  Example.  Jul 20 2017 01:10",
+                    "description": "The start date of when the content is available.  Example.  Jul 20 2017 01:10",
                     "type": "string"
                 },
                 "StagingEnd": {
-					"description": "The end date of when the content is available.  Example.  Jul 20 2017 19:00",
+                    "description": "The end date of when the content is available.  Example.  Jul 20 2017 19:00",
                     "type": "string"
                 }
             },

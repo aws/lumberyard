@@ -17,7 +17,7 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QSpinBox>
-#include <QPushButton>
+#include <QToolButton>
 #include <QGridLayout>
 #include <QSizePolicy>
 #include <QCheckBox>
@@ -156,11 +156,11 @@ void LODLevelWidget::Init(SLodInfo* lod)
 
     m_TitleLayout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::Expanding));
 
-    m_TitleCrossButton = new QPushButton(m_TitleWidget);
+    m_TitleCrossButton = new QToolButton(m_TitleWidget);
     m_TitleCrossButton->setObjectName("LODWidgetCloseButton");
     m_TitleCrossButton->setIcon(QIcon(":/particleQT/buttons/close_btn.png"));
     m_TitleLayout->addWidget(m_TitleCrossButton, 0, Qt::AlignRight);
-    connect(m_TitleCrossButton, &QPushButton::pressed, this, &LODLevelWidget::onRemoveLod);
+    connect(m_TitleCrossButton, &QToolButton::pressed, this, &LODLevelWidget::onRemoveLod);
 
     m_TitleWidget->setLayout(m_TitleLayout);
       
@@ -448,7 +448,7 @@ void LODLevelWidget::updateTreeItemStyle(bool ishighlight, SLodInfo* lod, QStrin
         CParticleItem* particleItem = static_cast<CParticleItem*>(treeitem->GetItem());
         if (!ishighlight)
         {
-            treeitem->setTextColor(NAME_COLUMN, QColor(255, 153, 0));
+            treeitem->setForeground(NAME_COLUMN, QColor(255, 153, 0));
         }
     }
 }
@@ -522,11 +522,11 @@ void LODLevelWidget::UpdateItemModified(CLibraryTreeViewItem* parent, CParticleI
 
     if (!hasDefault)
     {
-        parent->setTextColor(CHECKBOX_COLUMN, QColor(255, 153, 0));
+        parent->setForeground(CHECKBOX_COLUMN, QColor(255, 153, 0));
     }
     else
     {
-        parent->setTextColor(NAME_COLUMN, QColor("white"));
+        parent->setForeground(NAME_COLUMN, QColor("white"));
     }
 }
 

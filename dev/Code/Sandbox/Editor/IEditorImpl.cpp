@@ -1946,18 +1946,18 @@ bool CEditorImpl::ExecuteConsoleApp(const QString& CommandLine, QString& OutputT
     if (bShowWindow)
     {
 #if defined(AZ_PLATFORM_WINDOWS)
-        process.start(QString("cmd.exe /C %1").arg(CommandLine));
+        process.start("cmd.exe", { QString("/C %1").arg(CommandLine) });
 #elif defined(AZ_PLATFORM_LINUX)
        //KDAB_TODO
 #elif defined(AZ_PLATFORM_MAC)
-        process.start(QString("/usr/bin/osascript -e 'tell application \"Terminal\" to do script \"%1\"'").arg(QString(CommandLine).replace("\"", "\\\"")));
+        process.start("/usr/bin/osascript", { QString("-e 'tell application \"Terminal\" to do script \"%1\"'").arg(QString(CommandLine).replace("\"", "\\\"")) });
 #else
-        process.start(QString("/usr/bin/csh -c \"%1\"'").arg(QString(CommandLine).replace("\"", "\\\"")));
+        process.start("/usr/bin/csh", { QString("-c \"%1\"'").arg(QString(CommandLine).replace("\"", "\\\"")) } );
 #endif
     }
     else
     {
-        process.start(CommandLine);
+        process.start(CommandLine, QStringList());
     }
 
     if (!process.waitForStarted())

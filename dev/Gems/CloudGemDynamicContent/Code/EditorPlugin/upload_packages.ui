@@ -105,6 +105,9 @@
    <property name="text">
     <string>Cancel</string>
    </property>
+   <property name="autoDefault">
+    <bool>false</bool>
+   </property>
   </widget>
   <widget class="QPushButton" name="uploadButton">
    <property name="geometry">
@@ -124,6 +127,9 @@
    <property name="text">
     <string>Upload</string>
    </property>
+   <property name="default">
+    <bool>true</bool>
+   </property>
   </widget>
   <widget class="QLabel" name="generateKeyConfirmation">
    <property name="geometry">
@@ -139,6 +145,11 @@
    </property>
   </widget>
  </widget>
+ <tabstops>
+  <tabstop>checkSignPackages</tabstop>
+  <tabstop>uploadButton</tabstop>
+  <tabstop>cancelButton</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

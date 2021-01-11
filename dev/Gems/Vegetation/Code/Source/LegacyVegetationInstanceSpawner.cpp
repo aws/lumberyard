@@ -225,6 +225,7 @@ namespace Vegetation
 
     void LegacyVegetationInstanceSpawner::UnloadAssets()
     {
+        AZ::Data::AssetBus::MultiHandler::BusDisconnect();
         m_materialOverride = nullptr;
         ResetMeshAsset();
         ReleaseStatInstGroupId();
@@ -283,8 +284,6 @@ namespace Vegetation
 
     void LegacyVegetationInstanceSpawner::ResetMeshAsset()
     {
-        AZ::Data::AssetBus::MultiHandler::BusDisconnect();
-
         m_meshAsset.Release();
         UpdateCachedValues();
         m_meshAsset.SetAutoLoadBehavior(AZ::Data::AssetLoadBehavior::QueueLoad);

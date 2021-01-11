@@ -55,7 +55,7 @@
 
 QFileSelectResourceWidget::QFileSelectResourceWidget(CAttributeItem* parent, CAttributeView* attributeView,
     int propertyType)
-    : QFileSelectWidget(parent)
+    : QWidget(parent)
     , CBaseVariableWidget(parent)
     , m_ignoreSetVar(false)
     , m_propertyType(propertyType)
@@ -64,6 +64,21 @@ QFileSelectResourceWidget::QFileSelectResourceWidget(CAttributeItem* parent, CAt
 {
     setMouseTracking(true);
 
+    m_gridLayout = new QGridLayout(this);
+    m_gridLayout->setMargin(0);
+
+    m_browseEdit = new AzQtComponents::BrowseEdit();
+    m_browseEdit->setClearButtonEnabled(true);
+    m_browseEdit->installEventFilter(this);
+    m_gridLayout->addWidget(m_browseEdit);
+
+    connect(m_browseEdit, &AzQtComponents::BrowseEdit::attachedButtonTriggered, this, &QFileSelectResourceWidget::onOpenSelectDialog);
+    connect(m_browseEdit, &AzQtComponents::BrowseEdit::returnPressed, this, &QFileSelectResourceWidget::onReturnPressed);
+
+    QToolButton* clearButton = AzQtComponents::LineEdit::getClearButton(m_browseEdit->lineEdit());
+    assert(clearButton);
+    connect(clearButton, &QToolButton::clicked, this, &QFileSelectResourceWidget::onClearButtonClicked);
+
     QPushButton* btn = NULL;
 
     // Set type specific buttons
@@ -71,29 +86,21 @@ QFileSelectResourceWidget::QFileSelectResourceWidget(CAttributeItem* parent, CAt
     {
     case ePropertyTexture:
     {
-        ui->path->lineEdit()->setPlaceholderText("Add a texture");
+        m_browseEdit->setPlaceholderText("Add a texture");
 
         // Open texture file in editor
         btn = addButton("Open Input Bindings Editor", tr("Open File"), 1, 0, 1, 6);
         connect(btn, &QPushButton::clicked, this, &QFileSelectResourceWidget::OpenSourceFile);
         m_btns.push_back(btn);
         m_btns.back()->installEventFilter(this);
-
-        // select Texture file from browser
-        QIcon icon("Editor/UI/Icons/mann_folder.png");
-        setMainButton("", tr("Browse"), &icon);
-        
         break;
     }
     case ePropertyMaterial:
     {
-        //CreateDefaultResourcePreview();
         // Open AssetBrowser
-        ui->path->lineEdit()->setPlaceholderText("Add a material");
-        QIcon icon("Editor/UI/Icons/mann_folder.png");
-        setMainButton("", tr("Browse"), &icon);
+        m_browseEdit->setPlaceholderText("Add a material");
 
-         // Open material editor
+        // Open material editor
         btn = addButton("Open Input Bindings Editor", tr("Open File"), 1, 0, 1, 6);
         connect(btn, &QPushButton::clicked, this, &QFileSelectResourceWidget::OpenSourceFile);
         m_btns.push_back(btn);
@@ -103,29 +110,37 @@ QFileSelectResourceWidget::QFileSelectResourceWidget(CAttributeItem* parent, CAt
     }
     case ePropertyModel:
     {
-        ui->path->lineEdit()->setPlaceholderText("Add a model");
+        m_browseEdit->setPlaceholderText("Add a model");
 
-        // Open Resource browser
-        QIcon icon("Editor/UI/Icons/mann_folder.png");
-        setMainButton("", tr("Open AssetBrowser"), &icon);
         break;
     }
     case ePropertyAudioTrigger:
     {
-        ui->path->lineEdit()->setPlaceholderText("Add a sound");
-
-        // Open Resource browser
-        QIcon icon("Editor/UI/Icons/mann_folder.png");
-        setMainButton("", tr("Open AssetBrowser"), &icon);
+        m_browseEdit->setPlaceholderText("Add a sound");
         break;
     }
     default:
         break;
     }
-    ui->buttonOpenFileDialog->installEventFilter(this);
-    ui->path->installEventFilter(this);
 
-    m_tooltip = new QToolTipWidget(this);
+    m_tooltip = new QToolTipWrapper(this);
+}
+
+QPushButton* QFileSelectResourceWidget::addButton(const QString& caption, const QString& tooltip, int row, int col, int rowspan, int colspan, const QIcon* icon)
+{
+    QPushButton* btn = new QPushButton(this);
+
+    if (icon)
+    {
+        btn->setIcon(*icon);
+    }
+
+    btn->setText(caption);
+    btn->setToolTip(tooltip);
+
+    m_gridLayout->addWidget(btn, row, col);
+
+    return btn;
 }
 
 void QFileSelectResourceWidget::setPath(const QString& path)
@@ -148,8 +163,7 @@ void QFileSelectResourceWidget::setPath(const QString& path)
         newPath.chop(4);
     }
 
-     //display a shortened path
-    //HardCoded project absolute path for test 
+    //display a shortened path
     QString relativePath = Path::GetRelativePath(newPath.toUtf8().data(), false);
     QString formattedPath = relativePath;
     relativePath = formattedPath.trimmed();
@@ -161,8 +175,8 @@ void QFileSelectResourceWidget::setPath(const QString& path)
         m_var->Set(relativePath);
         emit m_parent->SignalUndoPoint();
     }
-    QFileSelectWidget::setPath(QString(relativePath));
-    addUniqueItem(QString(relativePath), QString(relativePath));
+
+    m_browseEdit->setText(QString(relativePath));
 }
 
 void QFileSelectResourceWidget::onOpenSelectDialog()
@@ -172,7 +186,7 @@ void QFileSelectResourceWidget::onOpenSelectDialog()
     //get the path from the variable for use in the shortcut as the display path is shortened and invalid.
     QString currPath = "";
     getVar()->Get(currPath);
-    QString newPath;
+    QString newPath = currPath;
 
     // remove shortened path prefix - ".../"
     currPath.replace(QString(".../"), QString(""));
@@ -219,29 +233,39 @@ void QFileSelectResourceWidget::onOpenSelectDialog()
     setPath(newPath);
 }
 
-void QFileSelectResourceWidget::onReturnPressed()
+void QFileSelectResourceWidget::UpdatePreviewTooltip(QString filePath, QPoint position, bool showTooltip)
 {
-    QFileSelectWidget::onReturnPressed();
+    m_tooltip->hide();
 
-    QString path = getDisplayPath();
-    bool ItemAdded = addUniqueItem(path, path);
-    if (ItemAdded)
+    // Force the tooltip image to clear so that the new version updates correctly.
+    GetIEditor()->GetParticleUtils()->ToolTip_BuildFromConfig(m_tooltip, "", "Reset", "", true);
+
+    GetIEditor()->GetParticleUtils()->ToolTip_BuildFromConfig(m_tooltip, m_parent->getAttributeView()->GetVariablePath(m_var), QString(filePath), QString(m_parent->getVar()->GetDisplayValue()), isEnabled());
+    m_tooltip->TryDisplay(m_lastTooltipPos, m_browseEdit, QToolTipWidget::ArrowDirection::ARROW_RIGHT);
+
+    // Reshow the tooltip if it was showing at the start.
+    if (showTooltip)
     {
-        setPath(path);
+        m_tooltip->show();
     }
 }
 
-void QFileSelectResourceWidget::onSelectedIndexChanged(int index)
+void QFileSelectResourceWidget::onReturnPressed()
 {
-    QString dataPath = ui->path->itemData(index).toString();
-    bool isNewAdded = false;
-    //If the item data is empty and the item text is not empty. We are trying to add new item
-    if (ui->path->itemData(index).toString().isEmpty() && !ui->path->itemText(index).isEmpty())
-    {
-        dataPath = getDisplayPath();
-        ui->path->removeItem(index);
-    }
-    setPath(dataPath);
+    setPath(m_browseEdit->text());
+
+    UpdatePreviewTooltip(m_browseEdit->text(), m_lastTooltipPos, m_tooltip->isVisible());
+}
+
+void QFileSelectResourceWidget::onClearButtonClicked()
+{    
+    setPath("");
+
+    // Update the tooltip to show the blank image.
+    QString filePath;
+    getVar()->Get(filePath);
+
+    UpdatePreviewTooltip(filePath, m_lastTooltipPos, m_tooltip->isVisible());
 }
 
 QString QFileSelectResourceWidget::pathFilter(const QString& path)
@@ -299,20 +323,7 @@ bool QFileSelectResourceWidget::eventFilter(QObject* obj, QEvent* event)
             }
         }
     }
-    if (obj == (QObject*)ui->buttonOpenFileDialog)
-    {
-        if (event->type() == QEvent::ToolTip)
-        {
-            QHelpEvent* e = (QHelpEvent*)event;
-
-            GetIEditor()->GetParticleUtils()->ToolTip_BuildFromConfig(m_tooltip, m_parent->getAttributeView()->GetVariablePath(m_var) + "." + ui->buttonOpenFileDialog->toolTip(), "Button", "", isEnabled());
-
-            m_tooltip->TryDisplay(e->globalPos(), ui->buttonOpenFileDialog, QToolTipWidget::ArrowDirection::ARROW_RIGHT);
-
-            return true;
-        }
-    }
-    if (obj == (QObject*)ui->path)
+    if (obj == (QObject*)m_browseEdit)
     {
         if (event->type() == QEvent::FocusIn)
         {
@@ -335,7 +346,7 @@ bool QFileSelectResourceWidget::eventFilter(QObject* obj, QEvent* event)
             //The tooltip has functionality with the following modifiers. We dont want to hide the tooltip in these case.
             //  Alt: show alpha channel of the texture;
             //  shift : show RGBA channel of the texture.
-            if ((mods & Qt::KeyboardModifier::AltModifier) || 
+            if ((mods & Qt::KeyboardModifier::AltModifier) ||
                 (mods & Qt::KeyboardModifier::ShiftModifier && !(mods & Qt::KeyboardModifier::ControlModifier)))
             {
                 return true;
@@ -348,9 +359,11 @@ bool QFileSelectResourceWidget::eventFilter(QObject* obj, QEvent* event)
 
             QString filePath;
             getVar()->Get(filePath);
+            
             GetIEditor()->GetParticleUtils()->ToolTip_BuildFromConfig(m_tooltip, m_parent->getAttributeView()->GetVariablePath(m_var), QString(filePath), QString(m_parent->getVar()->GetDisplayValue()), isEnabled());
 
-            m_tooltip->TryDisplay(e->globalPos(), ui->path, QToolTipWidget::ArrowDirection::ARROW_RIGHT);
+            m_lastTooltipPos = e->globalPos();
+            m_tooltip->TryDisplay(e->globalPos(), m_browseEdit, QToolTipWidget::ArrowDirection::ARROW_RIGHT);
 
             return true;
         }
@@ -359,7 +372,7 @@ bool QFileSelectResourceWidget::eventFilter(QObject* obj, QEvent* event)
             QMouseEvent* mev = static_cast<QMouseEvent*>(event);
             if (mev->button() == Qt::LeftButton)
             {
-                ui->path->lineEdit()->selectAll();
+                m_browseEdit->lineEdit()->selectAll();
                 return true;
             }
         }
@@ -371,14 +384,14 @@ bool QFileSelectResourceWidget::eventFilter(QObject* obj, QEvent* event)
             m_tooltip->hide();
         }
     }
-    return QFileSelectWidget::eventFilter(obj, event);
+    return false;
 }
 
 void QFileSelectResourceWidget::OpenSourceFile()
 {
     QString filePath;
     getVar()->Get(filePath);
-    
+
     switch (m_propertyType)
     {
     case ePropertyTexture:

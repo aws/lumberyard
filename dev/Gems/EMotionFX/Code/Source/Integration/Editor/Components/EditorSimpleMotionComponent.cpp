@@ -70,7 +70,32 @@ namespace EMotionFX
                     ->Attribute("Hidden", AZ::Edit::Attributes::PropertyHidden)
                     ->VirtualProperty("PreviewInEditor", "GetPreviewInEditor", "SetPreviewInEditor")
                     ->Event("GetAssetDuration", &EditorSimpleMotionComponentRequestBus::Events::GetAssetDuration)
+                    ->Event("LoopMotion", &EditorSimpleMotionComponentRequestBus::Events::LoopMotion)
+                    ->Event("GetLoopMotion", &EditorSimpleMotionComponentRequestBus::Events::GetLoopMotion)
+                    ->VirtualProperty("LoopMotion", "GetLoopMotion", "LoopMotion")
+                    ->Event("RetargetMotion", &EditorSimpleMotionComponentRequestBus::Events::RetargetMotion)
+                    ->Event("GetRetargetMotion", &EditorSimpleMotionComponentRequestBus::Events::GetRetargetMotion)
+                    ->VirtualProperty("RetargetMotion", "GetRetargetMotion", "RetargetMotion")
+                    ->Event("ReverseMotion", &EditorSimpleMotionComponentRequestBus::Events::ReverseMotion)
+                    ->Event("GetReverseMotion", &EditorSimpleMotionComponentRequestBus::Events::GetReverseMotion)
+                    ->VirtualProperty("ReverseMotion", "GetReverseMotion", "ReverseMotion")
+                    ->Event("MirrorMotion", &EditorSimpleMotionComponentRequestBus::Events::MirrorMotion)
+                    ->Event("GetMirrorMotion", &EditorSimpleMotionComponentRequestBus::Events::GetMirrorMotion)
+                    ->VirtualProperty("MirrorMotion", "GetMirrorMotion", "MirrorMotion")
+                    ->Event("SetPlaySpeed", &EditorSimpleMotionComponentRequestBus::Events::SetPlaySpeed)
+                    ->Event("GetPlaySpeed", &EditorSimpleMotionComponentRequestBus::Events::GetPlaySpeed)
+                    ->VirtualProperty("PlaySpeed", "GetPlaySpeed", "SetPlaySpeed")
+                    ->Event("PlayTime", &EditorSimpleMotionComponentRequestBus::Events::PlayTime)
+                    ->Event("GetPlayTime", &EditorSimpleMotionComponentRequestBus::Events::GetPlayTime)
+                     ->VirtualProperty("PlayTime", "GetPlayTime", "PlayTime")
+                    ->Event("Motion", &EditorSimpleMotionComponentRequestBus::Events::Motion)
+                    ->Event("GetMotion", &EditorSimpleMotionComponentRequestBus::Events::GetMotion)
                     ->Attribute(AZ::Script::Attributes::Ignore, true)
+                    ->VirtualProperty("Motion", "GetMotion", "Motion")
+                    ->Event("BlendInTime", &EditorSimpleMotionComponentRequestBus::Events::BlendInTime)
+                    ->Event("GetBlendInTime", &EditorSimpleMotionComponentRequestBus::Events::GetBlendInTime)
+                    ->Event("BlendOutTime", &EditorSimpleMotionComponentRequestBus::Events::BlendOutTime)
+                    ->Event("GetBlendOutTime", &EditorSimpleMotionComponentRequestBus::Events::GetBlendOutTime)
                     ;
 
                 behaviorContext->Class<EditorSimpleMotionComponent>()
@@ -213,6 +238,11 @@ namespace EMotionFX
             }
         }
 
+        bool EditorSimpleMotionComponent::GetRetargetMotion() const
+        {
+            return m_configuration.m_retarget;
+        }
+
         void EditorSimpleMotionComponent::ReverseMotion(bool enable)
         {
             m_configuration.m_reverse = enable;
@@ -221,7 +251,13 @@ namespace EMotionFX
                 m_motionInstance->SetPlayMode(enable ? EMotionFX::EPlayMode::PLAYMODE_BACKWARD : EMotionFX::EPlayMode::PLAYMODE_FORWARD);
             }
         }
-        
+
+        bool EditorSimpleMotionComponent::GetReverseMotion() const
+        {
+            return m_configuration.m_reverse;
+        }
+
+
         void EditorSimpleMotionComponent::MirrorMotion(bool enable)
         {
             m_configuration.m_mirror = enable;
@@ -230,6 +266,12 @@ namespace EMotionFX
                 m_motionInstance->SetMirrorMotion(enable);
             }
         }
+
+        bool EditorSimpleMotionComponent::GetMirrorMotion() const
+        {
+            return m_configuration.m_mirror;
+        }
+
 
         void EditorSimpleMotionComponent::SetPlaySpeed(float speed)
         {

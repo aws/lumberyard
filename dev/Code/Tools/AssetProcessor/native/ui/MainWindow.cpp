@@ -64,6 +64,7 @@
 #include <QGuiApplication>
 #include <QHostAddress>
 #include <QHostInfo>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
@@ -74,6 +75,7 @@
 #include <QHeaderView>
 #include <QRegExpValidator>
 #include <QStackedWidget>
+#include <QToolButton>
 #include <QTreeView>
 #include <QUrl>
 #include <QWindow>
@@ -84,6 +86,7 @@
 
 static const char* g_showContextDetailsKey = "ShowContextDetailsTable";
 static const QString g_jobFilteredSearchWidgetState = QStringLiteral("jobFilteredSearchWidget");
+static const qint64 AssetTabFilterUpdateIntervalMs = 5000;
 
 MainWindow::Config MainWindow::loadConfig(QSettings& settings)
 {
@@ -143,6 +146,20 @@ MainWindow::MainWindow(GUIApplicationManager* guiApplicationManager, QWidget* pa
     ui->jobFilteredSearchWidget->clearLabelText();
     ui->detailsFilterWidget->clearLabelText();
     ui->timerContainerWidget->setVisible(false);
+}
+
+bool MainWindow::eventFilter(QObject* /*obj*/, QEvent* event)
+{
+    if (event->type() == QEvent::KeyPress)
+    {
+        QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+        if (keyEvent->key() == Qt::Key::Key_Space)
+        {
+            // Stop space key from opening filter list.
+            return true;
+        }
+    }
+    return false;
 }
 
 void MainWindow::Activate()
@@ -265,6 +282,7 @@ void MainWindow::Activate()
     connect(ui->jobTreeView->header(), &QHeaderView::sortIndicatorChanged, m_jobSortFilterProxy, &AssetProcessor::JobSortFilterProxyModel::sort);
     connect(ui->jobTreeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &MainWindow::JobSelectionChanged);
     ui->jobFilteredSearchWidget->SetTypeFilterVisible(true);
+    ui->jobFilteredSearchWidget->assetTypeSelectorButton()->installEventFilter(this);
 
     ui->jobContextLogTableView->setModel(new AzToolsFramework::Logging::ContextDetailsLogTableModel(ui->jobContextLogTableView));
     ui->jobContextLogTableView->setItemDelegate(new AzQtComponents::TableViewItemDelegate(ui->jobContextLogTableView));
@@ -813,6 +831,36 @@ QString MainWindow::FormatStringTime(qint64 msTime) const
     return timeVal.toString("mm:ss.z");
 }
 
+void MainWindow::IntervalAssetTabFilterRefresh()
+{
+    if (ui->buttonList->currentIndex() != static_cast<int>(DialogStackIndex::Assets)
+        || !ui->assetDataFilteredSearchWidget->hasStringFilter())
+    {
+        return;
+    }
+
+    if (!m_filterRefreshTimer.isValid())
+    {
+        m_filterRefreshTimer.start();
+    }
+
+    if (m_filterRefreshTimer.elapsed() >= AssetTabFilterUpdateIntervalMs)
+    {
+        emit ui->assetDataFilteredSearchWidget->TextFilterChanged(ui->assetDataFilteredSearchWidget->textFilter());
+        m_filterRefreshTimer.restart();
+    }
+}
+
+void MainWindow::ShutdownAssetTabFilterRefresh()
+{
+    if (m_filterRefreshTimer.isValid())
+    {
+        emit ui->assetDataFilteredSearchWidget->TextFilterChanged(ui->assetDataFilteredSearchWidget->textFilter());
+    }
+
+    m_filterRefreshTimer.invalidate();
+}
+
 void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProcessorStatusEntry entry)
 {
     using namespace AssetProcessor;
@@ -838,6 +886,8 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
             text = tr("Working, analyzing jobs remaining %1, processing jobs remaining %2...").arg(m_createJobCount).arg(m_processJobsCount);
             ui->timerContainerWidget->setVisible(false);
             ui->productAssetDetailsPanel->SetScanQueueEnabled(false);
+            
+            IntervalAssetTabFilterRefresh();
         }
         else
         {
@@ -849,6 +899,8 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
             // This minimizes the potential for over-reporting missing dependencies (if a queued job would resolve them)
             // and prevents running too many threads with too much work (scanning + processing jobs both take time).
             ui->productAssetDetailsPanel->SetScanQueueEnabled(true);
+
+            ShutdownAssetTabFilterRefresh();
         }
         break;
     case AssetProcessorStatus::Processing_Jobs:
@@ -860,6 +912,8 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
             text = tr("Working, analyzing jobs remaining %1, processing jobs remaining %2...").arg(m_createJobCount).arg(m_processJobsCount);
             ui->timerContainerWidget->setVisible(false);
             ui->productAssetDetailsPanel->SetScanQueueEnabled(false);
+
+            IntervalAssetTabFilterRefresh();
         }
         else
         {
@@ -875,6 +929,8 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
                 AssetProcessor::ConsoleChannel,
                 "Job processing completed. Asset Processor is currently idle. Process time: %s\n",
                 FormatStringTime(m_processTime).toUtf8().constData());
+
+            ShutdownAssetTabFilterRefresh();
         }
         break;
     default:

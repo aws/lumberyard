@@ -31,8 +31,8 @@ namespace AzToolsFramework
     namespace ViewportInteraction
     {
         // LUMBERYARD_DEPRECATED(LY-118530)
-        using ScreenPoint = AzFramework::ScreenPoint;
-        using ScreenVector = AzFramework::ScreenVector;
+        using ScreenPoint [[deprecated]] = AzFramework::ScreenPoint;
+        using ScreenVector [[deprecated]] = AzFramework::ScreenVector;
 
         /// Flags to represent each modifier key.
         enum class KeyboardModifier : AZ::u32
@@ -146,7 +146,7 @@ namespace AzToolsFramework
 
             AZ::Vector3 m_rayOrigin = AZ::Vector3::CreateZero(); ///< World space.
             AZ::Vector3 m_rayDirection = AZ::Vector3::CreateZero(); ///< World space - normalized.
-            ScreenPoint m_screenCoordinates = {}; ///< Screen space.
+            AzFramework::ScreenPoint m_screenCoordinates = {}; ///< Screen space.
         };
 
         /// State relating to an individual mouse interaction.
@@ -207,19 +207,23 @@ namespace AzToolsFramework
         }
 
         /// Return Qt QPoint from an Viewport ScreenPoint.
-        inline QPoint QPointFromScreenPoint(const ScreenPoint& screenPoint)
+        inline QPoint QPointFromScreenPoint(const AzFramework::ScreenPoint& screenPoint)
         {
             return {screenPoint.m_x, screenPoint.m_y};
         }
 
         // LUMBERYARD_DEPRECATED(LY-118530)
-        inline AZ::Vector2 Vector2FromScreenPoint(const ScreenPoint& screenPoint)
+        AZ_DEPRECATED(
+            inline AZ::Vector2 Vector2FromScreenPoint(const AzFramework::ScreenPoint& screenPoint),
+            "AzToolsFramework::Vector2FromScreenPoint is deprecated, please use AzFramework::Vector2FromScreenPoint")
         {
             return AzFramework::Vector2FromScreenPoint(screenPoint);
         }
 
         // LUMBERYARD_DEPRECATED(LY-118530)
-        inline AZ::Vector2 Vector2FromScreenVector(const ScreenVector& screenVector)
+        AZ_DEPRECATED(
+            inline AZ::Vector2 Vector2FromScreenVector(const AzFramework::ScreenVector& screenVector),
+            "AzToolsFramework::Vector2FromScreenVector is deprecated, please use AzFramework::Vector2FromScreenVector")
         {
             return AzFramework::Vector2FromScreenVector(screenVector);
         }

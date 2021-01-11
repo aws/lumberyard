@@ -90,7 +90,7 @@ private:
     AWSResourceManager* m_resourceManager;
     bool m_isRefreshing { false };
     bool m_isReady { false };
-    QTime m_lastRefreshTime {};
+    QElapsedTimer m_lastRefreshTime {};
     AWSResourceManager::RequestId m_requestId;
 
     bool m_containsChanges{ false };
@@ -174,7 +174,7 @@ private:
                 return v1[column].toString() < v2[column].toString();
             };
 
-        qSort(list.begin(), list.end(), compare);
+        std::sort(list.begin(), list.end(), compare);
     }
 
     enum
@@ -200,7 +200,7 @@ private:
         {
             row[PendingActionColumn]->setText(AWSUtil::MakePrettyPendingActionText(pendingAction));
             row[PendingActionColumn]->setData(AWSUtil::MakePrettyPendingReasonTooltip(resource["PendingReason"].toString()), Qt::ToolTipRole);
-            row[PendingActionColumn]->setData(AWSUtil::MakePrettyPendingActionColor(pendingAction), Qt::TextColorRole);
+            row[PendingActionColumn]->setData(AWSUtil::MakePrettyPendingActionColor(pendingAction), Qt::ForegroundRole);
             row[PendingActionColumn]->setData("YES", PendingChangeFilterRole);
             m_containsChanges = true;
             if (pendingAction == "DELETE")
@@ -214,7 +214,7 @@ private:
         {
             row[ChangeImpactColumn]->setText(tr("Security"));
             row[ChangeImpactColumn]->setData(AWSUtil::MakePrettyPendingReasonTooltip(resource["PendingReason"].toString()), Qt::ToolTipRole);
-            row[ChangeImpactColumn]->setData(AWSUtil::MakePrettyColor("Default"), Qt::TextColorRole);
+            row[ChangeImpactColumn]->setData(AWSUtil::MakePrettyColor("Default"), Qt::ForegroundRole);
             m_containsSecurityChanges = true;
         }
         else
@@ -245,7 +245,7 @@ private:
         {
             row[ResourceStatusColumn]->setText(AWSUtil::MakePrettyResourceStatusText(resourceStatus));
             row[ResourceStatusColumn]->setData(AWSUtil::MakePrettyResourceStatusTooltip(resourceStatus, resource["ResourceStatusReason"].toString()), Qt::ToolTipRole);
-            row[ResourceStatusColumn]->setData(AWSUtil::MakePrettyResourceStatusColor(resourceStatus), Qt::TextColorRole);
+            row[ResourceStatusColumn]->setData(AWSUtil::MakePrettyResourceStatusColor(resourceStatus), Qt::ForegroundRole);
         }
 
         auto timestamp = resource["Timestamp"].toDateTime().toLocalTime().toString();

@@ -279,7 +279,7 @@ void OutlinerTreeView::drawBranches(QPainter* painter, const QRect& rect, const 
         {
             // draw a horizontal line from the parent branch to the item
             // if the item has children offset the drawn line to compensate for drawn expander buttons
-            bool hasChildren = previousIndex.child(0, 0).isValid();
+            bool hasChildren = previousIndex.model()->index(0, 0, previousIndex).isValid();
             int horizontalLineY = rect.top() + rectHalfHeight;
             int horizontalLineLeft = rect.right() - indentation() * 1.5f;
             int horizontalLineRight = hasChildren ? (lineBaseX - indentation()) : (lineBaseX - indentation() * 0.5f);

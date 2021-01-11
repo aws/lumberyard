@@ -52,20 +52,32 @@ namespace EMotionFX
         }
     }
 
+    void AnimGraphReferenceNode::UniqueData::OnReferenceAnimGraphAssetChanged()
+    {
+        // This gets called with AnimGraphReferenceNode::OnAnimGraphAssetChanged().
+        // At this state, the anim graph asset of the reference node already got changed but is not loaded yet.
+        // We need to destruct the reference anim graph instance and nullptr our pointer so that we don't use it in case the node gets updated, pointing
+        // to the non-existing old anim graph, while the new one is about to be loaded asynchronously.
+
+        // In case the asset already got destroyed (AnimGraphAssetHandler::DestroyAsset()), it removed all anim graph instances already.
+        if (GetAnimGraphManager().FindAnimGraphInstanceIndex(m_referencedAnimGraphInstance) != InvalidIndex32)
+        {
+            m_referencedAnimGraphInstance->Destroy();
+        }
+        m_referencedAnimGraphInstance = nullptr;
+
+        Clear();
+        Update();
+    }
+
     void AnimGraphReferenceNode::UniqueData::Update()
     {
         AnimGraphReferenceNode* referenceNode = azdynamic_cast<AnimGraphReferenceNode*>(mObject);
         AZ_Assert(referenceNode, "Unique data linked to incorrect node type.");
 
         MotionSet* motionSet = referenceNode->GetMotionSet();
-        const AnimGraph* animGraph = referenceNode->GetAnimGraph();
         AnimGraphInstance* animGraphInstance = GetAnimGraphInstance();
         const AZ::Data::Asset<Integration::AnimGraphAsset> referenceAnimGraphAsset = referenceNode->GetReferencedAnimGraphAsset();
-
-        // Three cases:
-        // 1) we currently don't have a reference anim graph and the user add it (need to initialize)
-        // 2) we currently have a reference anim graph and the user removed it (need to clear)
-        // 3) we currently have a reference anim graph and the user changed it (need to re-initialize)
 
         const bool hasCycles = referenceNode->GetHasCycles();
         if (GetEMotionFX().GetIsInEditorMode())
@@ -80,57 +92,17 @@ namespace EMotionFX
             animGraphInstanceMotionSet = animGraphInstance->GetMotionSet();
         }
 
-        if (!m_referencedAnimGraphInstance)
+        if (!m_referencedAnimGraphInstance &&
+            referenceAnimGraphAsset &&
+            referenceAnimGraphAsset.IsReady() &&
+            !hasCycles)
         {
-            if (referenceAnimGraphAsset && referenceAnimGraphAsset.IsReady())
-            {
-                // Case 1
-                if (!hasCycles)
-                {
-                    AnimGraph* referenceAnimGraph = referenceAnimGraphAsset.Get()->GetAnimGraph();
+            AnimGraph* referenceAnimGraph = referenceAnimGraphAsset.Get()->GetAnimGraph();
 
-                    m_referencedAnimGraphInstance = AnimGraphInstance::Create(referenceAnimGraph,
-                        animGraphInstance->GetActorInstance(),
-                        animGraphInstanceMotionSet);
-                    m_referencedAnimGraphInstance->SetParentAnimGraphInstance(animGraphInstance);
-                }
-            }
-        }
-        else
-        {
-            // Case 2
-            // The reference anim graph asset got cleared while the unique data still points to a reference instance.
-            if (!referenceAnimGraphAsset)
-            {
-                // In case the asset already got destroyed (AnimGraphAssetHandler::DestroyAsset()), it removed all anim graph instances already.
-                if (GetAnimGraphManager().FindAnimGraphInstanceIndex(m_referencedAnimGraphInstance) != InvalidIndex32)
-                {
-                    m_referencedAnimGraphInstance->Destroy();
-                }
-                m_referencedAnimGraphInstance = nullptr;
-                Clear();
-            }
-            else
-            {
-                // Case 3
-                // Check if the reference anim graph is the same, if it is, no need to recreate the anim graph instance
-                if (m_referencedAnimGraphInstance->GetAnimGraph() != referenceAnimGraphAsset.Get()->GetAnimGraph())
-                {
-                    m_referencedAnimGraphInstance->Destroy();
-                    m_referencedAnimGraphInstance = nullptr;
-
-                    if (!hasCycles)
-                    {
-                        AZ_Assert(referenceAnimGraphAsset.IsReady(), "Expected anim graph asset to be ready at this point");
-                        AnimGraph* referenceAnimGraph = referenceAnimGraphAsset.Get()->GetAnimGraph();
-
-                        m_referencedAnimGraphInstance = AnimGraphInstance::Create(referenceAnimGraph,
-                            animGraphInstance->GetActorInstance(),
-                            animGraphInstanceMotionSet);
-                        m_referencedAnimGraphInstance->SetParentAnimGraphInstance(animGraphInstance);
-                    }
-                }
-            }
+            m_referencedAnimGraphInstance = AnimGraphInstance::Create(referenceAnimGraph,
+                animGraphInstance->GetActorInstance(),
+                animGraphInstanceMotionSet);
+            m_referencedAnimGraphInstance->SetParentAnimGraphInstance(animGraphInstance);
         }
     }
 
@@ -653,9 +625,22 @@ namespace EMotionFX
             ;
     }
     
-
     void AnimGraphReferenceNode::OnAnimGraphAssetChanged()
     {
+        // Inform the unique datas as well as other systems about the changed anim graph asset, destroy and nullptr the reference
+        // anim graph instances so that we don't try to update an anim graph instance or while the asset already got destructed.
+        const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numAnimGraphInstances; ++i)
+        {
+            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
+            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->GetUniqueObjectData(mObjectIndex));
+            if (uniqueData)
+            {
+                uniqueData->OnReferenceAnimGraphAssetChanged();
+            }
+        }
+        AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnReferenceAnimGraphChanged, this);
+
         m_reinitMaskedParameters = true;
         if (GetNumConnections())
         {
@@ -663,7 +648,6 @@ namespace EMotionFX
         }
         LoadAnimGraphAsset();
     }
-
 
     void AnimGraphReferenceNode::OnMotionSetAssetChanged()
     {

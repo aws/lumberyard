@@ -95,6 +95,7 @@ namespace AudioControls
         TConnectionPtr CreateConnectionFromXMLNode(XmlNodeRef node, EACEControlType atlControlType) override;
         XmlNodeRef CreateXMLNodeFromConnection(const TConnectionPtr connection, const EACEControlType atlControlType) override;
         const AZStd::string_view GetTypeIcon(TImplControlType type) const override;
+        const AZStd::string_view GetTypeIconSelected(TImplControlType type) const override;
         AZStd::string GetName() const override;
         AZStd::string GetDataPath() const;
         void DataSaved() override {}

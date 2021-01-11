@@ -182,7 +182,7 @@ bool JointSelectionDialog::chooseJoint(QString &name, IDefaultSkeleton* skeleton
             items.append(item);
 
             QString idStr;
-            idStr.sprintf("%i", i);
+            idStr.asprintf("%i", i);
             item = new QStandardItem(idStr);
             item->setEditable(false);
             item->setData(jointName);

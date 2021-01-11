@@ -136,6 +136,9 @@ namespace ScriptCanvas
                 ScriptCanvas_In(ScriptCanvas_In::Name("Reset", "Resets the delay.")
                                 ScriptCanvas_In::Contracts({ DisallowReentrantExecutionContract }));
 
+                ScriptCanvas_In(ScriptCanvas_In::Name("Cancel", "Cancels the current delay.")
+                    ScriptCanvas_In::Contracts({ DisallowReentrantExecutionContract }));
+
                 // Outputs
                 ScriptCanvas_OutLatent(ScriptCanvas_OutLatent::Name("Out", "Signaled when the delay reaches zero."));
 
@@ -162,7 +165,6 @@ namespace ScriptCanvas
                 float m_countdownSeconds;
                 bool m_looping;
                 float m_holdTime;
-                float m_elapsedTime;
 
                 //! Internal, used to determine if the node is holding before looping
                 bool m_holding;
@@ -179,10 +181,17 @@ namespace ScriptCanvas
                     return m_looping;
                 }
 
+                bool IsOutOfDate() const override;
+
             protected:
 
                 void OnDeactivate() override;
+
+                // AZ::TickBus
                 void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+                ////
+
+                UpdateResult OnUpdateNode() override;
 
             };
         }

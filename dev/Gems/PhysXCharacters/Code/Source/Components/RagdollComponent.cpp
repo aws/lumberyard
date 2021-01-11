@@ -257,11 +257,24 @@ namespace PhysXCharacters
         m_ragdoll->EnableSimulation(initialState);
     }
 
+    void RagdollComponent::EnableSimulationQueued(const Physics::RagdollState& initialState)
+    {
+        m_ragdoll->EnableSimulationQueued(initialState);
+    }
+
     void RagdollComponent::DisableSimulation()
     {
         if (m_ragdoll)
         {
             m_ragdoll->DisableSimulation();
+        }
+    }
+
+    void RagdollComponent::DisableSimulationQueued()
+    {
+        if (m_ragdoll)
+        {
+            m_ragdoll->DisableSimulationQueued();
         }
     }
 
@@ -278,6 +291,11 @@ namespace PhysXCharacters
     void RagdollComponent::SetState(const Physics::RagdollState& ragdollState)
     {
         m_ragdoll->SetState(ragdollState);
+    }
+
+    void RagdollComponent::SetStateQueued(const Physics::RagdollState& ragdollState)
+    {
+        m_ragdoll->SetStateQueued(ragdollState);
     }
 
     void RagdollComponent::GetNodeState(size_t nodeIndex, Physics::RagdollNodeState& nodeState) const
@@ -297,12 +315,16 @@ namespace PhysXCharacters
 
     void RagdollComponent::EnablePhysics()
     {
-        AZ_Error("Ragdoll", false, "Ragdoll component doesn't support manual physics activation/deactivation through this interface");
+        // do nothing here, ragdolls are enabled via EnableSimulation
+        // don't raise an error though, because the character controller component may also be handling the world body
+        // request bus and it would be legitimate to call this function on this entity ID
     }
 
     void RagdollComponent::DisablePhysics()
     {
-        AZ_Error("Ragdoll", false, "Ragdoll component doesn't support manual physics activation/deactivation through this interface");
+        // do nothing here, ragdolls are disabled via DisableSimulation
+        // don't raise an error though, because the character controller component may also be handling the world body
+        // request bus and it would be legitimate to call this function on this entity ID
     }
 
     bool RagdollComponent::IsPhysicsEnabled() const

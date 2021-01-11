@@ -112,7 +112,7 @@ namespace AzToolsFramework
 
         AZ_CLASS_ALLOCATOR(EntityPropertyEditor, AZ::SystemAllocator, 0)
 
-        EntityPropertyEditor(QWidget* pParent = NULL, Qt::WindowFlags flags = 0, bool isLevelEntityEditor = false);
+        EntityPropertyEditor(QWidget* pParent = NULL, Qt::WindowFlags flags = Qt::WindowFlags(), bool isLevelEntityEditor = false);
         virtual ~EntityPropertyEditor();
 
         virtual void BeforeUndoRedo();
@@ -272,7 +272,10 @@ namespace AzToolsFramework
         const char* GetAppropriateIndicator(const InstanceDataNode* node);
 
         void OnDisplayComponentEditorMenu(const QPoint& position);
-        void OnRequestRequiredComponents(const QPoint& position, const QSize& size, const AZStd::vector<AZ::ComponentServiceType>& services);
+        void OnRequestRequiredComponents(const QPoint& position,
+            const QSize& size,
+            const AZStd::vector<AZ::ComponentServiceType>& services,
+            const AZStd::vector<AZ::ComponentServiceType>& incompatibleServices);
 
         AZ::Component* ExtractMatchingComponent(AZ::Component* component, AZ::Entity::ComponentArrayType& availableComponents);
 
@@ -284,7 +287,8 @@ namespace AzToolsFramework
             ComponentPaletteWidget* componentPalette,
             const QPoint& position,
             const QSize& size,
-            const AZStd::vector<AZ::ComponentServiceType>& serviceFilter);
+            const AZStd::vector<AZ::ComponentServiceType>& serviceFilter,
+            const AZStd::vector<AZ::ComponentServiceType>& incompatibleServiceFilter);
 
         enum class SelectionEntityTypeInfo
         {

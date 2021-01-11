@@ -84,12 +84,15 @@ namespace PhysX
         void UpdateCachedSamplePoints() const;
         void CreateStaticEditorCollider();
         AZ::u32 OnConfigurationChanged();
-        void UpdateShapeConfigs(bool refreshPropertyTree);
+        void UpdateShapeConfigs();
         void UpdateBoxConfig(const AZ::Vector3& scale);
         void UpdateCapsuleConfig(const AZ::Vector3& scale);
         void UpdateSphereConfig(const AZ::Vector3& scale);
         void UpdatePolygonPrismDecomposition();
         void UpdatePolygonPrismDecomposition(const AZ::PolygonPrismPtr polygonPrismPtr);
+
+        void RefreshUiProperties();
+
         void UpdateCylinderConfig(const AZ::Vector3& scale);
 
         AZ::u32 OnSubdivisionCountChange();

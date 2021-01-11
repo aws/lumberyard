@@ -15,10 +15,10 @@
 
 #include <QAction>
 #include <QPushButton>
-#include <QTabBar>
-#include <QTabWidget>
 #include <QStyle>
 #include <QStyledItemDelegate>
+#include <QTabBar>
+#include <QTabWidget>
 
 class QFrame;
 class QSettings;
@@ -33,75 +33,67 @@ namespace AzQtComponents
     class TabWidgetActionToolBar;
     class TabWidgetActionToolBarContainer;
 
-    /**
-     * Class to provide extra functionality for working with QTabWidget and QTabBar
-     * objects.
-     *
-     * The TabBar class provides the ability to show a custom tear icon on moveable tabs,
-     * when an tab is being hovered or clicked.
-     *
-     * The TabWidget class is just a wrapper class for QTabWidget using an instance of
-     * TabBar as a tab bar.
-     *
-     * TabWidget and TabBar controls are styled in TabWidget.qss and configured in
-     * TabWidget.ini
-     */
+     //! A container for other widgets that provides a tab bar to switch between them.
     class AZ_QT_COMPONENTS_API TabWidget
         : public QTabWidget
     {
         Q_OBJECT
+
+        //! Visibility of the action toolbar.
         Q_PROPERTY(bool actionToolBarVisible READ isActionToolBarVisible WRITE setActionToolBarVisible)
 
     public:
+        //! Style configuration for tab widgets.
         struct Config
         {
-            QPixmap tearIcon;
-            int tearIconLeftPadding;
-            int tabHeight;
-            int minimumTabWidth;
-            int closeButtonSize;
-            int textRightPadding;
-            int closeButtonRightPadding;
-            int closeButtonMinTabWidth;
-            int toolTipTabWidthThreshold;
-            bool showOverflowMenu;
-            int overflowSpacing;
+            QPixmap tearIcon;               //!< The icon shown on the left side of a tab to show it can be dragged. Must be an svg image.
+            int tearIconLeftPadding;        //!< Padding between the tear icon and the left side of the tab, in pixels.
+            int tabHeight;                  //!< Height of a tab, in pixels.
+            int minimumTabWidth;            //!< Minimum size of tabs when shrunk, in pixels.
+            int closeButtonSize;            //!< Size of the close button, both width and height, in pixels.
+            int textRightPadding;           //!< Padding between the tab text and the close button, in pixels.
+            int closeButtonRightPadding;    //!< Padding between the close button and the right side of the tab, in pixels.
+            int closeButtonMinTabWidth;     //!< Width threshold below which the close button is not shown, in pixels.
+            int toolTipTabWidthThreshold;   //!< Width threshold below which a tooltip is displayed, in pixels.
+            bool showOverflowMenu;          //!< Whether an overflow dropdown menu listing the tabs should be displayed on resize.
+            int overflowSpacing;            //!< Spacing between the overflow button and the other buttons when the tabs are shrunk, in pixels.
         };
 
-        /*!
-        * Applies the Secondary styling to a TabWidget.
-        */
+        //! Applies the "Secondary" style class to a TabWidget.
+        //! @guidepage uidev-tab-component.html
         static void applySecondaryStyle(TabWidget* tabWidget, bool bordered = true);
 
-        /*!
-        * Loads the tab bar config data from a settings object.
-        */
+        //! Sets the tab widget style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the tab widget.
         static Config loadConfig(QSettings& settings);
-
-        /*!
-        * Returns default tab bar config data.
-        */
+        //! Gets the default tab widget style configuration.
         static Config defaultConfig();
 
         explicit TabWidget(QWidget* parent = nullptr);
-        // Extra constructor for using an action toolbar to show the actions belonging to the widget.
-        // Implicitly sets actionToolBarEnabled.
+        //! Alternate constructor to pre-populate the action toolbar.
+        //! @param actionToolBar The action toolbar to show. Implicitly sets actionToolBarEnabled.
+        //! @param parent The parent widget.
         TabWidget(TabWidgetActionToolBar* actionToolBar, QWidget* parent = nullptr);
 
-        // Setter for the TabBar in case a custom one is needed
-        // Makes sure the connections are set properly
+        //! Sets a custom tab bar overriding the default one.
         void setCustomTabBar(TabBar* tabBar);
 
-        // Add or replace the action toolbar of the widget. Implicitly sets actionToolBarEnabled.
+        //! Adds or replaces the action toolbar of the widget. Implicitly sets actionToolBarEnabled.
         void setActionToolBar(TabWidgetActionToolBar* actionToolBar);
+        //! Returns the action toolbar, or nullptr if not set.
         TabWidgetActionToolBar* actionToolBar() const;
 
-        // Shows the action toolbar for this widget. If no TabWidgetActionToolBar is set either through
-        // the constructor or through setActionToolBar, a default one is created and connected.
+        //! Sets the visibility of the action toolbar.
+        //! If none is set, it creates and displays a default one.
         void setActionToolBarVisible(bool visible = true);
+        //! Returns true if the action toolbar is visible.
         bool isActionToolBarVisible() const;
+
+        //! Enables extra space between the tabs and the action toolbar to allow easier dragging.
         void setOverflowButtonSpacing(bool enable);
 
+        //! Overrides the QTabWidget resizeEvent function to account for tab sizing.
         void resizeEvent(QResizeEvent* resizeEvent) override;
 
     protected:
@@ -127,18 +119,27 @@ namespace AzQtComponents
         static bool unpolish(Style* style, QWidget* widget, const TabWidget::Config& config);
     };
 
+    //! Container for the TabWidget action toolbar.
     class AZ_QT_COMPONENTS_API TabWidgetActionToolBarContainer
         : public QFrame
     {
         Q_OBJECT
+
     public:
         explicit TabWidgetActionToolBarContainer(QWidget* parent = nullptr);
-        QToolButton* overflowButton() const { return m_overflowButton; }
-        QSpacerItem* overflowSpacer() const { return m_overflowSpacer; }
 
+        //! Returns the overflow button.
+        QToolButton* overflowButton() const { return m_overflowButton; }
+        //! Returns the overflow spacer.
+        QSpacerItem* overflowSpacer() const { return m_overflowSpacer; }
+        //! Returns the action toolbar.
         TabWidgetActionToolBar* actionToolBar() const { return m_actionToolBar; }
+        //! Adds or replaces the action toolbar of the widget. Implicitly sets actionToolBarEnabled.
         void setActionToolBar(TabWidgetActionToolBar* actionToolBar);
+        //! Sets the visibility of the action toolbar.
+        //! If no action toolbar is set, creates and displays a default toolbar.
         void setActionToolBarVisible(bool visible);
+        //! Returns true if the action toolbar is visible.
         bool isActionToolBarVisible() const;
 
     private:
@@ -149,20 +150,25 @@ namespace AzQtComponents
         void fixTabOrder();
     };
 
+    //! Allows switching between different content widgets in a TabWidget.
     class AZ_QT_COMPONENTS_API TabBar
         : public QTabBar
     {
         Q_OBJECT
 
     public:
-
+        //! Sets whether the widget should handle overflow with a custom menu.
         void setHandleOverflow(bool handleOverflow);
+        //! Returns whether the widget handles overflow.
         bool getHandleOverflow() const;
 
+        //! Handler to be called after a new tab is added or inserted at position index.
         void tabInserted(int index) override;
+        //! Handler to be called after a new tab is removed at position index.
         void tabRemoved(int index) override;
 
     Q_SIGNALS:
+        //! Triggered when the handle overflow settings are changed.
         void overflowingChanged(bool overflowing);
 
     protected:

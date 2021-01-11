@@ -17,6 +17,9 @@ from path_utils import ensure_posix_path
 def get_default_staging_table_name():
     return 'StagingSettingsTable'
 
+def get_default_versioned_staging_table_name():
+    return 'VersionedStagingSettingsTable'
+
 
 def get_default_bucket_name():
     return 'ContentBucket'
@@ -57,6 +60,9 @@ def get_manifest_pak_extension():
 def get_pak_folder():
     return 'DynamicContent/Paks/'
 
+def get_backup_folder():
+    return 'DynamicContent/Backups/'
+
 
 def get_manifest_folder():
     return 'DynamicContent/Manifests/'
@@ -84,6 +90,10 @@ def get_manifest_game_folder(game_folder_name):
 
 def get_pak_game_folder(game_folder_name):
     return ensure_posix_path(os.path.join(game_folder_name, get_pak_folder()))
+
+
+def get_table_backup_folder(game_folder_name):
+    return ensure_posix_path(os.path.join(game_folder_name, get_backup_folder()))
 
 
 def get_keysize():

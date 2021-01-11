@@ -16,8 +16,11 @@
 #include <AzQtComponents/Utilities/Conversions.h>
 #include <QtWidgets/QSlider>
 #include <QtWidgets/QLineEdit>
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
+// 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QtWidgets/QHBoxLayout>
+// qpainter.h(465): warning C4251: 'QPainter::d_ptr': class 'QScopedPointer<QPainterPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QPainter'
+#include <QPainter> 
 AZ_POP_DISABLE_WARNING
 
 #include "../UICore/ColorPickerDelegate.hxx"
@@ -27,37 +30,39 @@ namespace AzToolsFramework
     PropertyColorCtrl::PropertyColorCtrl(QWidget* pParent)
         : QWidget(pParent)
     {
+        m_alphaChannelEnabled = false;
+
         // create the gui, it consists of a layout, and in that layout, a text field for the value
         // and then a slider for the value.
         QHBoxLayout* pLayout = new QHBoxLayout(this);
         pLayout->setAlignment(Qt::AlignLeft);
 
+        static const int minColorEditWidth = 100;
         m_colorEdit = new QLineEdit();
-        m_colorEdit->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-        m_colorEdit->setMinimumWidth(PropertyQTConstant_MinimumWidth);
+        m_colorEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        m_colorEdit->setMinimumWidth(minColorEditWidth);
         m_colorEdit->setFixedHeight(PropertyQTConstant_DefaultHeight);
-        /*Use regex to validate the input
-        *\d\d?    Match 0-99
-        *1\d\d    Match 100 - 199
-        *2[0-4]\d Match 200-249
-        *25[0-5]  Match 250 - 255
-        *(25[0-5]|2[0-4]\d|1\d\d|\d\d?)\s*,\s*){2} Match the first two "0-255,"
-        *(25[0-5]|2[0-4]\d|1\d\d|\d\d?) Match the last "0-255"
-        */
-        m_colorEdit->setValidator(new QRegExpValidator(QRegExp("^\\s*((25[0-5]|2[0-4]\\d|1\\d\\d|\\d\\d?)\\s*,\\s*){2}(25[0-5]|2[0-4]\\d|1\\d\\d|\\d\\d?)\\s*$")));
+        m_colorEdit->setValidator(CreateTextEditValidator());
 
         m_pDefaultButton = new QToolButton(this);
         m_pDefaultButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-        QSize fixedSize = QSize(PropertyQTConstant_DefaultHeight, PropertyQTConstant_DefaultHeight);
+        static const int colorIconWidth = 32;
+        static const int colorIconHeight = 16;
+        static const int colorButtonWidth = colorIconWidth + 2;
         // The icon size needs to be smaller than the fixed size to make sure it visually aligns properly.
-        QSize iconSize = QSize(fixedSize.width() - 2, fixedSize.height() - 2);
+        QSize fixedButtonSize = QSize(colorButtonWidth, PropertyQTConstant_DefaultHeight);
+        QSize iconSize = QSize(colorIconWidth, colorIconHeight);
         m_pDefaultButton->setIconSize(iconSize);
-        m_pDefaultButton->setFixedSize(fixedSize);
+        m_pDefaultButton->setFixedSize(fixedButtonSize);
 
         setLayout(pLayout);
 
-        pLayout->setContentsMargins(0, 0, 0, 0);
+        // Set layout spacing to the desired amount but also account for the
+        // color icon being smaller than the button which leaves some blank space
+        static const int layoutSpacing = 4 - (colorButtonWidth - colorIconWidth);
+        pLayout->setContentsMargins(1, 0, 1, 0);
+        pLayout->setSpacing(layoutSpacing);
         pLayout->addWidget(m_pDefaultButton);
         pLayout->addWidget(m_colorEdit);
 
@@ -79,6 +84,15 @@ namespace AzToolsFramework
     QColor PropertyColorCtrl::value() const
     {
         return m_color;
+    }
+
+    void PropertyColorCtrl::setAlphaChannelEnabled(bool enabled)
+    {
+        if (m_alphaChannelEnabled != enabled)
+        { 
+            m_alphaChannelEnabled = enabled;
+            m_colorEdit->setValidator(CreateTextEditValidator());
+        }
     }
 
     QWidget* PropertyColorCtrl::GetFirstInTabOrder()
@@ -106,6 +120,10 @@ namespace AzToolsFramework
             m_color = color;
             QPixmap pixmap(m_pDefaultButton->iconSize());
             pixmap.fill(TransformColor(color, m_config.m_propertyColorSpaceId, m_config.m_colorSwatchColorSpaceId));
+            // Draw a border
+            QPainter painter(&pixmap);
+            painter.setPen(QColor("#333333"));
+            painter.drawRect(pixmap.rect().adjusted(0, 0, -1, -1));
             QIcon newIcon(pixmap);
             m_pDefaultButton->setIcon(newIcon);
             if (m_pColorDialog && updateDialogColor)
@@ -115,9 +133,14 @@ namespace AzToolsFramework
                 m_pColorDialog->setCurrentColor(azColor);
             }
 
-            int R, G, B;
-            m_color.getRgb(&R, &G, &B);
-            m_colorEdit->setText(QStringLiteral("%1,%2,%3").arg(R).arg(G).arg(B));
+            int R, G, B, A;
+            m_color.getRgb(&R, &G, &B, &A);
+            auto colorStr =
+                m_alphaChannelEnabled
+                ? QStringLiteral("%1,%2,%3,%4").arg(R).arg(G).arg(B).arg(A)
+                : QStringLiteral("%1,%2,%3").arg(R).arg(G).arg(B)
+                ;
+            m_colorEdit->setText(colorStr);
         }
     }
 
@@ -143,6 +166,26 @@ namespace AzToolsFramework
         }
     }
 
+    QRegExpValidator* PropertyColorCtrl::CreateTextEditValidator() const
+    {
+        /*Use regex to validate the input
+        *\d\d?    Match 0-99
+        *1\d\d    Match 100 - 199
+        *2[0-4]\d Match 200-249
+        *25[0-5]  Match 250 - 255
+        *(25[0-5]|2[0-4]\d|1\d\d|\d\d?)\s*,\s*){2} Match the first two (or three with alpha channel) "0-255,"
+        *(25[0-5]|2[0-4]\d|1\d\d|\d\d?) Match the last "0-255"
+        */
+
+        int numInitialChannelComponents = m_alphaChannelEnabled ? 3 : 2;
+
+        AZStd::string regex = AZStd::string::format(
+            "^\\s*((25[0-5]|2[0-4]\\d|1\\d\\d|\\d\\d?)\\s*,\\s*){%d}(25[0-5]|2[0-4]\\d|1\\d\\d|\\d\\d?)\\s*$",
+            numInitialChannelComponents);
+
+        return new QRegExpValidator(QRegExp(regex.c_str()));
+    }
+
     void PropertyColorCtrl::CreateColorDialog()
     {
         // Don't need to create a dialog if it already exists.
@@ -150,8 +193,8 @@ namespace AzToolsFramework
         {
             return;
         }
-        
-        m_pColorDialog = new AzQtComponents::ColorPicker(m_config.m_colorPickerDialogConfiguration, QString(), this);
+        const auto config = m_alphaChannelEnabled ? AzQtComponents::ColorPicker::Configuration::RGBA : AzQtComponents::ColorPicker::Configuration::RGB;
+        m_pColorDialog = new AzQtComponents::ColorPicker(config, QString(), this);
         m_pColorDialog->setWindowTitle(tr("Select Color"));
         m_pColorDialog->setWindowModality(Qt::ApplicationModal);
         m_pColorDialog->setAttribute(Qt::WA_DeleteOnClose);
@@ -208,13 +251,17 @@ namespace AzToolsFramework
 
     QColor PropertyColorCtrl::convertFromString(const QString& string)
     {
-        QStringList strList = string.split(",", QString::SkipEmptyParts);
-        int R = 0, G = 0, B = 0;
-        AZ_Assert(strList.size() == 3, "Invalid input string for RGB field!");
+        QStringList strList = string.split(",", Qt::SkipEmptyParts);
+        int R = 0, G = 0, B = 0, A = 255;
+        AZ_Assert(strList.size() == 3 || strList.size() == 4, "Invalid input string for RGB field!");
         R = strList[0].trimmed().toInt();
         G = strList[1].trimmed().toInt();
         B = strList[2].trimmed().toInt();
-        return QColor(R, G, B);
+        if (m_alphaChannelEnabled)
+        { 
+            A = strList[3].trimmed().toInt();
+        }
+        return QColor(R, G, B, A);
     }
 
     ////////////////////////////////////////////////////////////////
@@ -277,6 +324,33 @@ namespace AzToolsFramework
         }
     }
 
+    void AZColorPropertyHandler::ConsumeAttribute(PropertyColorCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
+    {
+        if (attrib == AZ_CRC("AlphaChannel", 0xa0cab5cf))
+        {
+            bool alphaChannel;
+            if (attrValue->Read<bool>(alphaChannel))
+            { 
+                GUI->setAlphaChannelEnabled(alphaChannel);
+            }
+            else
+            {
+                (void)debugName;
+                AZ_WarningOnce("AZColorPropertyHandler", false, "Failed to read 'AlphaChannel' attribute from property '%s'; expected `bool' type", debugName);
+            }
+        }
+        // Unlike other property editors that are configured through a collection of attributes attributes, PropertyColorCtrl uses a single ColorEditorConfiguration
+        // attribute that encompasses many settings. This is because ColorEditorConfiguration's settings are closely related to each other, and if a widget needs
+        // to set one of these settings, it likely needs to set all of the settings. So it's less cumbersome to just group them all together.
+        else if (attrib == AZ_CRC("ColorEditorConfiguration", 0xc8b9510e))
+        {
+            ColorEditorConfiguration config;
+            if (attrValue->Read<ColorEditorConfiguration>(config))
+            {
+                GUI->SetColorEditorConfiguration(config);
+            }
+        }
+    }
 
     
     void PropertyColorCtrl::SetColorEditorConfiguration(const ColorEditorConfiguration& configuration)
@@ -299,21 +373,6 @@ namespace AzToolsFramework
         }
 
         return color;
-    }
-
-    void AZColorPropertyHandler::ConsumeAttribute(PropertyColorCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* /*debugName*/)
-    {
-        // Unlike other property editors that are configured through a collection of attributes attributes, PropertyColorCtrl uses a single ColorEditorConfiguration
-        // attribute that encompasses many settings. This is because ColorEditorConfiguration's settings are closely related to each other, and if a widget needs
-        // to set one of these settings, it likely needs to set all of the settings. So it's less cumbersome to just group them all together.
-        if (attrib == AZ_CRC("ColorEditorConfiguration", 0xc8b9510e))
-        {
-            ColorEditorConfiguration config;
-            if (attrValue->Read<ColorEditorConfiguration>(config))
-            {
-                GUI->SetColorEditorConfiguration(config);
-            }
-        }
     }
 
     void AZColorPropertyHandler::WriteGUIValuesIntoProperty(size_t index, PropertyColorCtrl* GUI, property_t& instance, InstanceDataNode* node)

@@ -272,7 +272,7 @@ bool DeployWorkerBase::LaunchShaderCompiler() const
 
                 QString whitelist(shaderCompilerConfig.GetString(whitelistKey).c_str());
 
-                QStringList ipAddresses = whitelist.split(',', QString::SkipEmptyParts);
+                QStringList ipAddresses = whitelist.split(',', Qt::SkipEmptyParts);
                 if (!ipAddresses.contains(deviceIp.c_str()))
                 {
                     ipAddresses.append(deviceIp.c_str());
@@ -364,17 +364,15 @@ void DeployWorkerBase::StartWafCommand(const char* commandType, const AZStd::str
         return;
     }
 
-    AZStd::string wafCmd = AZStd::move(
-        AZStd::string::format("%s %s_%s_%s --enabled-game-projects=%s -pall %s",
-                            wafCommand,
-                            commandType,
-                            wafTarget,
-                            m_deploymentConfig.m_buildConfiguration.c_str(),
-                            m_deploymentConfig.m_projectName.c_str(),
-                            commandArgs.c_str()));
+    QStringList arguments = {
+        QString("%1_%2_%3").arg(commandType, wafTarget, m_deploymentConfig.m_buildConfiguration.c_str()),
+        QString("--enabled-game-projects=%1").arg(m_deploymentConfig.m_projectName.c_str()),
+        "-pall"
+    };
+    arguments << QProcess::splitCommand(QString(commandArgs.c_str()));
 
-    DEPLOY_LOG_INFO("[INFO] Running WAF command: %s", wafCmd.c_str());
-    m_wafProcess->start(wafCmd.c_str());
+    DEPLOY_LOG_INFO("[INFO] Running WAF command: %s %s", wafCommand, arguments.join(' ').toUtf8().data());
+    m_wafProcess->start(wafCommand, arguments);
 
     if (!m_wafProcess->waitForStarted())
     {
@@ -383,14 +381,14 @@ void DeployWorkerBase::StartWafCommand(const char* commandType, const AZStd::str
     }
 }
 
-bool DeployWorkerBase::RunBlockingCommand(const AZStd::string& command, QString* output) const
+bool DeployWorkerBase::RunBlockingCommand(const QString& program, const QStringList& arguments, QString* output) const
 {
-    DEPLOY_LOG_DEBUG("[DEBUG] Running %s", command.c_str());
+    DEPLOY_LOG_DEBUG("[DEBUG] Running %s %s", program.toUtf8().data(), arguments.join(' ').toUtf8().data());
 
     QProcess process;
     process.setProcessChannelMode(QProcess::MergedChannels);
 
-    process.start(command.c_str());
+    process.start(program, arguments);
 
     if (!process.waitForStarted() || !process.waitForFinished())
     {

@@ -237,7 +237,7 @@ AzQtComponents--Card #SeparatorContainer
 
 AzQtComponents--Card QLabel:disabled
 {
-    color: #40FFFFFF;
+    color: #999999;
 }
 
 /* Show expander arrow in card header at full opacity even when card is disabled */

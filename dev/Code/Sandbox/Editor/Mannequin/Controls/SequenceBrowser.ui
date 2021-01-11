@@ -48,7 +48,7 @@
  <customwidgets>
   <customwidget>
    <class>CFolderTreeCtrl</class>
-   <extends>QTreeWidget</extends>
+   <extends>QTreeView</extends>
    <header>Controls/FolderTreeCtrl.h</header>
   </customwidget>
  </customwidgets>

@@ -69,6 +69,7 @@ namespace AssetValidation
         void TogglePrintExcluded() override;
 
         virtual AZ::Outcome<AzFramework::AssetSeedList, AZStd::string> LoadSeedList(const char* fileName, AZStd::string& seedFilepath);
+        bool RemoveSeedListHelper(const char* seedPath);
         ////////////////////////////////////////////////////////////////////////
 
         void BuildAssetList();
@@ -106,6 +107,7 @@ namespace AssetValidation
 
         bool AddSeedsFor(const AzFramework::AssetSeedList& seedList, AZ::u32 sourceId);
         bool RemoveSeedsFor(const AzFramework::AssetSeedList& seedList, AZ::u32 sourceId);
+        bool AddSeedListHelper(const char* seedPath);
     private:
         
         bool m_seedMode{ false };

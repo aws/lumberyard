@@ -48,7 +48,6 @@
 #include <DockableLibraryPanel.h>
 #include <DockablePreviewPanel.h>
 #include <Utils.h>
-#include <VariableWidgets/QCustomColorDialog.h>
 #include <VariableWidgets/QKeySequenceEditorDialog.h>
 #include <VariableWidgets/QGradientColorDialog.h>
 #include <VariableWidgets/QColorEyeDropper.h>
@@ -1330,7 +1329,7 @@ void CMainWindow::Library_PopulateItemContextMenu(CLibraryTreeViewItem* focusedI
         CParticleItem* pParticle = static_cast<CParticleItem*>(focusedItem->GetItem());
         connect(action, &QAction::triggered, this, [=]()
             {
-                Library_ItemDuplicated(QString(pParticle->GetFullName()), "");
+                Library_ItemDuplicated(QString(pParticle->GetFullName()));
             }, Qt::QueuedConnection);
     }
     else
@@ -1437,7 +1436,7 @@ void CMainWindow::Attribute_PopulateTabBarContextMenu(const QString& libraryName
         {
             connect(action, &QAction::triggered, this, [=]()
                 {
-                    Library_ItemDuplicated(libraryName + "." + itemName, "");
+                    Library_ItemDuplicated(libraryName + "." + itemName);
                 });
         }
         else
@@ -1587,7 +1586,7 @@ void CMainWindow::Edit_PopulateMenu()
             QVector<CBaseLibraryItem*> selectedItems = m_libraryTreeViewDock->GetSelectedItems();
             if (selectedItems.count() == 1 && selectedItems.first())
             {
-                Library_ItemDuplicated("", "");
+                Library_ItemDuplicated("");
             }
         });
 
@@ -1727,9 +1726,6 @@ void CMainWindow::UpdatePalette()
     {
         hide();
         setStyleSheet(processedStyle); // Stylesheet also propagates to the docks
-
-        QCustomColorDialog* cdlg = UIFactory::GetColorPicker();
-        cdlg->setStyleSheet(processedStyle);
 
         QGradientColorDialog* gdlg = UIFactory::GetGradientEditor(SCurveEditorContent(), { QGradientStop(0.0, Qt::white), QGradientStop(1.0, Qt::white) });
         gdlg->setStyleSheet(processedStyle);
@@ -1882,7 +1878,7 @@ QString CMainWindow::GetColorStringByName(QString const& name)
         int r, g, b, a;
         it->getRgb(&r, &g, &b, &a);
         QString str;
-        str = str.sprintf("rgba(%d,%d,%d,%d)", r, g, b, a);
+        str = str.asprintf("rgba(%d,%d,%d,%d)", r, g, b, a);
         return str;
     }
     else
@@ -2059,6 +2055,7 @@ void CMainWindow::Library_ItemCopied(IDataBaseItem* item)
     {
         return;
     }
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     XmlNodeRef node = GetIEditor()->GetSystem()->CreateXmlNode("Particles");
     CBaseLibraryItem::SerializeContext ctx(node, false);
     ctx.bCopyPaste = true;
@@ -2074,10 +2071,7 @@ void CMainWindow::Library_ItemPasted(IDataBaseItem* target, bool overrideSafety 
     {
         return;
     }
-    if (target->GetLibrary())
-    {
-        m_libraryTreeViewDock->SelectLibraryAndItemByName(QString(target->GetLibrary()->GetName()), QString(target->GetName()));
-    }
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
 
     CClipboard clipboard(this);
     if (clipboard.IsEmpty())
@@ -2092,13 +2086,21 @@ void CMainWindow::Library_ItemPasted(IDataBaseItem* target, bool overrideSafety 
     }
 
     CBaseLibraryManager* mngr = static_cast<CBaseLibraryManager*>(GetIEditor()->GetParticleManager());
-    
-    EditorUIPlugin::ScopedLibraryModifyUndoPtr modifyUndo;    
+
+    EditorUIPlugin::ScopedLibraryModifyUndoPtr modifyUndo;
     AZStd::string libName = target->GetLibrary()->GetName().toUtf8().data();
     EBUS_EVENT_RESULT(modifyUndo, EditorLibraryUndoRequestsBus, AddScopedLibraryModifyUndo, libName);
 
+    // Reset selection since we will set the selection in the end.
+    // This will also save time for ForceLibrarySync since it will try to restore selection if there were some.
+    if (target->GetLibrary())
+    {
+        m_libraryTreeViewDock->SelectLibraryAndItemByName(QString(target->GetLibrary()->GetName()), "");
+    }
+
     if (strcmp(node->getTag(), "Childs") == 0)
     {
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "Copy to childs");
         //copy the selected particles to the children of the selected item
         //it is not possible to only copy params as the params may overwrite eachother.
         //so we don't prompt
@@ -2125,34 +2127,44 @@ void CMainWindow::Library_ItemPasted(IDataBaseItem* target, bool overrideSafety 
         GetIEditor()->GetParticleManager()->PasteToParticleItem(static_cast<CParticleItem*>(target), particleNode, true);
         if (target->GetLibrary())
         {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "ForceLibrarySync");
             m_libraryTreeViewDock->ForceLibrarySync(QString(target->GetLibrary()->GetName()));
         }
-
-        return;
     }
-
-    bool replaceAll = true;
-    if (!overrideSafety)
+    else
     {
-        QCopyModalDialog dlg(this, QString(target->GetFullName()));
-        bool result = dlg.exec(replaceAll);
-        if (!result)
+        bool replaceAll = true;
+        if (!overrideSafety)
         {
-            return;
+            QCopyModalDialog dlg(this, QString(target->GetFullName()));
+            bool result = dlg.exec(replaceAll);
+            if (!result)
+            {
+                return;
+            }
+        }
+
+        if (strcmp(node->getTag(), "Particles") == 0)
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "Copy to particles");
+            CParticleItem* pParticle = static_cast<CParticleItem*>(target);
+            CRY_ASSERT(pParticle);
+            node->delAttr("Name");
+            node->setAttr("Name", target->GetName().toUtf8().data());
+            GetIEditor()->GetParticleManager()->PasteToParticleItem(pParticle, node, replaceAll);
+            if (target->GetLibrary())
+            {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "ForceLibrarySync");
+                m_libraryTreeViewDock->ForceLibrarySync(QString(target->GetLibrary()->GetName()));
+            }
         }
     }
 
-    if (strcmp(node->getTag(), "Particles") == 0)
+    // set the target item as selected item
+    if (target->GetLibrary())
     {
-        CParticleItem* pParticle = static_cast<CParticleItem*>(target);
-        CRY_ASSERT(pParticle);
-        node->delAttr("Name");
-        node->setAttr("Name", target->GetName().toUtf8().data());
-        GetIEditor()->GetParticleManager()->PasteToParticleItem(pParticle, node, replaceAll);
-        if (target->GetLibrary())
-        {
-            m_libraryTreeViewDock->ForceLibrarySync(QString(target->GetLibrary()->GetName()));
-        }
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "SelectLibraryAndItemByName");
+        m_libraryTreeViewDock->SelectLibraryAndItemByName(QString(target->GetLibrary()->GetName()), QString(target->GetName()));
     }
 }
 
@@ -2193,8 +2205,38 @@ void CMainWindow::Library_ItemsPastedToFolder(IDataBaseLibrary* lib, const QStri
     }
 }
 
-void CMainWindow::Library_ItemDuplicated(const QString& itemPath, QString pasteTo)
+CBaseLibraryItem* CreateNewItemFrom(CBaseLibraryManager* libraryManager, const QString& sourcePath, const bool isVirtual)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
+    QStringList pathList = sourcePath.split('.');
+    QString libraryName;
+    QString newItemName;
+    QString origItemName;
+
+    libraryName = pathList.takeFirst();
+    origItemName = pathList.join(".");
+    newItemName = origItemName;
+
+    newItemName = libraryManager->MakeUniqueItemName(newItemName, libraryName);
+    IDataBaseLibrary* library = libraryManager->FindLibrary(libraryName);
+
+    EditorUIPlugin::ScopedLibraryModifyUndoPtr modifyUndo;
+    EBUS_EVENT_RESULT(modifyUndo, EditorLibraryUndoRequestsBus, AddScopedLibraryModifyUndo, AZStd::string(libraryName.toUtf8().data()));
+    CBaseLibraryItem* newitem = reinterpret_cast<CBaseLibraryItem*>(libraryManager->CreateItem(library));
+
+    if (isVirtual)
+    {
+        newitem->IsParticleItem = false;
+    }
+
+    newitem->SetName(newItemName.toUtf8().data());
+    return newitem;
+}
+
+void CMainWindow::Library_ItemDuplicated(const QString& itemPath)
+{
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     QVector<CLibraryTreeViewItem*> selectedItems;
     if (itemPath.isEmpty())
     {
@@ -2226,14 +2268,19 @@ void CMainWindow::Library_ItemDuplicated(const QString& itemPath, QString pasteT
     EditorUIPlugin::ScopedBatchUndoPtr batchUndo;
     EBUS_EVENT_RESULT(batchUndo, EditorLibraryUndoRequestsBus, AddScopedBatchUndo, "Add Item");
 
+    // Copy the source item data to clipboard
     Library_ItemCopied(item->GetItem());
-    CLibraryTreeViewItem* newItem = m_libraryTreeViewDock->AddDuplicateTreeItem(fullPath, isVirtual, pasteTo);
 
+    // Create a new library item
+    CBaseLibraryItem* newItem = CreateNewItemFrom(mngr, fullPath, isVirtual);
+
+    // Copy the data in clipboard to the new item
     if (newItem)
     {
-        Library_ItemPasted(newItem->GetItem(), true); //don't prompt
+        Library_ItemPasted(newItem, true); //don't prompt
     }
 }
+
 
 void CMainWindow::Library_ItemReset(IDataBaseItem* target, SLodInfo *curLod)
 {
@@ -2494,7 +2541,7 @@ void CMainWindow::RegisterActions()
     action->setShortcut(GetIEditor()->GetParticleUtils()->HotKey_GetShortcut("Edit Menu.Duplicate"));
     connect(action, &QAction::triggered, this, [this]()
         {
-            Library_ItemDuplicated("", ""); // Default duplicate. Duplicate selected item.
+            Library_ItemDuplicated(""); // Default duplicate. Duplicate selected item.
         });
     addAction(action);
 

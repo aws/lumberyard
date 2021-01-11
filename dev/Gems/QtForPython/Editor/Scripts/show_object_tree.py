@@ -9,6 +9,7 @@ remove or modify any license notices. This file is distributed on an "AS IS" BAS
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
+import azlmbr
 from shiboken2 import wrapInstance, getCppPointer
 from PySide2 import QtCore, QtWidgets, QtGui
 from PySide2.QtCore import QEvent, Qt
@@ -62,7 +63,7 @@ class InspectPopup(QWidget):
         self.geometry_value.setText(geometry_str)
 
 class ObjectTreeDialog(QDialog):
-    def __init__(self, root_object, parent=None):
+    def __init__(self, parent=None, root_object=None):
         super(ObjectTreeDialog, self).__init__(parent)
         self.setWindowTitle("Object Tree")
 
@@ -98,6 +99,12 @@ class ObjectTreeDialog(QDialog):
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
 
         # Populate our object tree widget
+        # If a root object wasn't specified, then use the Editor main window
+        if not root_object:
+            params = azlmbr.qt.QtForPythonRequestBus(azlmbr.bus.Broadcast, "GetQtBootstrapParameters")
+            editor_id = QtWidgets.QWidget.find(params.mainWindowId)
+            editor_main_window = wrapInstance(int(getCppPointer(editor_id)[0]), QtWidgets.QMainWindow)
+            root_object = editor_main_window
         self.build_tree(root_object, self.tree_widget)
 
         # Listen for when the tree widget selection changes so we can update
@@ -196,11 +203,17 @@ class ObjectTreeDialog(QDialog):
                 # We don't need to actually hide the inspect popup here because
                 # it will be hidden already by the Escape action
                 self.inspect_mode = False
-        elif event_type == QEvent.MouseButtonRelease:
+        elif event_type == QEvent.MouseButtonPress or event_type == QEvent.MouseButtonRelease:
             # Trigger inspecting the currently hovered widget when the left mouse button is clicked
             # Don't continue processing this event
             if self.inspect_mode and event.button() == Qt.LeftButton:
-                self.inspect_widget()
+                # Only trigger the inspect on the click release, but we want to also eat the press
+                # event so that the widget we clicked on isn't stuck in a weird state (e.g. thinks its being dragged)
+                # Also hide the inspect popup since it won't be hidden automatically by the mouse click since we are
+                # consuming the event
+                if event_type == event_type == QEvent.MouseButtonRelease:
+                    self.inspect_popup.hide()
+                    self.inspect_widget()
                 return True
 
         # Pass every event through
@@ -291,14 +304,14 @@ class ObjectTreeDialog(QDialog):
         else:
             print("Unable to find widget")
 
-def get_object_tree(parent, obj):
+def get_object_tree(parent, obj=None):
     """
     Returns the parent/child hierarchy for the given obj (QObject)
     parent: Parent for the dialog that is created
     obj: Root object for the tree to be built.
     returns: QTreeWidget object starting with the root element obj.
     """
-    w = ObjectTreeDialog(obj, parent)
+    w = ObjectTreeDialog(parent, obj)
     w.resize(1000, 500)
 
     return w
@@ -311,5 +324,5 @@ if __name__ == "__main__":
     dock_main_window = editor_main_window.findChild(QtWidgets.QMainWindow)
 
     # Show our object tree visualizer
-    object_tree = get_object_tree(dock_main_window, editor_main_window)
+    object_tree = get_object_tree(dock_main_window)
     object_tree.show()

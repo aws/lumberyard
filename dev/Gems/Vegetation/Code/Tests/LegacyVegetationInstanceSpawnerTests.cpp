@@ -294,7 +294,8 @@ namespace UnitTest
         EXPECT_TRUE(instanceSpawner1 == instanceSpawner2);
     }
 
-    TEST_F(LegacyVegetationInstanceSpawnerTests, DifferentSpawnersAreNotEqual)
+    // [LY-118267] Any test using CreateAndSetMockAsset can intermittently fail, so disabling them for now.
+    TEST_F(LegacyVegetationInstanceSpawnerTests, DISABLED_DifferentSpawnersAreNotEqual)
     {
         // Two spawners with different data should *not* be data-equivalent.
 
@@ -308,7 +309,8 @@ namespace UnitTest
         EXPECT_TRUE(!(instanceSpawner1 == instanceSpawner2));
     }
 
-    TEST_F(LegacyVegetationInstanceSpawnerTests, LoadAndUnloadAssets)
+    // [LY-118267] Any test using CreateAndSetMockAsset can intermittently fail, so disabling them for now.
+    TEST_F(LegacyVegetationInstanceSpawnerTests, DISABLED_LoadAndUnloadAssets)
     {
         // The spawner should successfully load/unload assets without errors.
 
@@ -328,7 +330,10 @@ namespace UnitTest
         Vegetation::DescriptorNotificationBus::Handler::BusDisconnect();
     }
 
-    TEST_F(LegacyVegetationInstanceSpawnerTests, CreateAndDestroyInstance)
+    // [LY-118267] This test intermittently fails (potentially only with uber builds) with the following backrtrace:
+    //             dev\code\cryengine\crycommon\Cry_Vector3.h(124): error: this->IsValid()
+    //  Temporarily disabling this test until the root cause can be found.
+    TEST_F(LegacyVegetationInstanceSpawnerTests, DISABLED_CreateAndDestroyInstance)
     {
         // The spawner should successfully create and destroy an instance without errors.
 

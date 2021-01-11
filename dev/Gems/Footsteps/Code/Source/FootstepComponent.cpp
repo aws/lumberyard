@@ -53,6 +53,7 @@ namespace Footsteps
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Game")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"))
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Footstep1.svg")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
                     ->DataElement("Left Foot Event Name", &FootstepComponent::m_leftFootEventName, "Left Foot Event", "Name of the left foot motion event")
                     ->DataElement("Right Foot Event Name", &FootstepComponent::m_rightFootEventName, "Right Foot Event", "Name of the right foot motion event")

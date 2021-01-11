@@ -38,6 +38,7 @@
 ****************************************************************************/
 
 import QtQuick 2.12
+import QtQuick.Window 2.12
 import QtGraphicalEffects.private 1.12
 import QtGraphicalEffects 1.12
 
@@ -61,8 +62,8 @@ Item {
         x: Math.round(horizontalOffset)
         y: Math.round(verticalOffset)
         source: root.source
-        radius: root.radius
-        samples: root.samples
+        radius: root.radius * Screen.devicePixelRatio
+        samples: root.samples * Screen.devicePixelRatio
         _thickness: root.spread
         transparentBorder: root.transparentBorder
 

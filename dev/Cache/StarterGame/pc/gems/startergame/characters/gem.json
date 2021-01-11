@@ -7,5 +7,19 @@
     "LinkType": "NoCode",
     "Summary": "Holds Starter Game's character assets, animations, and scripts",
     "Tags": ["Asset","StarterGame", "Animation", "EmotionFX", "AnimGraph", "Motion"],
-    "IconPath": "preview.png"
+    "IconPath": "preview.png",
+    "Dependencies" :[                                     
+        { "Uuid": "c5838c1f73ec4122925d3d1f9f1ccd85", "VersionConstraints": ["~>0.1.0"], "_comment": "Starter Game Weapons" },
+        { "Uuid": "044a63ea67d04479aa5daf62ded9d9ca", "VersionConstraints": ["~>0.1.0"], "_comment": "EMotion FX Animation" },
+        { "Uuid": "50f9ae1e09ac471bbd9d86ca8063ddf9", "VersionConstraints": ["~>0.1.0"], "_comment": "PhysX Characters" },
+        { "Uuid": "869a0d0ec11a45c299917d45c81555e6", "VersionConstraints": ["~>0.1.0"], "_comment": "Script Canvas" },
+        { "Uuid": "834070b9537d44df83559e2045c3859f", "VersionConstraints": ["~>0.1.0"], "_comment": "Starting Point Camera" },
+        { "Uuid": "32d8ba21703e4bbbb08487366e48dd69", "VersionConstraints": ["~>0.1.0"], "_comment": "Script Events" } ,
+        { "Uuid": "66239f50bf754354b514c850c8b841fb", "VersionConstraints": ["~>0.1.0"], "_comment": "Debug Draw" } ,
+        { "Uuid": "257393f09006498ab706cc4d4c8d4721", "VersionConstraints": ["~>0.1.0"], "_comment": "Footsteps" } ,
+        { "Uuid": "09f4bedeee614358bc36788e77f97e51", "VersionConstraints": ["~>0.1.0"], "_comment": "Starting Point Input" } ,
+        { "Uuid": "7c2578f634df4345aca98d671e39b8ab", "VersionConstraints": ["~>0.1.0"], "_comment": "Scene Processing" } ,
+        { "Uuid": "f3fba4e10ff04a378c46376401a1ebe9", "VersionConstraints": ["~>0.1.0"], "_comment": "Starter Game Audio" },
+        { "Uuid": "1c27519a4dda4ffaaeebf91514e5b1e8", "VersionConstraints": ["~>0.1.0"], "_comment": "Script Canvas Physics" }
+    ]
 }

@@ -36,16 +36,16 @@ namespace EMotionFX
 
         Skeleton* Clone();
 
-        MCORE_INLINE uint32 GetNumNodes() const                 { return mNodes.GetLength(); }
-        MCORE_INLINE Node* GetNode(uint32 index) const          { return mNodes[index]; }
+        MCORE_INLINE uint32 GetNumNodes() const                 { return m_nodes.GetLength(); }
+        MCORE_INLINE Node* GetNode(uint32 index) const          { return m_nodes[index]; }
 
         void ReserveNodes(uint32 numNodes);
         void AddNode(Node* node);
         void RemoveNode(uint32 nodeIndex, bool delFromMem = true);
         void RemoveAllNodes(bool delFromMem = true);
 
-        MCORE_INLINE const Pose* GetBindPose() const            { return &mBindPose; }
-        MCORE_INLINE Pose* GetBindPose()                        { return &mBindPose; }
+        MCORE_INLINE const Pose* GetBindPose() const            { return &m_bindPose; }
+        MCORE_INLINE Pose* GetBindPose()                        { return &m_bindPose; }
 
         /**
          * Search for a node by name (case sensitive).
@@ -107,14 +107,14 @@ namespace EMotionFX
          * Get the number of root nodes in the actor. A root node is a node without any parent.
          * @result The number of root nodes inside the actor.
          */
-        MCORE_INLINE uint32 GetNumRootNodes() const                             { return mRootNodes.GetLength(); }
+        MCORE_INLINE uint32 GetNumRootNodes() const                             { return m_rootNodes.GetLength(); }
 
         /**
          * Get the node number/index of a given root node.
          * @param nr The root node number, which must be in range of [0..GetNumRootNodes()-1].
          * @result The node index of the given root node.
          */
-        MCORE_INLINE uint32 GetRootNodeIndex(uint32 nr) const                   { return mRootNodes[nr]; }
+        MCORE_INLINE uint32 GetRootNodeIndex(uint32 nr) const                   { return m_rootNodes[nr]; }
 
         /**
          * Pre-allocate space for the root nodes array.
@@ -148,9 +148,10 @@ namespace EMotionFX
         uint32 CalcHierarchyDepthForNode(uint32 nodeIndex) const;
 
     private:
-        MCore::Array<Node*>     mNodes;         /**< The nodes, including root nodes. */
-        MCore::Array<uint32>    mRootNodes;     /**< The root nodes only. */
-        Pose                    mBindPose;      /**< The bind pose. */
+        MCore::Array<Node*>     m_nodes;         /**< The nodes, including root nodes. */
+        mutable AZStd::unordered_map<AZStd::string, Node*> m_nodesMap;
+        MCore::Array<uint32>    m_rootNodes;     /**< The root nodes only. */
+        Pose                    m_bindPose;      /**< The bind pose. */
 
         Skeleton();
         ~Skeleton();

@@ -15,6 +15,7 @@
 #include <Utils/AssetHelper.h>
 
 struct IRenderMesh;
+struct SMeshColor;
 
 namespace NvCloth
 {
@@ -27,14 +28,12 @@ namespace NvCloth
 
         explicit MeshAssetHelper(AZ::EntityId entityId);
 
-        // AssetHelper overrides
+        // AssetHelper overrides ...
         void GatherClothMeshNodes(MeshNodeList& meshNodes) override;
         bool ObtainClothMeshNodeInfo(
             const AZStd::string& meshNode,
             MeshNodeInfo& meshNodeInfo,
-            AZStd::vector<SimParticleType>& meshParticles,
-            AZStd::vector<SimIndexType>& meshIndices,
-            AZStd::vector<SimUVType>& meshUVs) override;
+            MeshClothInfo& meshClothInfo) override;
         bool DoesSupportSkinnedAnimation() const override
         {
             return false;
@@ -43,9 +42,7 @@ namespace NvCloth
     private:
         bool CopyDataFromRenderMesh(
             IRenderMesh& renderMesh,
-            const AZStd::vector<float>& clothInverseMasses,
-            AZStd::vector<SimParticleType>& meshParticles,
-            AZStd::vector<SimIndexType>& meshIndices,
-            AZStd::vector<SimUVType>& meshUVs);
+            const AZStd::vector<SMeshColor>& renderMeshClothData,
+            MeshClothInfo& meshClothInfo);
     };
 } // namespace NvCloth

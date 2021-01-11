@@ -13,7 +13,9 @@
 #pragma once
 
 #include <AzCore/Memory/Memory.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IClothRule.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexColorData.h>
 
 namespace AZ
 {
@@ -33,23 +35,49 @@ namespace NvCloth
             AZ_CLASS_ALLOCATOR_DECL
 
             static void Reflect(AZ::ReflectContext* context);
+            static bool VersionConverter(
+                AZ::SerializeContext& context,
+                AZ::SerializeContext::DataElementNode& classElement);
 
-            // IClothRule overrides
+            static const char* const DefaultChooseNodeName;
+            static const char* const DefaultInverseMassesString;
+            static const char* const DefaultMotionConstraintsString;
+            static const char* const DefaultBackstopString;
+
+            // IClothRule overrides ...
             const AZStd::string& GetMeshNodeName() const override;
-            const AZStd::string& GetVertexColorStreamName() const override;
-            bool IsVertexColorStreamDisabled() const override;
+            AZStd::vector<AZ::Color> ExtractClothData(const AZ::SceneAPI::Containers::SceneGraph& graph, const size_t numVertices) const override;
+
+            const AZStd::string& GetInverseMassesStreamName() const;
+            const AZStd::string& GetMotionConstraintsStreamName() const;
+            const AZStd::string& GetBackstopStreamName() const;
 
             void SetMeshNodeName(const AZStd::string& name);
-            void SetVertexColorStreamName(const AZStd::string& name);
+            void SetInverseMassesStreamName(const AZStd::string& name);
+            void SetMotionConstraintsStreamName(const AZStd::string& name);
+            void SetBackstopStreamName(const AZStd::string& name);
+
+            bool IsInverseMassesStreamDisabled() const;
+            bool IsMotionConstraintsStreamDisabled() const;
+            bool IsBackstopStreamDisabled() const;
 
         protected:
+            AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IMeshVertexColorData> FindVertexColorData(
+                const AZ::SceneAPI::Containers::SceneGraph& graph,
+                const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex,
+                const AZStd::string& vertexColorName,
+                const size_t numVertices) const;
+
             AZStd::string m_meshNodeName;
-            AZStd::string m_vertexColorStreamName;
 
-            static const char* m_defaultChooseNodeName;
-            static const char* m_defaultInverseMassString;
+            AZStd::string m_inverseMassesStreamName;
+            AZStd::string m_motionConstraintsStreamName;
+            AZStd::string m_backstopStreamName;
 
-            friend class ClothRuleBehavior;
+            AZ::SceneAPI::DataTypes::ColorChannel m_inverseMassesChannel = AZ::SceneAPI::DataTypes::ColorChannel::Red;
+            AZ::SceneAPI::DataTypes::ColorChannel m_motionConstraintsChannel = AZ::SceneAPI::DataTypes::ColorChannel::Red;
+            AZ::SceneAPI::DataTypes::ColorChannel m_backstopOffsetChannel = AZ::SceneAPI::DataTypes::ColorChannel::Red;
+            AZ::SceneAPI::DataTypes::ColorChannel m_backstopRadiusChannel = AZ::SceneAPI::DataTypes::ColorChannel::Green;
         };
     } // namespace Pipeline
 } // namespace NvCloth

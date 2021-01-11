@@ -305,7 +305,10 @@ namespace AzToolsFramework
         if (!forwardPendingComponentInfo.m_missingRequiredServices.empty())
         {
             QString message = tr("This component is missing a required component service and has been disabled.");
-            CreateNotificationForMissingComponents(message, forwardPendingComponentInfo.m_missingRequiredServices);
+            CreateNotificationForMissingComponents(
+                message, 
+                forwardPendingComponentInfo.m_missingRequiredServices, 
+                forwardPendingComponentInfo.m_incompatibleServices);
         }
     }
 
@@ -357,11 +360,14 @@ namespace AzToolsFramework
         return notification;
     }
 
-    AzQtComponents::CardNotification* ComponentEditor::CreateNotificationForMissingComponents(const QString& message, const AZStd::vector<AZ::ComponentServiceType>& services)
+    AzQtComponents::CardNotification* ComponentEditor::CreateNotificationForMissingComponents(
+        const QString& message, 
+        const AZStd::vector<AZ::ComponentServiceType>& services, 
+        const AZStd::vector<AZ::ComponentServiceType>& incompatibleServices)
     {
         auto notification = CreateNotification(message);
         auto featureButton = notification->addButtonFeature(tr("Add Required Component \342\226\276"));
-        connect(featureButton, &QPushButton::clicked, this, [this, featureButton, services]()
+        connect(featureButton, &QPushButton::clicked, this, [this, featureButton, services, incompatibleServices]()
         {
             QRect screenRect(qApp->desktop()->availableGeometry(featureButton));
             QRect menuRect(
@@ -378,7 +384,7 @@ namespace AzToolsFramework
                 menuRect.setBottom(menuRect.bottom() + ComponentEditorConstants::kAddComponentMenuHeight);
             }
 
-            emit OnRequestRequiredComponents(menuRect.topLeft(), menuRect.size(), services);
+            emit OnRequestRequiredComponents(menuRect.topLeft(), menuRect.size(), services, incompatibleServices);
         });
 
         return notification;
@@ -424,6 +430,11 @@ namespace AzToolsFramework
             for (auto service : pendingComponentInfo.m_missingRequiredServices)
             {
                 AddUniqueItemToContainer(combinedPendingComponentInfo.m_missingRequiredServices, service);
+            }
+
+            for (auto service : pendingComponentInfo.m_incompatibleServices)
+            {
+                AddUniqueItemToContainer(combinedPendingComponentInfo.m_incompatibleServices, service);
             }
         }
 
@@ -491,7 +502,7 @@ namespace AzToolsFramework
 
     void ComponentEditor::PreventRefresh(bool shouldPrevent)
     {
-        m_propertyEditor->PreventRefresh(shouldPrevent);
+        m_propertyEditor->PreventDataAccess(shouldPrevent);
     }
 
     void ComponentEditor::SetComponentOverridden(const bool overridden)

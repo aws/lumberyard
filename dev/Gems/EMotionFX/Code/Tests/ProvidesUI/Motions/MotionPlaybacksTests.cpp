@@ -53,8 +53,8 @@ namespace EMotionFX
         // Double click on motion in motions window.
         QTableWidgetItem* item = table->item(0, 0);
         const auto rect = table->visualItemRect(item);
-        QTest::mouseClick(table->viewport(), Qt::LeftButton, nullptr, rect.center());
-        QTest::mouseDClick(table->viewport(), Qt::LeftButton, nullptr, rect.center());
+        QTest::mouseClick(table->viewport(), Qt::LeftButton, {}, rect.center());
+        QTest::mouseDClick(table->viewport(), Qt::LeftButton, {}, rect.center());
 
         // Check motion has been selected in render window.
         EMStudio::EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(static_cast<uint32>(EMStudio::RenderPlugin::CLASS_ID));

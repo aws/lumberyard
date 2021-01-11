@@ -39,7 +39,7 @@ namespace AzToolsFramework
         class AssetEntryChangeset;
 
         class AssetBrowserModel
-            : public QAbstractTableModel
+            : public QAbstractItemModel
             , public AssetBrowserModelRequestBus::Handler
             , public AZ::TickBus::Handler
         {

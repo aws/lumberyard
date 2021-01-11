@@ -421,7 +421,7 @@ namespace Driller
                 --frame;
                 rightEdgeOfBar -= barWidth;
                 leftEdgeOfBar -= barWidth;
-            }			
+            }
 
             // Styling the budget markers.
             // Mildly ugly, but not a lot of pixels to work with
@@ -437,7 +437,7 @@ namespace Driller
             {
                 BudgetMarker& budgetMarker = mapPair.second;
 
-                QColor drawColor = budgetMarker.GetColor();				
+                QColor drawColor = budgetMarker.GetColor();
 
                 QRect sizeRect = rect();
                 int x = rect().left();
@@ -458,13 +458,13 @@ namespace Driller
                     y,
                     width,
                     height,
-                    brush);				
+                    brush);                
 
                 painter.drawRect(
                     x,
                     y,
                     width,
-                    height);								
+                    height);                                
             }
         }
     }
@@ -496,9 +496,8 @@ namespace Driller
 
                     QApplication::setOverrideCursor(QCursor(Qt::BlankCursor));
 
-                    QDesktopWidget desktopWidget;
-                    QRect screenGeometry = desktopWidget.screenGeometry(desktopWidget.primaryScreen());
-                    m_centerPoint = desktopWidget.screenGeometry(desktopWidget.primaryScreen()).center();
+                    QRect screenGeometry = QApplication::primaryScreen()->geometry();
+                    m_centerPoint = screenGeometry.center();
 
                     mouseDelta = (mousePoint.x() - mapToGlobal(m_simulatedPoint).x());
                 }
@@ -666,13 +665,13 @@ namespace Driller
 
     void ChannelDataView::wheelEvent(QWheelEvent* event)
     {
-        if (event->delta() == 0)
+        if (event->angleDelta().y() == 0)
         {
             event->accept();
             return;
         }
 
-        emit InformOfMouseWheel(PositionToFrame(event->pos()), event->delta(), FramesPerPixel(), event->modifiers());
+        emit InformOfMouseWheel(PositionToFrame(event->position().toPoint()), event->angleDelta().y(), FramesPerPixel(), event->modifiers());
         event->ignore();
     }
 
@@ -685,7 +684,7 @@ namespace Driller
     void ChannelDataView::DirtyGraphData()
     {
         m_dirtyGraph = true;
-    }	
+    }    
 
     void ChannelDataView::RefreshGraphData()
     {
@@ -700,7 +699,7 @@ namespace Driller
     }
 
     BudgetMarkerTicket ChannelDataView::AddBudgetMarker(float value, QColor color)
-    {		
+    {        
         ++m_budgetMarkerCounter;
 
         if (m_budgetMarkerCounter == 0 || m_budgetMarkers.find(m_budgetMarkerCounter) != m_budgetMarkers.end())

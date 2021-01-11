@@ -34,12 +34,17 @@ const AZ::u32 BAType = 0xffff0000;
 const char* BAPayload = "When in the Course of human events it becomes necessary for one people to dissolve the political bands which have connected them with another and to assume among the powers of the earth, the separate and equal station to which the Laws of Nature and of Nature's God entitle them, a decent respect to the opinions of mankind requires that they should declare the causes which impel them to the separation.";
 const AZ::u32 BAPayloadSize = azlossy_caster(strlen(BAPayload));
 
-// used to control how many iterations the connection object waits for state change before assuming things have gone wrong
-const int numTriesBeforeGiveUp = 100;
-const int millisecondsBetweenTries = 25;
+// how long before tests fail when expecting a connection.
+// normally, connections to localhost happen immediately (microseconds), so this is just for when things
+// go wrong.  In normal test runs, we'll be yielding and waiting very short 
+// amounts of time (milliseconds) instead of the full 15 seconds.
+const int secondsMaxConnectionAttempt = 15;
 
-// the longest time it should be conceivable for a message to take to send
-const int millisecondsForSend = 250;
+// the longest time it should be conceivable for a message to take to send.
+// most messages will arrive within microseconds, but if the machine is really busy it could take
+// a couple orders of magnitude longer.  Nothing in these tests waits for this full duration
+// unless a test is failing, so the actual runtime of the tests should be milliseconds.
+const int millisecondsForSend = 5000;
 
 
 
@@ -60,10 +65,15 @@ protected:
 
     bool WaitForConnectionStateToBeEqual(AzFramework::AssetSystem::AssetProcessorConnection& connectionObject, AzFramework::SocketConnection::EConnectionState desired)
     {
-        int tries = 0;
-        while (connectionObject.GetConnectionState() != desired && tries++ < numTriesBeforeGiveUp)
+        auto started = AZStd::chrono::system_clock::now();
+        while (connectionObject.GetConnectionState() != desired )
         {
-            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(millisecondsBetweenTries));
+            auto seconds_passed = AZStd::chrono::seconds(AZStd::chrono::system_clock::now() - started).count();
+            if (seconds_passed > secondsMaxConnectionAttempt)
+            {
+                break;
+            }
+            AZStd::this_thread::yield();
         }
         return connectionObject.GetConnectionState() == desired;
     }
@@ -71,21 +81,20 @@ protected:
 
     bool WaitForConnectionStateToNotBeEqual(AzFramework::AssetSystem::AssetProcessorConnection& connectionObject, AzFramework::SocketConnection::EConnectionState notDesired)
     {
-        int tries = 0;
-        while (connectionObject.GetConnectionState() == notDesired && tries++ < numTriesBeforeGiveUp)
+        auto started  = AZStd::chrono::system_clock::now();
+        while (connectionObject.GetConnectionState() == notDesired)
         {
-            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(millisecondsBetweenTries));
+            auto seconds_passed = AZStd::chrono::seconds(AZStd::chrono::system_clock::now() - started).count();
+            if (seconds_passed > secondsMaxConnectionAttempt)
+            {
+                break;
+            }
+            AZStd::this_thread::yield();
         }
         return connectionObject.GetConnectionState() != notDesired;
     }
 
 };
-
-TEST_F(APConnectionTest, Sanity)
-{
-    // Other values here
-    EXPECT_TRUE(true);
-}
 
 TEST_F(APConnectionTest, TestAddRemoveCallbacks)
 {
@@ -105,12 +114,16 @@ TEST_F(APConnectionTest, TestAddRemoveCallbacks)
     ABMessageCallbackCount = 0;
 
     AZStd::binary_semaphore messageArrivedSemaphore;
+    // once we disconnect, we'll set this atomic to ensure no message arrives after disconnection
+    AZStd::atomic_bool failIfMessageArrivesAB = {false};
+    AZStd::atomic_bool failIfMessageArrivesBA = {false};
 
     // Connection A is expecting the above type and payload from B, therefore it is B->A, BA
     auto BACallbackHandle = apConnection.AddMessageHandler(BAType, [&](AZ::u32 typeId, AZ::u32 /*serial*/, const void* data, AZ::u32 dataLength) -> void
     {
-        EXPECT_TRUE(typeId == BAType);
-        EXPECT_TRUE(BAPayloadSize == dataLength);
+        EXPECT_FALSE(failIfMessageArrivesBA.load());
+        EXPECT_EQ(typeId, BAType);
+        EXPECT_EQ(BAPayloadSize, dataLength);
         EXPECT_TRUE(!strncmp(reinterpret_cast<const char*>(data), BAPayload, dataLength));
         ++BAMessageCallbackCount;
         messageArrivedSemaphore.release();
@@ -119,24 +132,25 @@ TEST_F(APConnectionTest, TestAddRemoveCallbacks)
     // Connection B is expecting the above type and payload from A, therefore it is A->B, AB
     auto ABCallbackHandle = apListener.AddMessageHandler(ABType, [&](AZ::u32 typeId, AZ::u32 /*serial*/, const void* data, AZ::u32 dataLength) -> void
     {
-        EXPECT_TRUE(typeId == ABType);
-        EXPECT_TRUE(ABPayloadSize == dataLength);
+        EXPECT_FALSE(failIfMessageArrivesAB.load());
+        EXPECT_EQ(typeId, ABType);
+        EXPECT_EQ(ABPayloadSize, dataLength);
         EXPECT_TRUE(!strncmp(reinterpret_cast<const char*>(data), ABPayload, dataLength));
         ++ABMessageCallbackCount;
         messageArrivedSemaphore.release();
     });
 
     // Test listening
-    EXPECT_TRUE(apListener.GetConnectionState() == SocketConnection::EConnectionState::Disconnected);
+    EXPECT_EQ(apListener.GetConnectionState(), SocketConnection::EConnectionState::Disconnected);
     bool listenResult = apListener.Listen(11112);
     EXPECT_TRUE(listenResult);
 
     // Wait some time for the connection to start listening, since it doesn't actually call listen() immediately.
     EXPECT_TRUE(WaitForConnectionStateToBeEqual(apListener, SocketConnection::EConnectionState::Listening));
-    EXPECT_TRUE(apListener.GetConnectionState() == SocketConnection::EConnectionState::Listening);
+    EXPECT_EQ(apListener.GetConnectionState(), SocketConnection::EConnectionState::Listening);
 
     // Test connect success
-    EXPECT_TRUE(apConnection.GetConnectionState() == SocketConnection::EConnectionState::Disconnected);
+    EXPECT_EQ(apConnection.GetConnectionState(), SocketConnection::EConnectionState::Disconnected);
     // This is blocking, should connect
     bool connectResult = apConnection.Connect("127.0.0.1", 11112);
     EXPECT_TRUE(connectResult);
@@ -155,12 +169,12 @@ TEST_F(APConnectionTest, TestAddRemoveCallbacks)
     apConnection.SendMsg(ABType, ABPayload, ABPayloadSize);
     // Wait some time to allow message to send
     messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(ABMessageCallbackCount == 1);
+    EXPECT_EQ(ABMessageCallbackCount, 1);
 
     // Send message from B to A
     apListener.SendMsg(BAType, BAPayload, BAPayloadSize);
     messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(BAMessageCallbackCount == 1);
+    EXPECT_EQ(BAMessageCallbackCount, 1);
 
     //
     // Send second set, ensure we got 2 each (didn't auto-remove or anything crazy)
@@ -170,82 +184,155 @@ TEST_F(APConnectionTest, TestAddRemoveCallbacks)
     apConnection.SendMsg(ABType, ABPayload, ABPayloadSize);
     // Wait some time to allow message to send
     messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(ABMessageCallbackCount == 2);
+    EXPECT_EQ(ABMessageCallbackCount, 2);
 
     // Send message from B to A
     apListener.SendMsg(BAType, BAPayload, BAPayloadSize);
     messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(BAMessageCallbackCount == 2);
+    EXPECT_EQ(BAMessageCallbackCount, 2);
 
     // Remove callbacks
+    // after removing a listener, we expect no further messages to arrive.
     apConnection.RemoveMessageHandler(BAType, BACallbackHandle);
+    failIfMessageArrivesBA = true;
     apListener.RemoveMessageHandler(ABType, ABCallbackHandle);
+    failIfMessageArrivesAB = true;
 
-    // Send message, ensure we still at 2 each
-
-    // Send message from A to B.  note that there is no semaphore to call here - there will be no handler called.
+    // the below 2 lines send a message while nobody is connected as a listener.
+    // it may not fail immediately but will cause a cascade later, which is better than
+    // waiting for some large timeout in the test.
     apConnection.SendMsg(ABType, ABPayload, ABPayloadSize);
-    // Wait some time to allow message to send
-    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(ABMessageCallbackCount == 2);
-
-    // Send message from B to A
     apListener.SendMsg(BAType, BAPayload, BAPayloadSize);
-    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(BAMessageCallbackCount == 2);
+
+    // Disconnect A
+    // which flushes and will cause any traps to spring.
+    bool disconnectResult = apConnection.Disconnect(true);
+    EXPECT_TRUE(disconnectResult);
+
+    // Disconnect B
+    disconnectResult = apListener.Disconnect(true);
+    EXPECT_TRUE(disconnectResult);
+
+    // Verify A and B are disconnected
+    EXPECT_TRUE(WaitForConnectionStateToBeEqual(apListener, SocketConnection::EConnectionState::Disconnected));
+    EXPECT_TRUE(WaitForConnectionStateToBeEqual(apConnection, SocketConnection::EConnectionState::Disconnected));
+}
+
+TEST_F(APConnectionTest, TestAddRemoveCallbacks_RemoveDuringCallback_DoesNotCrash)
+{
+    using namespace AzFramework;
+
+    // This is connection A
+    AssetSystem::AssetProcessorConnection apConnection;
+    apConnection.m_unitTesting = true;
+
+    // This is connection B
+    AssetSystem::AssetProcessorConnection apListener;
+    apListener.m_unitTesting = true;
+
+    std::atomic_uint BAMessageCallbackCount;
+    BAMessageCallbackCount = 0;
+    std::atomic_uint ABMessageCallbackCount;
+    ABMessageCallbackCount = 0;
+
+    AZStd::binary_semaphore messageArrivedSemaphore;
+    
+    // establish connection
+    EXPECT_TRUE(apListener.Listen(11112));
+    EXPECT_TRUE(apConnection.Connect("127.0.0.1", 11112));
+    EXPECT_TRUE(WaitForConnectionStateToBeEqual(apConnection, SocketConnection::EConnectionState::Connected));
+    EXPECT_TRUE(WaitForConnectionStateToBeEqual(apListener, SocketConnection::EConnectionState::Connected));
 
     //
     // Now try adding listeners that remove themselves during callback
     //
     // Connection A is expecting the above type and payload from B, therefore it is B->A, BA
+    
+    // we set a trap here - after we first get this message, we are removing the handler
+    // so that it should not ever fire again, and we assert that its false.
+    AZStd::atomic_bool failIfWeGetCalledAgainBA = {false};
     SocketConnection::TMessageCallbackHandle SelfRemovingBACallbackHandle = SocketConnection::s_invalidCallbackHandle;
     SelfRemovingBACallbackHandle = apConnection.AddMessageHandler(BAType, [&](AZ::u32 typeId, AZ::u32 /*serial*/, const void* data, AZ::u32 dataLength) -> void
     {
-        EXPECT_TRUE(typeId == BAType);
-        EXPECT_TRUE(BAPayloadSize == dataLength);
+        EXPECT_FALSE(failIfWeGetCalledAgainBA.load());
+        EXPECT_EQ(typeId, BAType);
+        EXPECT_EQ(BAPayloadSize, dataLength);
         EXPECT_TRUE(!strncmp(reinterpret_cast<const char*>(data), BAPayload, dataLength));
         ++BAMessageCallbackCount;
         apConnection.RemoveMessageHandler(BAType, SelfRemovingBACallbackHandle);
+        failIfWeGetCalledAgainBA = true;
         messageArrivedSemaphore.release();
         
     });
 
     // Connection B is expecting the above type and payload from A, therefore it is A->B, AB
+    AZStd::atomic_bool failIfWeGetCalledAgainAB = {false};
     SocketConnection::TMessageCallbackHandle SelfRemovingABCallbackHandle = SocketConnection::s_invalidCallbackHandle;
     SelfRemovingABCallbackHandle = apListener.AddMessageHandler(ABType, [&](AZ::u32 typeId, AZ::u32 /*serial*/, const void* data, AZ::u32 dataLength) -> void
     {
-        EXPECT_TRUE(typeId == ABType);
-        EXPECT_TRUE(ABPayloadSize == dataLength);
+        EXPECT_FALSE(failIfWeGetCalledAgainAB.load());
+        EXPECT_EQ(typeId, ABType);
+        EXPECT_EQ(ABPayloadSize, dataLength);
         EXPECT_TRUE(!strncmp(reinterpret_cast<const char*>(data), ABPayload, dataLength));
         ++ABMessageCallbackCount;
         apListener.RemoveMessageHandler(ABType, SelfRemovingABCallbackHandle);
+        failIfWeGetCalledAgainAB = true;
         messageArrivedSemaphore.release();
     });
-    // Send message, should be at 3 each
+    
+    // Send message, should be at 1 each
 
     // Send message from A to B
     apConnection.SendMsg(ABType, ABPayload, ABPayloadSize);
     // Wait some time to allow message to send
     messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(ABMessageCallbackCount == 3);
+    EXPECT_EQ(ABMessageCallbackCount, 1);
 
     // Send message from B to A
     apListener.SendMsg(BAType, BAPayload, BAPayloadSize);
     messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(BAMessageCallbackCount == 3);
+    EXPECT_EQ(BAMessageCallbackCount, 1);
 
-    // Send message, ensure we still at 3 each
-
-    // Send message from A to B
+    // the callback has disconnected, so sending additional messages should NOT result in the callback
+    // being called.
+    // we send some additional messages, as a "trap", if the callbacks fire, then the
+    // above callback functions will trigger their asserts.
     apConnection.SendMsg(ABType, ABPayload, ABPayloadSize);
-    // Wait some time to allow message to send
-    messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(ABMessageCallbackCount == 3);
-
-    // Send message from B to A
     apListener.SendMsg(BAType, BAPayload, BAPayloadSize);
-    messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(BAMessageCallbackCount == 3);
+    
+    // disconnect fully, which flushes sender queue and reciever queue and will cause any traps to spring!
+    EXPECT_TRUE(apConnection.Disconnect(true));
+    EXPECT_TRUE(apListener.Disconnect(true));
+
+    // Verify A and B are disconnected
+    EXPECT_TRUE(WaitForConnectionStateToBeEqual(apListener, SocketConnection::EConnectionState::Disconnected));
+    EXPECT_TRUE(WaitForConnectionStateToBeEqual(apConnection, SocketConnection::EConnectionState::Disconnected));
+}
+
+TEST_F(APConnectionTest, TestAddRemoveCallbacks_AddDuringCallback_DoesNotCrash)
+{
+    using namespace AzFramework;
+
+    // This is connection A
+    AssetSystem::AssetProcessorConnection apConnection;
+    apConnection.m_unitTesting = true;
+
+    // This is connection B
+    AssetSystem::AssetProcessorConnection apListener;
+    apListener.m_unitTesting = true;
+
+    std::atomic_uint BAMessageCallbackCount;
+    BAMessageCallbackCount = 0;
+    std::atomic_uint ABMessageCallbackCount;
+    ABMessageCallbackCount = 0;
+
+    AZStd::binary_semaphore messageArrivedSemaphore;
+    
+    // establish connection
+    EXPECT_TRUE(apListener.Listen(11112));
+    EXPECT_TRUE(apConnection.Connect("127.0.0.1", 11112));
+    EXPECT_TRUE(WaitForConnectionStateToBeEqual(apConnection, SocketConnection::EConnectionState::Connected));
+    EXPECT_TRUE(WaitForConnectionStateToBeEqual(apListener, SocketConnection::EConnectionState::Connected));
 
     //
     // Now try adding listeners that add more listeners during callback
@@ -254,93 +341,101 @@ TEST_F(APConnectionTest, TestAddRemoveCallbacks)
     // Connection A is expecting the above type and payload from B, therefore it is B->A, BA
     SocketConnection::TMessageCallbackHandle SecondAddedBACallbackHandle = SocketConnection::s_invalidCallbackHandle;
     SocketConnection::TMessageCallbackHandle AddingBACallbackHandle = SocketConnection::s_invalidCallbackHandle;
+    
+    // set some traps so that if things call more than once, its a failure:
+    AZStd::atomic_bool AddingBACallbackFailIfCalledAgain = {false};
+    AZStd::atomic_bool AddingBACallbackFailIfCalledAgain_inner = {false};
+    
     AddingBACallbackHandle = apConnection.AddMessageHandler(BAType, [&](AZ::u32 typeId, AZ::u32 /*serial*/, const void* data, AZ::u32 dataLength) -> void
     {
-        EXPECT_TRUE(typeId == BAType);
-        EXPECT_TRUE(BAPayloadSize == dataLength);
+        EXPECT_FALSE(AddingBACallbackFailIfCalledAgain.load());
+        EXPECT_EQ(typeId, BAType);
+        EXPECT_EQ(BAPayloadSize, dataLength);
         EXPECT_TRUE(!strncmp(reinterpret_cast<const char*>(data), BAPayload, dataLength));
         ++BAMessageCallbackCount;
         apConnection.RemoveMessageHandler(BAType, AddingBACallbackHandle);
+        AddingBACallbackFailIfCalledAgain = true;
         SecondAddedBACallbackHandle = apConnection.AddMessageHandler(BAType, [&](AZ::u32 typeId, AZ::u32 /*serial*/, const void* data, AZ::u32 dataLength) -> void
         {
-            EXPECT_TRUE(typeId == BAType);
-            EXPECT_TRUE(BAPayloadSize == dataLength);
+            EXPECT_FALSE(AddingBACallbackFailIfCalledAgain_inner.load());
+            EXPECT_EQ(typeId, BAType);
+            EXPECT_EQ(BAPayloadSize, dataLength);
             EXPECT_TRUE(!strncmp(reinterpret_cast<const char*>(data), BAPayload, dataLength));
             ++BAMessageCallbackCount;
             apConnection.RemoveMessageHandler(BAType, SecondAddedBACallbackHandle);
+            AddingBACallbackFailIfCalledAgain_inner = true;
             messageArrivedSemaphore.release();
         });
         messageArrivedSemaphore.release();
     });
 
-    // Connection B is expecting the above type and payload from A, therefore it is A->B, AB
+// Connection B is expecting the above type and payload from A, therefore it is A->B, AB
+    AZStd::atomic_bool AddingABCallbackFailIfCalledAgain = {false};
+    AZStd::atomic_bool AddingABCallbackFailIfCalledAgain_inner = {false};
     SocketConnection::TMessageCallbackHandle SecondAddedABCallbackHandle = SocketConnection::s_invalidCallbackHandle;
     SocketConnection::TMessageCallbackHandle AddingABCallbackHandle = SocketConnection::s_invalidCallbackHandle;
     AddingABCallbackHandle = apListener.AddMessageHandler(ABType, [&](AZ::u32 typeId, AZ::u32 /*serial*/, const void* data, AZ::u32 dataLength) -> void
     {
-        EXPECT_TRUE(typeId == ABType);
-        EXPECT_TRUE(ABPayloadSize == dataLength);
+        EXPECT_FALSE(AddingABCallbackFailIfCalledAgain.load());
+        EXPECT_EQ(typeId, ABType);
+        EXPECT_EQ(ABPayloadSize, dataLength);
         EXPECT_TRUE(!strncmp(reinterpret_cast<const char*>(data), ABPayload, dataLength));
         ++ABMessageCallbackCount;
         apListener.RemoveMessageHandler(ABType, AddingABCallbackHandle);
+        AddingABCallbackFailIfCalledAgain = true;
         messageArrivedSemaphore.release();
         SecondAddedABCallbackHandle = apListener.AddMessageHandler(ABType, [&](AZ::u32 typeId, AZ::u32 /*serial*/, const void* data, AZ::u32 dataLength) -> void
         {
-            EXPECT_TRUE(typeId == ABType);
-            EXPECT_TRUE(ABPayloadSize == dataLength);
+            EXPECT_FALSE(AddingABCallbackFailIfCalledAgain_inner.load());
+            EXPECT_EQ(typeId, ABType);
+            EXPECT_EQ(ABPayloadSize, dataLength);
             EXPECT_TRUE(!strncmp(reinterpret_cast<const char*>(data), ABPayload, dataLength));
             ++ABMessageCallbackCount;
             apListener.RemoveMessageHandler(ABType, SecondAddedABCallbackHandle);
+            AddingABCallbackFailIfCalledAgain_inner = true;
             messageArrivedSemaphore.release();
         });
     });
-    // Send message, should be at 4 each
+    // Send message, should be at 1 each
 
     // Send message from A to B
     apConnection.SendMsg(ABType, ABPayload, ABPayloadSize);
     // Wait some time to allow message to send
     messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(ABMessageCallbackCount == 4);
+    EXPECT_EQ(ABMessageCallbackCount, 1);
 
     // Send message from B to A
     apListener.SendMsg(BAType, BAPayload, BAPayloadSize);
     messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(BAMessageCallbackCount == 4);
+    EXPECT_EQ(BAMessageCallbackCount, 1);
 
-    // Send message, should be at 5 each
+    // Send message, should be at 2 each since the handlers
+    // have been replaced with the ones created in the callback
 
     // Send message from A to B
     apConnection.SendMsg(ABType, ABPayload, ABPayloadSize);
     // Wait some time to allow message to send
     messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(ABMessageCallbackCount == 5);
+    EXPECT_EQ(ABMessageCallbackCount, 2);
 
     // Send message from B to A
     apListener.SendMsg(BAType, BAPayload, BAPayloadSize);
     messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(BAMessageCallbackCount == 5);
+    EXPECT_EQ(BAMessageCallbackCount, 2);
 
-    //Send message, should be at 5 still
-
+    // Send message, we don't wait for these as our listeners should be disconnected, but there
+    // are traps set to make sure they dont call.
+    // since we flush on disconnect, these traps will activate.
     apConnection.SendMsg(ABType, ABPayload, ABPayloadSize);
-    // Wait some time to allow message to send
-    messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(ABMessageCallbackCount == 5);
-
-    // Send message from B to A
     apListener.SendMsg(BAType, BAPayload, BAPayloadSize);
-    messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
-    EXPECT_TRUE(BAMessageCallbackCount == 5);
-
-    EXPECT_TRUE(apConnection.GetConnectionState() == SocketConnection::EConnectionState::Connected);
-    EXPECT_TRUE(apListener.GetConnectionState() == SocketConnection::EConnectionState::Connected);
-
+    
     // Disconnect A
-    bool disconnectResult = apConnection.Disconnect();
+    // which flushes and will cause any traps to spring.
+    bool disconnectResult = apConnection.Disconnect(true);
     EXPECT_TRUE(disconnectResult);
 
     // Disconnect B
-    disconnectResult = apListener.Disconnect();
+    disconnectResult = apListener.Disconnect(true);
     EXPECT_TRUE(disconnectResult);
 
     // Verify A and B are disconnected
@@ -368,8 +463,8 @@ TEST_F(APConnectionTest, TestConnection)
     // Connection A is expecting the above type and payload from B, therefore it is B->A, BA
     apConnection.AddMessageHandler(BAType, [&](AZ::u32 typeId, AZ::u32 /*serial*/, const void* data, AZ::u32 dataLength) -> void
     {
-        EXPECT_TRUE(typeId == BAType);
-        EXPECT_TRUE(BAPayloadSize == dataLength);
+        EXPECT_EQ(typeId, BAType);
+        EXPECT_EQ(BAPayloadSize, dataLength);
         EXPECT_TRUE(!strncmp(reinterpret_cast<const char*>(data), BAPayload, dataLength));
         BAMessageSuccess = true;
         messageArrivedSemaphore.release();
@@ -378,8 +473,8 @@ TEST_F(APConnectionTest, TestConnection)
     // Connection B is expecting the above type and payload from A, therefore it is A->B, AB
     apListener.AddMessageHandler(ABType, [&](AZ::u32 typeId, AZ::u32 /*serial*/, const void* data, AZ::u32 dataLength) -> void
     {
-        EXPECT_TRUE(typeId == ABType);
-        EXPECT_TRUE(ABPayloadSize == dataLength);
+        EXPECT_EQ(typeId, ABType);
+        EXPECT_EQ(ABPayloadSize, dataLength);
         EXPECT_TRUE(!strncmp(reinterpret_cast<const char*>(data), ABPayload, dataLength));
         ABMessageSuccess = true;
         messageArrivedSemaphore.release();
@@ -388,8 +483,8 @@ TEST_F(APConnectionTest, TestConnection)
     // Connection B is expecting the above type and no payload from A, therefore it is A->B, AB
     apListener.AddMessageHandler(ABNoPayloadType, [&](AZ::u32 typeId, AZ::u32 /*serial*/, const void* /*data*/, AZ::u32 dataLength) -> void
     {
-        EXPECT_TRUE(typeId == ABNoPayloadType);
-        EXPECT_TRUE(dataLength == 0);
+        EXPECT_EQ(typeId, ABNoPayloadType);
+        EXPECT_EQ(dataLength, 0);
         ABNoPayloadMessageSuccess = true;
         messageArrivedSemaphore.release();
     });
@@ -399,24 +494,27 @@ TEST_F(APConnectionTest, TestConnection)
     bool connectResult = apConnection.Connect("127.0.0.1", 11120);
     EXPECT_TRUE(connectResult);
     
+    // during the connect/disconnect/reconnect loop, the status of the connection rapidly occilates
+    // between "connecting", "disconnecting" as it tries, fails, and sets up to try again.
+    // so instead of listening for a specific state, we wait until its no longer 'disconnected'.
+ 
     // wait for it to start the "try to connect / disconnect / reconnect loop"
     EXPECT_TRUE(WaitForConnectionStateToNotBeEqual(apConnection, SocketConnection::EConnectionState::Disconnected));
 
-    // Test listening on separate port
+    // Test listening on separate port.  This is NOT the port that the connecting one is trying to reach.
     EXPECT_TRUE(apListener.GetConnectionState() == SocketConnection::EConnectionState::Disconnected);
-    bool listenResult = apListener.Listen(54321);
-    EXPECT_TRUE(listenResult);
-    
-    EXPECT_TRUE(WaitForConnectionStateToBeEqual(apListener, SocketConnection::EConnectionState::Listening));
+    EXPECT_TRUE(apListener.Listen(54321));
 
+    // we should end up listening, not connected.
+    EXPECT_TRUE(WaitForConnectionStateToBeEqual(apListener, SocketConnection::EConnectionState::Listening));
+    // since we listened on the 'wrong' port, we should not see a successful connection:
+    EXPECT_NE(apConnection.GetConnectionState(), SocketConnection::EConnectionState::Connected);
     // Disconnect listener from wrong port
-    bool disconnectResult = apListener.Disconnect();
-    EXPECT_TRUE(disconnectResult);
+    EXPECT_TRUE(apListener.Disconnect());
     EXPECT_TRUE(WaitForConnectionStateToBeEqual(apListener, SocketConnection::EConnectionState::Disconnected));
 
     // Listen with correct port
-    listenResult = apListener.Listen(11120);
-    EXPECT_TRUE(listenResult);
+    EXPECT_TRUE(apListener.Listen(11120));
     // Wait some time for apConnection to connect (it has to finish negotiation)
     // Also the listener needs to tick and connect
     EXPECT_TRUE(WaitForConnectionStateToBeEqual(apConnection, SocketConnection::EConnectionState::Connected));
@@ -438,12 +536,8 @@ TEST_F(APConnectionTest, TestConnection)
     messageArrivedSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsForSend));
     EXPECT_TRUE(ABNoPayloadMessageSuccess);
 
-    // Disconnect A
-    disconnectResult = apConnection.Disconnect();
-    EXPECT_TRUE(disconnectResult);
-    // Disconnect B
-    disconnectResult = apListener.Disconnect();
-    EXPECT_TRUE(disconnectResult);
+    EXPECT_TRUE(apConnection.Disconnect(true));
+    EXPECT_TRUE(apListener.Disconnect(true));
 
     // Verify they've disconnected
     EXPECT_TRUE(WaitForConnectionStateToBeEqual(apConnection, SocketConnection::EConnectionState::Disconnected));
@@ -498,10 +592,11 @@ TEST_F(APConnectionTest, TestReconnect)
     // at that point, both sides should consider themselves cyonnected (the listener, too)
     EXPECT_TRUE(WaitForConnectionStateToBeEqual(apListener, SocketConnection::EConnectionState::Connected));
 
-    // now disconnect A
+    // now disconnect A without waiting for it to finish
     disconnectResult = apConnection.Disconnect();
     EXPECT_TRUE(disconnectResult);
 
+    // wait for it to finish
     EXPECT_TRUE(WaitForConnectionStateToBeEqual(apConnection, SocketConnection::EConnectionState::Disconnected));
 
     // ensure that B rebinds and starts listening again
@@ -525,7 +620,7 @@ TEST_F(APConnectionTest, TestReconnect)
     EXPECT_TRUE(WaitForConnectionStateToNotBeEqual(apConnection, SocketConnection::EConnectionState::Connected));
     
     // disconnect A
-    disconnectResult = apConnection.Disconnect();
+    disconnectResult = apConnection.Disconnect(true); // we're not going to wait, so we do a final disconnect here (true)
     EXPECT_TRUE(disconnectResult);
     EXPECT_TRUE(WaitForConnectionStateToBeEqual(apConnection, SocketConnection::EConnectionState::Disconnected));
 }

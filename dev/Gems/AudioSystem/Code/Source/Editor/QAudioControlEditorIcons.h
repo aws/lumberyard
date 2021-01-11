@@ -21,36 +21,52 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     inline QIcon GetControlTypeIcon(EACEControlType type)
     {
+        QString iconFile;
+
         switch (type)
         {
         case AudioControls::eACET_TRIGGER:
-            return QIcon(":/Editor/Icons/Trigger_Icon.svg");
+            iconFile = ":/Editor/Icons/Trigger_Icon.svg";
+            break;
         case AudioControls::eACET_RTPC:
-            return QIcon(":/Editor/Icons/RTPC_Icon.svg");
+            iconFile = ":/Editor/Icons/RTPC_Icon.svg";
+            break;
         case AudioControls::eACET_SWITCH:
-            return QIcon(":/Editor/Icons/Switch_Icon.svg");
+            iconFile = ":/Editor/Icons/Switch_Icon.svg";
+            break;
         case AudioControls::eACET_SWITCH_STATE:
-            return QIcon(":/Editor/Icons/Property_Icon.svg");
+            iconFile = ":/Editor/Icons/Property_Icon.svg";
+            break;
         case AudioControls::eACET_ENVIRONMENT:
-            return QIcon(":/Editor/Icons/Environment_Icon.svg");
+            iconFile = ":/Editor/Icons/Environment_Icon.svg";
+            break;
         case AudioControls::eACET_PRELOAD:
-            return QIcon(":/Editor/Icons/Preload_Icon.svg");
+            iconFile = ":/Editor/Icons/Preload_Icon.svg";
+            break;
         default:
             // should make a "default"/empty icon...
-            return QIcon(":/Editor/Icons/RTPC_Icon.svg");
+            iconFile = ":/Editor/Icons/RTPC_Icon.svg";
         }
+
+        QIcon icon(iconFile);
+        icon.addFile(iconFile, QSize(), QIcon::Selected);
+        return icon;
     }
 
     //-------------------------------------------------------------------------------------------//
     inline QIcon GetFolderIcon()
     {
-        return QIcon(":/Editor/Icons/Folder_Icon.png");
+        QIcon icon = QIcon(":/Editor/Icons/Folder_Icon.svg");
+        icon.addFile(":/Editor/Icons/Folder_Icon_Selected.svg", QSize(), QIcon::Selected);
+        return icon;
     }
 
     //-------------------------------------------------------------------------------------------//
     inline QIcon GetSoundBankIcon()
     {
-        return QIcon(":/Editor/Icons/Preload_Icon.png");
+        QIcon icon = QIcon(":/Editor/Icons/Preload_Icon.svg");
+        icon.addFile(":/Editor/Icons/Preload_Icon.svg", QSize(), QIcon::Selected);
+        return icon;
     }
 
     //-------------------------------------------------------------------------------------------//

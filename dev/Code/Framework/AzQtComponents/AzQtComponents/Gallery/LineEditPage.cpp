@@ -102,16 +102,16 @@ AzQtComponents::LineEdit::setExternalError(lineEdit, true);
 // You can also use pre-made validators for QDoubleValidator, QIntValidator, QRegularExpressionValidator
 
 // To listen for text changes:
-connect(lineEdit, QLineEdit::textChanged, this, [](const QString& newText){
+connect(lineEdit, &QLineEdit::textChanged, this, [](const QString& newText){
     qDebug() &lt;&lt; QString("Text changed: %1").arg(newText);
 });
 
-connect(lineEdit, QLineEdit::textEdit, this, [](const QString& newText){
+connect(lineEdit, &QLineEdit::textEdited, this, [](const QString& newText){
     // only happens when the user changed the text, not when lineEdit->setText("some text"); is called
     qDebug() &lt;&lt; QString("Text edited: %1").arg(newText);
 });
 
-connect(lineEdit, QLineEdit::editingFinished, this, [lineEdit](){
+connect(lineEdit, &QLineEdit::editingFinished, this, [lineEdit](){
     // this happens when the focus leaves the line edit or the user hits the enter key
     qDebug() &lt;&lt; QString("Editing finished. New text: %1").arg(lineEdit->text());
 });

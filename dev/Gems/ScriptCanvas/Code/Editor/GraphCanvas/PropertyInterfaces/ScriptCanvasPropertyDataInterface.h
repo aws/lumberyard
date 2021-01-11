@@ -157,6 +157,8 @@ namespace ScriptCanvasEditor
         ~ScriptCanvasComboBoxPropertyDataInterface() = default;
 
         // GraphCanvas::ComboBoxDataInterface
+
+        // Necessary to deal with Clang invoking base methods from this templated class
         using ScriptCanvasPropertyDataInterface<GraphCanvas::ComboBoxDataInterface, DataType>::GetValue;
         using ScriptCanvasPropertyDataInterface<GraphCanvas::ComboBoxDataInterface, DataType>::SetValue;
 

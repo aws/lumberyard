@@ -20,7 +20,14 @@
     #define AZ_WAIT_OBJECT_0 0
 #else 
     #define AZ_WAIT_OBJECT_0 WAIT_OBJECT_0
-#endif 
+#endif
+
+#ifndef ERROR_TIMEOUT
+    #define AZ_ERROR_TIMEOUT 0x000005B4
+#else
+    #define AZ_ERROR_TIMEOUT ERROR_TIMEOUT
+#endif
+
 #ifndef INFINITE
     #define AZ_INFINITE            0xFFFFFFFF  // Infinite timeout
 #else

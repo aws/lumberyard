@@ -92,7 +92,7 @@ namespace GraphCanvas
             {
                 QPointF temporaryPoint;
 
-                if (aLine.intersect(directionLine, &temporaryPoint) == QLineF::IntersectType::BoundedIntersection)
+                if (aLine.intersects(directionLine, &temporaryPoint) == QLineF::IntersectType::BoundedIntersection)
                 {
                     aIntersectionPoints.push_back(temporaryPoint);
                 }
@@ -111,7 +111,7 @@ namespace GraphCanvas
             {
                 QPointF temporaryPoint;
 
-                if (bLine.intersect(directionLine, &temporaryPoint) == QLineF::IntersectType::BoundedIntersection)
+                if (bLine.intersects(directionLine, &temporaryPoint) == QLineF::IntersectType::BoundedIntersection)
                 {
                     bIntersectionPoints.push_back(temporaryPoint);
                 }

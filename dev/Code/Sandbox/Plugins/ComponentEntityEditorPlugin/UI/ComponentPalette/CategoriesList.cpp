@@ -45,7 +45,7 @@ void ComponentCategoryList::Init()
     for (const auto& cat : dataModel.GetCategories())
     {
         QString categoryString = QString(cat.c_str());
-        QStringList categories = categoryString.split('/', QString::SkipEmptyParts);
+        QStringList categories = categoryString.split('/', Qt::SkipEmptyParts);
 
         QTreeWidgetItem* parent = nullptr;
         QTreeWidgetItem* categoryWidget = nullptr;

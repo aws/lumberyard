@@ -504,7 +504,7 @@ void ListEditWidget::SetValue(const QString &value, bool notify /*= true*/)
     {
         m_value = value;
         m_valueEdit->setText(value);
-        QStringList list = m_value.split(",", QString::SkipEmptyParts);
+        QStringList list = m_value.split(",", Qt::SkipEmptyParts);
         m_model->setStringList(list);
 
         if (notify)

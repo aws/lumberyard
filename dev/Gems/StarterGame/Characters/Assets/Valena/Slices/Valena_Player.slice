@@ -1730,7 +1730,7 @@
 													</Class>
 													<Class name="int" field="m_originality" value="1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
 													<Class name="any" field="m_datumStorage" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
-														<Class name="double" field="m_data" value="0.0300000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+														<Class name="double" field="m_data" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 													</Class>
 													<Class name="AZStd::string" field="m_datumLabel" value="AimJitterAmount" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 												</Class>
@@ -2006,7 +2006,7 @@
 								</Class>
 								<Class name="bool" field="VisibilityFlag" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 							</Class>
-							<Class name="EditorCameraComponent" field="element" version="1" type="{B99EFE3D-3F1D-4630-8A7B-31C70CC1F53C}">
+							<Class name="EditorCameraComponent" field="element" version="2" type="{B99EFE3D-3F1D-4630-8A7B-31C70CC1F53C}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
 									<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 										<Class name="AZ::u64" field="Id" value="4796348113951768209" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -2021,6 +2021,7 @@
 								<Class name="bool" field="ViewButton" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 								<Class name="float" field="FrustumLengthPercent" value="0.0100000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 								<Class name="Color" field="FrustumDrawColor" value="1.0000000 1.0000000 0.0000000 0.9000000" type="{7894072A-9050-4F0F-901B-34B1A0D29417}"/>
+								<Class name="bool" field="AutoActivate" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 							</Class>
 							<Class name="EditorLockComponent" field="element" type="{C3A169C9-7EFB-4D6C-8710-3591680D0936}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -3154,12 +3155,6 @@
 											</Class>
 										</Class>
 										<Class name="AZStd::pair" field="element" type="{FED51EB4-F646-51FF-9646-9852CF90F353}">
-											<Class name="AddressType" field="value1" value="AZStd::vector({21786AF0-2606-5B9A-86EB-0892E2820E6C})::Entities·0/AZ::Entity({75651658-8663-478D-9090-2432DFCAFA44})#577598608693250·2/AZStd::vector({13D58FF9-1088-5C69-9A1F-C2A144B57B78})::Components·0/EditorScriptCanvasComponent({C28E2D29-0746-451D-A639-7F113ECF5D72})#11030812942637589898·7/EditableVariableData({D335AEC5-D118-443D-B85C-FEB17C0B26D6})::m_variableData·2/AZStd::list({FD89FC9A-3931-5B41-B7DF-69006B7F76FE})::m_variables·0/EditableVariableConfiguration({96D2F031-DEA0-44DF-82FB-2612AFB1DACF})#7·2/GraphVariable({5BDC128B-8355-479C-8FA8-4BFFAB6915A8})::GraphVariable·3/Datum({8B836FC0-98A8-4A81-8651-35C7CA125451})::Datum·6/any({03924488-C7F4-4D6D-948B-ABC2D1AE2FD3})::m_datumStorage·0/AZStd::string({03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9})#0·0/" version="1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-											<Class name="any" field="value2" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
-												<Class name="AZStd::string" field="m_data" value="PlayerBullet" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-											</Class>
-										</Class>
-										<Class name="AZStd::pair" field="element" type="{FED51EB4-F646-51FF-9646-9852CF90F353}">
 											<Class name="AddressType" field="value1" value="AZStd::vector({21786AF0-2606-5B9A-86EB-0892E2820E6C})::Entities·0/AZ::Entity({75651658-8663-478D-9090-2432DFCAFA44})#577598608693250·2/AZStd::vector({13D58FF9-1088-5C69-9A1F-C2A144B57B78})::Components·0/EditorScriptCanvasComponent({C28E2D29-0746-451D-A639-7F113ECF5D72})#11030812942637589898·7/EditableVariableData({D335AEC5-D118-443D-B85C-FEB17C0B26D6})::m_variableData·2/AZStd::list({FD89FC9A-3931-5B41-B7DF-69006B7F76FE})::m_variables·0/EditableVariableConfiguration({96D2F031-DEA0-44DF-82FB-2612AFB1DACF})#3·2/GraphVariable({5BDC128B-8355-479C-8FA8-4BFFAB6915A8})::GraphVariable·3/Datum({8B836FC0-98A8-4A81-8651-35C7CA125451})::Datum·6/any({03924488-C7F4-4D6D-948B-ABC2D1AE2FD3})::m_datumStorage·0/EntityId({6383F1D3-BB27-4E6B-A49A-6409B2059EAA})#0·1/AZ::u64({D6597933-47CD-4FC8-B911-63F3E2B0993A})::id·0/" version="1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
 											<Class name="any" field="value2" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
 												<Class name="AZ::u64" field="m_data" value="34652866205796" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
@@ -3176,6 +3171,18 @@
 													</Class>
 													<Class name="AZStd::vector" field="ComponentOrderEntryArray" type="{B6EFED5B-19B4-5084-9D92-42DECCE83872}"/>
 												</Class>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{FED51EB4-F646-51FF-9646-9852CF90F353}">
+											<Class name="AddressType" field="value1" value="AZStd::vector({21786AF0-2606-5B9A-86EB-0892E2820E6C})::Entities·0/AZ::Entity({75651658-8663-478D-9090-2432DFCAFA44})#577598608693250·2/AZStd::vector({13D58FF9-1088-5C69-9A1F-C2A144B57B78})::Components·0/EditorScriptCanvasComponent({C28E2D29-0746-451D-A639-7F113ECF5D72})#11030812942637589898·7/EditableVariableData({D335AEC5-D118-443D-B85C-FEB17C0B26D6})::m_variableData·2/AZStd::list({FD89FC9A-3931-5B41-B7DF-69006B7F76FE})::m_variables·0/EditableVariableConfiguration({96D2F031-DEA0-44DF-82FB-2612AFB1DACF})#1·2/GraphVariable({5BDC128B-8355-479C-8FA8-4BFFAB6915A8})::GraphVariable·3/Datum({8B836FC0-98A8-4A81-8651-35C7CA125451})::Datum·6/any({03924488-C7F4-4D6D-948B-ABC2D1AE2FD3})::m_datumStorage·0/double({110C4B14-11A8-4E9D-8638-5051013A56AC})#0·0/" version="1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+											<Class name="any" field="value2" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+												<Class name="double" field="m_data" value="4.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+											</Class>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{FED51EB4-F646-51FF-9646-9852CF90F353}">
+											<Class name="AddressType" field="value1" value="AZStd::vector({21786AF0-2606-5B9A-86EB-0892E2820E6C})::Entities·0/AZ::Entity({75651658-8663-478D-9090-2432DFCAFA44})#577598608693250·2/AZStd::vector({13D58FF9-1088-5C69-9A1F-C2A144B57B78})::Components·0/EditorScriptCanvasComponent({C28E2D29-0746-451D-A639-7F113ECF5D72})#11030812942637589898·7/EditableVariableData({D335AEC5-D118-443D-B85C-FEB17C0B26D6})::m_variableData·2/AZStd::list({FD89FC9A-3931-5B41-B7DF-69006B7F76FE})::m_variables·0/EditableVariableConfiguration({96D2F031-DEA0-44DF-82FB-2612AFB1DACF})#7·2/GraphVariable({5BDC128B-8355-479C-8FA8-4BFFAB6915A8})::GraphVariable·3/Datum({8B836FC0-98A8-4A81-8651-35C7CA125451})::Datum·6/any({03924488-C7F4-4D6D-948B-ABC2D1AE2FD3})::m_datumStorage·0/AZStd::string({03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9})#0·0/" version="1" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+											<Class name="any" field="value2" type="{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}">
+												<Class name="AZStd::string" field="m_data" value="PlayerBullet" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 											</Class>
 										</Class>
 										<Class name="AZStd::pair" field="element" type="{FED51EB4-F646-51FF-9646-9852CF90F353}">

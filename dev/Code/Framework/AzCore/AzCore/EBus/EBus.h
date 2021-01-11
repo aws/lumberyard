@@ -1,4 +1,4 @@
-﻿/*
+/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -528,16 +528,6 @@ namespace AZ
         */
         static void Connect(HandlerNode& handler, const BusIdType& id = 0);
 
-        /**
-         * Connects a handler to an EBus address without locking the mutex
-         * Only call this if the context mutex is held already
-         * A handler will not receive EBus events until it is connected to the bus.
-         * the handler will be connected to.
-         * @param handler The handler to connect to the EBus address.
-         * @param id The ID of the EBus address that the handler will be connected to.
-        */
-        static void ConnectInternal(Context& context, HandlerNode& handler, const BusIdType& id = 0);
-
          /**
          * Disconnects a handler from an EBus address.
          * @param handler The handler to disconnect from the EBus address.
@@ -635,8 +625,16 @@ namespace AZ
              */
             using DispatchLockGuard = AZStd::conditional_t<BusTraits::LocklessDispatch, Internal::NullLockGuard<ContextMutexType>, AZStd::scoped_lock<ContextMutexType>>;
 
+            /**
+            * The scoped lock guard to use during connection.  Some specialized policies execute handler methods which
+            * can cause unnecessary delays holding the context mutex or in some cases perform blocking waits and
+            * must unlock the context mutex before doing so to prevent deadlock when the wait is for
+            * an event in another thread which is trying to connect to the same bus before it can complete
+            */
+            using ConnectLockGuard = AZStd::conditional_t<AZStd::is_same_v<ContextMutexType, AZ::NullMutex>, Internal::NullLockGuard<ContextMutexType>, AZStd::unique_lock<ContextMutexType>>;
+
             BusesContainer          m_buses;         ///< The actual bus container, which is a static map for each bus type.
-            ContextMutexType        m_contextMutex;  ///< Mutex to control access to the around modifying the context
+            ContextMutexType        m_contextMutex;  ///< Mutex to control access when modifying the context
             QueuePolicy             m_queue;
             RouterPolicy            m_routing;
 
@@ -684,6 +682,17 @@ namespace AZ
          * @return A reference to the bus context.
          */
         static Context* GetContext(bool trackCallstack=true);
+
+        using ConnectLockGuard = typename Context::ConnectLockGuard;
+        /**
+         * Connects a handler to an EBus address without locking the mutex
+         * Only call this if the context mutex is held already
+         * A handler will not receive EBus events until it is connected to the bus.
+         * the handler will be connected to.
+         * @param handler The handler to connect to the EBus address.
+         * @param id The ID of the EBus address that the handler will be connected to.
+        */
+        static void ConnectInternal(Context& context, HandlerNode& handler, ConnectLockGuard& contextLock, const BusIdType& id = 0);
 
         /**
          * Returns the global bus data. Creates it if it wasn't already created.
@@ -968,15 +977,15 @@ namespace AZ
         Context& context = GetOrCreateContext();
         // scoped lock guard in case of exception / other odd situation
         // Context mutex is separate from the Dispatch lock guard and therefore this is safe to lock this mutex while in the middle of a dispatch
-        AZStd::scoped_lock<decltype(context.m_contextMutex)> lock(context.m_contextMutex);
-        ConnectInternal(context, handler, id);
+        ConnectLockGuard lock(context.m_contextMutex);
+        ConnectInternal(context, handler, lock, id);
     }
 
     //=========================================================================
     // ConnectInternal
     //=========================================================================
     template<class Interface, class Traits>
-    inline void EBus<Interface, Traits>::ConnectInternal(Context& context, HandlerNode& handler, const BusIdType& id)
+    inline void EBus<Interface, Traits>::ConnectInternal(Context& context, HandlerNode& handler, ConnectLockGuard& contextLock, const BusIdType& id)
     {
         // To call this while executing a message, you need to make sure this mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
         AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(&context), "It is not safe to connect during dispatch on a lockless dispatch EBus");
@@ -990,7 +999,7 @@ namespace AZ
             ptr = handler.m_holder;
         }
         CallstackEntry entry(&context, &id);
-        ConnectionPolicy::Connect(ptr, context, handler, id);
+        ConnectionPolicy::Connect(ptr, context, handler, contextLock, id);
     }
 
     //=========================================================================
@@ -1236,12 +1245,12 @@ namespace AZ
         void NonIdHandler<Interface, Traits, ContainerType>::BusConnect()
         {
             typename BusType::Context& context = BusType::GetOrCreateContext();
-            AZStd::scoped_lock<decltype(context.m_contextMutex)> contextLock(context.m_contextMutex);
+            typename BusType::Context::ConnectLockGuard contextLock(context.m_contextMutex);
             if (!BusIsConnected())
             {
                 typename Traits::BusIdType id;
                 m_node = this;
-                BusType::ConnectInternal(context, m_node, id);
+                BusType::ConnectInternal(context, m_node, contextLock, id);
             }
         }
         template <typename Interface, typename Traits, typename ContainerType>
@@ -1263,7 +1272,7 @@ namespace AZ
         void IdHandler<Interface, Traits, ContainerType>::BusConnect(const IdType& id)
         {
             typename BusType::Context& context = BusType::GetOrCreateContext();
-            AZStd::scoped_lock<decltype(context.m_contextMutex)> contextLock(context.m_contextMutex);
+            typename BusType::Context::ConnectLockGuard contextLock(context.m_contextMutex);
             if (BusIsConnected())
             {
                 // Connecting on the BusId that is already connected is a no-op
@@ -1276,7 +1285,7 @@ namespace AZ
             }
 
             m_node = this;
-            BusType::ConnectInternal(context, m_node, id);
+            BusType::ConnectInternal(context, m_node, contextLock, id);
         }
         template <typename Interface, typename Traits, typename ContainerType>
         void IdHandler<Interface, Traits, ContainerType>::BusDisconnect(const IdType& id)
@@ -1309,13 +1318,13 @@ namespace AZ
         void MultiHandler<Interface, Traits, ContainerType>::BusConnect(const IdType& id)
         {
             typename BusType::Context& context = BusType::GetOrCreateContext();
-            AZStd::scoped_lock<decltype(context.m_contextMutex)> contextLock(context.m_contextMutex);
+            typename BusType::Context::ConnectLockGuard contextLock(context.m_contextMutex);
             if (m_handlerNodes.find(id) == m_handlerNodes.end())
             {
                 void* handlerNodeAddr = m_handlerNodes.get_allocator().allocate(sizeof(HandlerNode), AZStd::alignment_of<HandlerNode>::value);
                 auto handlerNode = new(handlerNodeAddr) HandlerNode(this);
                 m_handlerNodes.emplace(id, AZStd::move(handlerNode));
-                BusType::ConnectInternal(context, *handlerNode, id);
+                BusType::ConnectInternal(context, *handlerNode, contextLock, id);
             }
         }
         template <typename Interface, typename Traits, typename ContainerType>

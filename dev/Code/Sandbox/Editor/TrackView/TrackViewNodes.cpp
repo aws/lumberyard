@@ -548,7 +548,7 @@ int CTrackViewNodesCtrl::GetIconIndexForTrack(const CTrackViewTrack* pTrack) con
     {
         nImage = 9;
     }
-    else if (type == AnimParamType::Animation || type == AnimParamType::TimeRanges || valueType == AnimValueType::CharacterAnim || valueType == AnimValueType::AssetBlend)
+    else if (type == AnimParamType::Animation || type == AnimParamType::TimeRanges || valueType == AnimValueType::CharacterAnim || valueType == AnimValueType::AssetBlend || valueType == AnimValueType::AssetId)
     {
         nImage = 10;
     }
@@ -843,7 +843,7 @@ void CTrackViewNodesCtrl::UpdateAnimNodeRecord(CRecord* record, CTrackViewAnimNo
 
     if (nodeType == AnimNodeType::Group)
     {
-        record->setBackgroundColor(0, BackColorForGroupNodes);
+        record->setBackground(0, BackColorForGroupNodes);
         record->setSizeHint(0, QSize(30, 20));
     }
     else if (nodeType == AnimNodeType::AzEntity)
@@ -887,11 +887,11 @@ void CTrackViewNodesCtrl::UpdateAnimNodeRecord(CRecord* record, CTrackViewAnimNo
     // Mark the active director and other directors properly.
     if (animNode->IsActiveDirector())
     {
-        record->setBackgroundColor(0, BackColorForActiveDirector);
+        record->setBackground(0, BackColorForActiveDirector);
     }
     else if (nodeType == AnimNodeType::Director)
     {
-        record->setBackgroundColor(0, BackColorForInactiveDirector);
+        record->setBackground(0, BackColorForInactiveDirector);
     }
 }
 
@@ -2513,7 +2513,7 @@ bool CTrackViewNodesCtrl::FillAddTrackMenu(STrackMenuTreeNode& menuAddTrack, con
             }
         }
         name = animNode->GetParamName(paramType);
-        QStringList splittedName = name.split("/", QString::SkipEmptyParts);
+        QStringList splittedName = name.split("/", Qt::SkipEmptyParts);
 
         STrackMenuTreeNode* pCurrentNode = &menuAddTrack;
         for (unsigned int j = 0; j < splittedName.size() - 1; ++j)

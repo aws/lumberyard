@@ -2372,12 +2372,22 @@ bool C3DEngine::SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, in
     // Refresh if we've enabled dynamic merged mesh generation and either the group material has changed, the mesh has changed, or our automerge setting has changed
     if (gEnv->IsEditor() && (pPreviousGroupMaterial != rGroup.pMaterial || pPreviousObject != rGroup.pStatObj))
     {
+        StatObjEventBus::MultiHandler::BusDisconnect(pPreviousObject);
         m_pMergedMeshesManager->ResetActiveNodes();
+        if (rGroup.pStatObj)
+        {
+            StatObjEventBus::MultiHandler::BusConnect(rGroup.pStatObj);
+        }
     }
 
     MarkRNTmpDataPoolForReset();
 
     return true;
+}
+
+void C3DEngine::OnStatObjReloaded()
+{
+    m_pMergedMeshesManager->ResetActiveNodes();
 }
 
 bool C3DEngine::GetStatInstGroup(int nGroupId, IStatInstGroup& siGroup, int nSID)

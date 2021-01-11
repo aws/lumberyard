@@ -16,6 +16,7 @@
 #include <QItemSelectionModel>
 #include <QModelIndex>
 #include <QPainter>
+#include <QPainterPath>
 
 namespace EMotionFX
 {

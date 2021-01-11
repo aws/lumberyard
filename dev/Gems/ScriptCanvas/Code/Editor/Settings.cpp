@@ -312,8 +312,9 @@ namespace ScriptCanvasEditor
                 ;
 
                 serialize->Class<ScriptCanvasEditorSettings>()
-                    ->Version(16, ScriptCanvasEditorSettings::VersionConverter)
+                    ->Version(17, ScriptCanvasEditorSettings::VersionConverter)
                     ->Field("m_snapDistance", &ScriptCanvasEditorSettings::m_snapDistance)
+                    ->Field("m_enableGroupDoubleClickCollapse", &ScriptCanvasEditorSettings::m_enableGroupDoubleClickCollapse)
                     ->Field("m_pinnedDataTypes", &ScriptCanvasEditorSettings::m_pinnedDataTypes)
                     ->Field("m_allowBookmarkViewpointControl", &ScriptCanvasEditorSettings::m_allowBookmarkViewpointControl)
                     ->Field("DragCouplingConfiguration", &ScriptCanvasEditorSettings::m_dragNodeCouplingConfig)
@@ -403,6 +404,7 @@ namespace ScriptCanvasEditor
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_snapDistance, "Connection Snap Distance", "The distance from a slot under which connections will snap to it.")
                         ->Attribute(AZ::Edit::Attributes::Min, 10.0)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_enableGroupDoubleClickCollapse, "Double Click to Collapse/Uncollapse Group", "Enables the user to decide whether you can double click on a group to collapse/uncollapse a group.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_allowBookmarkViewpointControl, "Bookmark Zooming", "Will cause the bookmarks to force the viewport into the state determined by the bookmark type\nBookmark Anchors - The viewport that exists when the bookmark is created.\nNode Groups - The area the Node Group covers")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_dragNodeCouplingConfig, "Node Coupling Configuration", "Controls for managing Node Coupling.\nNode Coupling is when you are dragging a node and leave it hovered over another Node, we will try to connect the sides you overlapped with each other.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_dragNodeSplicingConfig, "Drag Node Splicing Configuration", "Controls for managing Node Splicing on a Drag.\nNode Splicing on a Drag will let you drag a node onto a connection, and splice that node onto the specified connection.")
@@ -424,6 +426,7 @@ namespace ScriptCanvasEditor
         
         ScriptCanvasEditorSettings::ScriptCanvasEditorSettings()
             : m_snapDistance(10.0)
+            , m_enableGroupDoubleClickCollapse(true)
             , m_allowBookmarkViewpointControl(true)
             , m_allowNodeNudging(true)
             , m_rememberOpenCanvases(true)

@@ -14,16 +14,15 @@
 #pragma once
 
 #include <QWidget>
-#include <QLatin1Literal>
 
 namespace Ui
 {
-	class ViewportTitleDlg;
+    class ViewportTitleDlg;
 }
 
 class ViewportTitleDlg : public QWidget
 {
-	Q_OBJECT
+    Q_OBJECT
 public:
     ViewportTitleDlg(QWidget* pParent = nullptr);
     virtual ~ViewportTitleDlg();
@@ -35,6 +34,6 @@ private:
     void OnInitDialog();
     void SetTitle(const QString &title);
 
-    QString m_title = QLatin1Literal("Perspective");
+    QString m_title = QLatin1String("Perspective");
     QScopedPointer<Ui::ViewportTitleDlg> m_ui;
 };

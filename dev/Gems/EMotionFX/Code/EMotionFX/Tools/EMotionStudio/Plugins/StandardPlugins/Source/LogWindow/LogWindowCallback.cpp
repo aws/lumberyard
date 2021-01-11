@@ -84,7 +84,7 @@ namespace EMStudio
         const QTime currentTime = QTime::currentTime();
         const QString currentDateTimeString = currentTime.toString("[hh:mm:ss]");
         QTableWidgetItem* timeItem = new QTableWidgetItem(currentDateTimeString);
-        timeItem->setTextColor(QColor(105, 105, 105));
+        timeItem->setForeground(QColor(105, 105, 105));
         QTableWidgetItem* messageItem = new QTableWidgetItem(text);
         messageItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         messageItem->setData(Qt::UserRole, (int)logLevel);
@@ -92,19 +92,19 @@ namespace EMStudio
         {
         // MCore::LogCallback::LOGLEVEL_INFO not needed because it uses the default color on this case
         case MCore::LogCallback::LOGLEVEL_FATAL:
-            messageItem->setTextColor(QColor("red"));
+            messageItem->setForeground(QColor("red"));
             break;
         case MCore::LogCallback::LOGLEVEL_ERROR:
-            messageItem->setTextColor(QColor("red"));
+            messageItem->setForeground(QColor("red"));
             break;
         case MCore::LogCallback::LOGLEVEL_WARNING:
-            messageItem->setTextColor(QColor("orange"));
+            messageItem->setForeground(QColor("orange"));
             break;
         case MCore::LogCallback::LOGLEVEL_DETAILEDINFO:
-            messageItem->setTextColor(QColor("darkgray"));
+            messageItem->setForeground(QColor("darkgray"));
             break;
         case MCore::LogCallback::LOGLEVEL_DEBUG:
-            messageItem->setTextColor(QColor("yellow"));
+            messageItem->setForeground(QColor("yellow"));
             break;
         default:
             ;

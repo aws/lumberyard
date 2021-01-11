@@ -24,7 +24,7 @@ namespace DrawingPrimitives
         QString text = QString::number(options.m_time, 'f', options.m_precision + 1);
 
         QFontMetrics fm(painter.font());
-        const int textWidth = fm.width(text) + fm.height();
+        const int textWidth = fm.horizontalAdvance(text) + fm.height();
         const int markerHeight = fm.height();
 
         const int thumbX = options.m_position;

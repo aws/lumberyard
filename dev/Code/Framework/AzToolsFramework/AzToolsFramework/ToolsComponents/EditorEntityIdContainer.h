@@ -38,6 +38,7 @@ namespace AzToolsFramework
         static const QString& GetMimeType();
 
         AZStd::vector< AZ::EntityId > m_entityIds;
+        AZStd::vector< AZ::EntityId > m_layerIds;
 
         // utility functions to serialize/deserialize.
         bool ToBuffer(AZStd::vector<char>& buffer);

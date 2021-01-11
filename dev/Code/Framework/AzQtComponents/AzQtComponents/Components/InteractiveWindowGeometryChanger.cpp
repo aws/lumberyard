@@ -241,6 +241,7 @@ namespace AzQtComponents
             geometry.height() <= m_targetWindow->maximumHeight() &&
             geometry.width() <= m_targetWindow->maximumWidth())
         {
+            EnsureGeometryWithinScreenTop(geometry);
             m_targetWindow->setGeometry(geometry);
             updateCursor(); // Position changed, move cursor to border again
         }
@@ -278,6 +279,7 @@ namespace AzQtComponents
             geometry.height() <= m_targetWindow->maximumHeight() &&
             geometry.width() <= m_targetWindow->maximumWidth())
         {
+            EnsureGeometryWithinScreenTop(geometry);
             m_targetWindow->setGeometry(geometry);
             updateCursor(); // Position changed, move cursor to border again
         }
@@ -360,8 +362,9 @@ namespace AzQtComponents
                 return;
         }
 
-        // No bounds checking needed, native behaviour also doesn't do it
-        m_targetWindow->setGeometry(m_targetWindow->geometry().translated(offset));
+        QRect geometry = m_targetWindow->geometry().translated(offset);
+        EnsureGeometryWithinScreenTop(geometry);
+        m_targetWindow->setGeometry(geometry);
 
         // Mouse cursor travels too while we use the arrow keys
         restoreCursorPosition();
@@ -377,7 +380,10 @@ namespace AzQtComponents
 
         const QPoint newPos = m_targetWindow->mapFromGlobal(QCursor::pos());
         const QPoint offset = newPos - m_originalCursorPos;
-        m_targetWindow->setPosition(m_targetWindow->position() + offset);
+
+        QRect geometry = m_targetWindow->geometry().translated(offset);
+        EnsureGeometryWithinScreenTop(geometry);
+        m_targetWindow->setGeometry(geometry);
     }
 
 } // namespace AzQtComponents

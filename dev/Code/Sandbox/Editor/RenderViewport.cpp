@@ -201,12 +201,14 @@ CRenderViewport::CRenderViewport(const QString& name, QWidget* parent)
     {
         m_pPrimaryViewport = this;
     }
+
+    m_hwnd = renderOverlayHWND();
 }
 
 //////////////////////////////////////////////////////////////////////////
 CRenderViewport::~CRenderViewport()
 {
-    AzFramework::WindowNotificationBus::Event(renderOverlayHWND(), &AzFramework::WindowNotificationBus::Handler::OnWindowClosed);
+    AzFramework::WindowNotificationBus::Event(m_hwnd, &AzFramework::WindowNotificationBus::Handler::OnWindowClosed);
 
     if (m_pPrimaryViewport == this)
     {
@@ -756,12 +758,10 @@ void CRenderViewport::OnMButtonDown(Qt::KeyboardModifiers modifiers, const QPoin
     }
 
     const auto scaledPoint = WidgetToViewport(point);
-
     const auto mouseInteraction = BuildMouseInteractionInternal(
         MouseButtonsFromButton(MouseButton::Middle),
         BuildKeyboardModifiers(modifiers),
         BuildMousePick(scaledPoint));
-
 
     if (GetIEditor()->IsNewViewportInteractionModelEnabled())
     {
@@ -846,23 +846,30 @@ void CRenderViewport::OnMButtonUp(Qt::KeyboardModifiers modifiers, const QPoint&
     const auto scaledPoint = WidgetToViewport(point);
     UpdateCurrentMousePos(scaledPoint);
 
+    const auto tryRestoreMouse = [this]
+    {
+        // if we are currently looking (rotateMode) or dollying (zoomMode)
+        // do not show the cursor on mouse up as rmb is still held
+        if (!m_bInZoomMode && !m_bInRotateMode)
+        {
+            ReleaseMouse();
+            ShowCursor();
+        }
+    };
+
     if (GetIEditor()->IsNewViewportInteractionModelEnabled())
     {
         if (m_bInMoveMode)
         {
             m_bInMoveMode = false;
-
-            ReleaseMouse();
-            ShowCursor();
+            tryRestoreMouse();
         }
     }
     else
     {
         m_bInMoveMode = false;
         m_bInOrbitMode = false;
-
-        ReleaseMouse();
-        ShowCursor();
+        tryRestoreMouse();
     }
 
     const auto mouseInteraction = BuildMouseInteractionInternal(
@@ -4240,9 +4247,9 @@ void CRenderViewport::DestroyRenderContext()
     if (m_renderer && m_bRenderContextCreated)
     {
         // Do not delete primary context.
-        if (renderOverlayHWND() != m_renderer->GetHWND())
+        if (m_hwnd != m_renderer->GetHWND())
         {
-            m_renderer->DeleteContext(renderOverlayHWND());
+            m_renderer->DeleteContext(m_hwnd);
         }
         m_bRenderContextCreated = false;
     }

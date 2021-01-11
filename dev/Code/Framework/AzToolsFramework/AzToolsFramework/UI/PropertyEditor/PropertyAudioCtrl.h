@@ -15,6 +15,7 @@
 #include <AzCore/base.h>
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzQtComponents/Components/Widgets/BrowseEdit.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 
 #include <QWidget>
@@ -50,10 +51,6 @@ namespace AzToolsFramework
             return m_propertyType;
         }
 
-        QWidget* GetFirstInTabOrder();
-        QWidget* GetLastInTabOrder();
-        void UpdateTabOrder();
-
         // todo: enable drag-n-drop from Audio Controls Editor
         bool eventFilter(QObject* obj, QEvent* event) override;
         void dragEnterEvent(QDragEnterEvent* event) override;
@@ -71,9 +68,7 @@ namespace AzToolsFramework
         bool IsCorrectMimeData(const QMimeData* pData) const;
         void focusInEvent(QFocusEvent* event) override;
 
-        QLineEdit* m_controlEdit;
-        QPushButton* m_browseButton;
-        QPushButton* m_clearButton;
+        AzQtComponents::BrowseEdit* m_browseEdit;
         QHBoxLayout* m_mainLayout;
 
         AudioPropertyType m_propertyType;
@@ -105,21 +100,6 @@ namespace AzToolsFramework
         bool IsDefaultHandler() const override
         {
             return true;
-        }
-
-        QWidget* GetFirstInTabOrder(widget_t* widget) override
-        {
-            return widget->GetFirstInTabOrder();
-        }
-
-        QWidget* GetLastInTabOrder(widget_t* widget) override
-        {
-            return widget->GetLastInTabOrder();
-        }
-
-        void UpdateWidgetInternalTabbing(widget_t* widget) override
-        {
-            return widget->UpdateTabOrder();
         }
 
         QWidget* CreateGUI(QWidget* parent) override;

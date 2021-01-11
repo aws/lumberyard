@@ -566,7 +566,7 @@ namespace AssetProcessor
         else
         {
             scannerUIInfo.m_scanWidgetRow->setText(tr("%1: Scanning %2 files for %3").
-                arg(scannerUIInfo.m_scanTimeStart.toString(Qt::DateFormat::SystemLocaleShortDate)).
+                arg(QLocale::system().toString(scannerUIInfo.m_scanTimeStart, QLocale::ShortFormat)).
                 arg(scannerUIInfo.m_remainingFiles).
                 arg(scanName));
         }

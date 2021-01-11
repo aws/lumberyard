@@ -97,16 +97,13 @@ namespace AzToolsFramework
                         ->Attribute(AZ::Script::Attributes::Alias, "to_string")
                     ;
 
-                AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
                 behaviorContext->EBus<EditorComponentAPIBus>("EditorComponentAPIBus")
                     ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
                     ->Attribute(AZ::Script::Attributes::Category, "Components")
                     ->Attribute(AZ::Script::Attributes::Module, "editor")
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
-                    ->Event("FindComponentTypeIds", &EditorComponentAPIRequests::FindComponentTypeIds) // Deprecated. Use FindComponentTypeIdsByEntityType instead.
                     ->Event("FindComponentTypeIdsByEntityType", &EditorComponentAPIRequests::FindComponentTypeIdsByEntityType)
                     ->Event("FindComponentTypeNames", &EditorComponentAPIRequests::FindComponentTypeNames)
-                    ->Event("BuildComponentTypeNameList", &EditorComponentAPIRequests::BuildComponentTypeNameList) // Deprecated. Use BuildComponentTypeNameListByEntityType instead.
                     ->Event("BuildComponentTypeNameListByEntityType", &EditorComponentAPIRequests::BuildComponentTypeNameListByEntityType)
                     ->Event("AddComponentsOfType", &EditorComponentAPIRequests::AddComponentsOfType)
                     ->Event("AddComponentOfType", &EditorComponentAPIRequests::AddComponentOfType)
@@ -126,7 +123,6 @@ namespace AzToolsFramework
                     ->Event("BuildComponentPropertyList", &EditorComponentAPIRequests::BuildComponentPropertyList)
                     ->Event("SetVisibleEnforcement", &EditorComponentAPIRequests::SetVisibleEnforcement)
                     ;
-                AZ_POP_DISABLE_WARNING
             }
         }
 
@@ -146,11 +142,6 @@ namespace AzToolsFramework
         void EditorComponentAPIComponent::SetVisibleEnforcement(bool enforceVisiblity)
         {
             m_usePropertyVisibility = enforceVisiblity;
-        }
-
-        AZStd::vector<AZ::Uuid> EditorComponentAPIComponent::FindComponentTypeIds(const AZStd::vector<AZStd::string>& componentTypeNames)
-        {
-            return FindComponentTypeIdsByEntityType(componentTypeNames, EntityType::Game);
         }
 
         AZStd::vector<AZ::Uuid> EditorComponentAPIComponent::FindComponentTypeIdsByEntityType(const AZStd::vector<AZStd::string>& componentTypeNames, EditorComponentAPIRequests::EntityType entityType)
@@ -259,11 +250,6 @@ namespace AzToolsFramework
             AZ_Warning("EditorComponentAPI", (counter >= typesCount), "FindComponentTypeNames - Not all Type Ids provided could be converted to Type Names.");
             
             return foundTypeNames;
-        }
-
-        AZStd::vector<AZStd::string> EditorComponentAPIComponent::BuildComponentTypeNameList()
-        {
-            return BuildComponentTypeNameListByEntityType(EntityType::Game);
         }
 
         AZStd::vector<AZStd::string> EditorComponentAPIComponent::BuildComponentTypeNameListByEntityType(EditorComponentAPIRequests::EntityType entityType)

@@ -102,6 +102,12 @@ namespace EMotionFX
             void DebugDrawRoot(bool enable) override;
             bool GetRenderCharacter() const override;
             void SetRenderCharacter(bool enable) override;
+            SkinningMethod GetSkinningMethod() const override;
+
+            void SetActorAsset(const AZ::Data::AssetId& id) override;
+            AZ::Data::Asset<AZ::Data::AssetData> GetActorAsset() override;
+            const AZ::Data::AssetId& GetActorAssetId() override;
+
 
             //////////////////////////////////////////////////////////////////////////
             // ActorComponentNotificationBus::Handler

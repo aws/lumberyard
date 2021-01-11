@@ -30,17 +30,20 @@
 #include <Source/Editor/SkeletonModel.h>
 
 // include Qt related things
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
 #include <QApplication>
 #include <QFile>
+#include <QFileDialog>
+#include <QLabel>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QPainterPath>
+#include <QSettings>
+#include <QSplashScreen>
+#include <QStandardPaths>
 #include <QTextStream>
 #include <QUuid>
-#include <QSplashScreen>
-#include <QSettings>
-#include <QFileDialog>
-#include <QMessageBox>
-#include <QLabel>
-#include <QStandardPaths>
-#include <QPushButton>
+AZ_POP_DISABLE_WARNING
 
 // include AzCore required headers
 #include <AzFramework/API/ApplicationAPI.h>
@@ -273,6 +276,15 @@ namespace EMStudio
     }
 
 
+    void EMStudioManager::MakeTransparentButton(QToolButton* button, const char* iconFileName, const char* toolTipText, uint32 width, uint32 height)
+    {
+        button->setObjectName("TransparentButton");
+        button->setToolTip(toolTipText);
+        button->setMinimumSize(width, height);
+        button->setMaximumSize(width, height);
+        button->setIcon(MysticQt::GetMysticQt()->FindIcon(iconFileName));
+    }
+
     void EMStudioManager::MakeTransparentButton(QPushButton* button, const char* iconFileName, const char* toolTipText, uint32 width, uint32 height)
     {
         button->setObjectName("TransparentButton");
@@ -450,7 +462,7 @@ namespace EMStudio
         painter.setPen(Qt::NoPen);
         painter.setBrush(textColor);
 
-        const float textWidth       = aznumeric_cast<float>(fontMetrics.width(text));
+        const float textWidth       = aznumeric_cast<float>(fontMetrics.horizontalAdvance(text));
         const float halfTextWidth   = aznumeric_cast<float>(textWidth * 0.5 + 0.5);
         const float halfTextHeight  = aznumeric_cast<float>(fontMetrics.height() * 0.5 + 0.5);
         const QPoint rectCenter     = rect.center();

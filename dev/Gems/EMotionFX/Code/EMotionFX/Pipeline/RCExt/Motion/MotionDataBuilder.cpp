@@ -41,7 +41,7 @@
 
 namespace
 {
-    const float kDefaultMaxTranslationError = 0.000025f;
+    const float kDefaultMaxTranslationError = 0.00025f;
     const float kDefaultMaxRotationError = 0.000025f;
     const float kDefaultMaxScaleError = 0.0001f;
 }

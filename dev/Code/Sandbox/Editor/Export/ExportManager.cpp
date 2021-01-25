@@ -2095,7 +2095,11 @@ bool CExportManager::ExportSingleStatObj(IStatObj* pStatObj, const char* filenam
     m_data.m_objects.push_back(pObj);
     ExportToFile(filename, true);
 
-    m_pBaseObj = nullptr;
+    if (editorObject)
+    {
+        m_pBaseObj = nullptr;
+        GetIEditor()->DeleteObject(editorObject);
+    }
 
     return true;
 }

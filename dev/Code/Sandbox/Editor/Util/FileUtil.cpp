@@ -2024,32 +2024,32 @@ void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filen
 
     if (!filename.isEmpty() && filename.endsWith(".cgf", Qt::CaseInsensitive))
     {
-		action = menu->addAction(QObject::tr("Export"), [=]()
-		{
+        action = menu->addAction(QObject::tr("Export"), [=]()
+        {
             QFileInfo fi(fullPath);
             QString fileDirPath = fi.absolutePath();
-			QString saveFilePath = QFileDialog::getSaveFileName(
-					NULL,
-					QFileDialog::tr("Export Geometry"),
-					fileDirPath,
-					QFileDialog::tr("Object File (*.obj);;FBX File (*.fbx)"));
+            QString saveFilePath = QFileDialog::getSaveFileName(
+                    NULL,
+                    QFileDialog::tr("Export Geometry"),
+                    fileDirPath,
+                    QFileDialog::tr("Object File (*.obj);;FBX File (*.fbx)"));
 
-			if (saveFilePath.isEmpty())
-			{
-				return;
-			}
+            if (saveFilePath.isEmpty())
+            {
+                return;
+            }
 
-			CExportManager* exportMgr = static_cast<CExportManager*>(GetIEditor()->GetExportManager());
-			if (exportMgr)
-			{
-				QString relativeGamePath = Path::MakeGamePath(fullGamePath);
-				relativeGamePath = Path::AddSlash(relativeGamePath) + filename;
+            CExportManager* exportMgr = static_cast<CExportManager*>(GetIEditor()->GetExportManager());
+            if (exportMgr)
+            {
+                QString relativeGamePath = Path::MakeGamePath(fullGamePath);
+                relativeGamePath = Path::AddSlash(relativeGamePath) + filename;
                 constexpr bool useStreaming = false;
                 _smart_ptr<IStatObj> statObj = GetIEditor()->Get3DEngine()->LoadStatObjAutoRef(relativeGamePath.toStdString().c_str(),nullptr, nullptr, useStreaming);
                 exportMgr->ExportSingleStatObj(statObj, saveFilePath.toStdString().c_str());
-			}
-		});
-	}
+            }
+        });
+    }
 
     if (!filename.isEmpty() && GetIEditor()->IsSourceControlAvailable() && nFileAttr != SCC_FILE_ATTRIBUTE_INVALID)
     {

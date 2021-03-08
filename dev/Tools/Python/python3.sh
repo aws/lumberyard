@@ -24,21 +24,21 @@ DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 if [[ "$OSTYPE" = *"darwin"* ]];
 then
-    export DYLD_FALLBACK_LIBRARY_PATH=$DIR/3.7.5/mac/lib/lib-dynload
-    PYTHON=$DIR/3.7.5/mac/bin/python
+    export DYLD_FALLBACK_LIBRARY_PATH=$DIR/3.7.10/mac/Python.framework/Versions/3.7/lib/lib-dynload
+    PYTHON=$DIR/3.7.10/mac/Python.framework/Versions/3.7/bin/python3
+    PATH_SCRIPT=$DIR/3.7.10/extend_pythonpath.py
 else
-    export LD_LIBRARY_PATH=$DIR/3.7.5/linux_x64/lib/lib-dynload/openssl/lib
-    PYTHON=$DIR/3.7.5/linux_x64/bin/python3.7
+    PYTHON=$DIR/3.7.10/linux_x64/bin/python3.7
+    PATH_SCRIPT=$DIR/3.7.10/extend_pythonpath.py
 fi
 
 if [ -e "$PYTHON" ]
 then
-    PATH_SCRIPT=$DIR/3.7.5/extend_pythonpath.py
     export PYTHONPATH="$($PYTHON $PATH_SCRIPT)"
     "$PYTHON" "$@"
     exit $?
 else
-    echo "Could not find python.3.7.5 in $PYTHON"
+    echo "Could not find python in $PYTHON"
     exit 1
 fi
 

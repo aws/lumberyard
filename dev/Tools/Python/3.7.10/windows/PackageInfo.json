@@ -1,0 +1,6 @@
+{
+    "PackageName" : "python-3.7.10-rev1-windows",
+    "URL"         : "https://python.org",
+    "License"     : "python-2.0",
+    "LicenseFile" : "python/LICENSE.txt"
+}

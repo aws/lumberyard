@@ -33,11 +33,11 @@ def build(bld):
     platform, configuration = bld.get_platform_and_configuration()
     pydll = None
     if platform.startswith('win_') or platform == 'project_generator':
-        pydll = 'Tools/Python/3.7.5/windows/python37.dll'
+        pydll = 'Tools/Python/3.7.10/windows/python37.dll'
     elif platform.startswith('linux_'):
-        pydll = 'Tools/Python/3.7.5/linux_x64/lib/libpython3.7m.so'
+        pydll = 'Tools/Python/3.7.10/linux_x64/lib/libpython3.7m.so'
     elif platform.startswith('darwin_'):
-        pydll = 'Tools/Python/3.7.5/mac/lib/libpython3.7m.dylib'
+        pydll = 'Tools/Python/3.7.10/mac/Python.framework/Versions/3.7/lib/libpython3.7m.dylib'
 
     source_artifacts = [ pydll ] if pydll else []
     source_artifacts += [
@@ -80,7 +80,7 @@ def build(bld):
         linux_x64_lib=linux_x64_lib,
 
         linux_x64_libpath=[bld.Path('Tools/Python/3.7.5/linux_x64/lib')],
-        darwin_x64_libpath=[bld.Path('Tools/Python/3.7.5/mac/lib')],
+        darwin_x64_libpath=[bld.Path('Tools/Python/3.7.10/mac/Python.framework/Versions/3.7/lib')],
 
         linux_x64_linkflags=linux_x64_linkflags,
         darwin_x64_rpath=darwin_x64_rpath,

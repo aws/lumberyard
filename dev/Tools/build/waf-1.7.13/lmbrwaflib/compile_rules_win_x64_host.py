@@ -95,19 +95,19 @@ def load_win_x64_host_settings(conf):
 
     v['CODE_GENERATOR_EXECUTABLE'] = AZ_CODE_GEN_EXECUTABLE
     v['CODE_GENERATOR_PATH'] = [AZCG_VALIDATED_PATH]
-    v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/3.7.5/windows/Lib'),
-                                        conf.Path('Tools/Python/3.7.5/windows/libs'),
-                                        conf.Path('Tools/Python/3.7.5/windows/DLLs'),
+    v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/3.7.10/windows/Lib'),
+                                        conf.Path('Tools/Python/3.7.10/windows/libs'),
+                                        conf.Path('Tools/Python/3.7.10/windows/DLLs'),
                                         conf.ThirdPartyPath('markupsafe', 'x64'),
                                         conf.ThirdPartyPath('jinja2', 'x64')]
-    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.Path('Tools/Python/3.7.5/windows/Lib'),
-                                              conf.Path('Tools/Python/3.7.5/windows/libs'),
-                                              conf.Path('Tools/Python/3.7.5/windows/DLLs'),
+    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.Path('Tools/Python/3.7.10/windows/Lib'),
+                                              conf.Path('Tools/Python/3.7.10/windows/libs'),
+                                              conf.Path('Tools/Python/3.7.10/windows/DLLs'),
                                               conf.ThirdPartyPath('markupsafe', 'x64'),
                                               conf.ThirdPartyPath('jinja2', 'x64')]
-    v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'] = 'Tools/Python/3.7.5/windows'
+    v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'] = 'Tools/Python/3.7.10/windows'
     v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path(v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'])
-    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/3.7.5/windows')
+    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/3.7.10/windows')
     v['CODE_GENERATOR_INCLUDE_PATHS'] = []
     
     v['EMBEDDED_PYTHON_HOME'] = v['CODE_GENERATOR_PYTHON_HOME']

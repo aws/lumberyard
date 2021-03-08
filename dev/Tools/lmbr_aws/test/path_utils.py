@@ -36,7 +36,7 @@ def python_path(*args, **kwargs):
 
 
 def python_win_coverage_path(*args, **kwargs):
-    return dev_path('Tools', 'Python', '3.7.5', 'windows', 'Scripts', 'coverage.exe')
+    return dev_path('Tools', 'Python', '3.7.10', 'windows', 'Scripts', 'coverage.exe')
 
 
 def gem_path(gem_name, *args, **kwargs):

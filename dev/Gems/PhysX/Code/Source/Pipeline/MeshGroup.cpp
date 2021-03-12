@@ -850,6 +850,12 @@ namespace PhysX
                     primitiveAssetParams.m_volumeTermCoefficient = oldValue * 2.0e-5f;
                 }
                 classElement.AddElementWithData(context, "PrimitiveAssetParams", primitiveAssetParams);
+
+                // Convert 'export as convex' to 'export method'
+                // export as primitive was not previously available
+                bool exportAsConvex;
+                readAndRemoveElement(AZ::Crc32("export as convex"), exportAsConvex);
+                classElement.AddElementWithData(context, "export method", exportAsConvex ? MeshExportMethod::Convex : MeshExportMethod::TriMesh);
             }
 
             return true;

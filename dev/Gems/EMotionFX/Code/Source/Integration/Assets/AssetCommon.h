@@ -32,6 +32,12 @@ namespace EMotionFX
             AZ_RTTI(EMotionFXAsset, "{043F606A-A483-4910-8110-D8BC4B78922C}", AZ::Data::AssetData)
             AZ_CLASS_ALLOCATOR(EMotionFXAsset, EMotionFXAllocator, 0)
 
+            void ReleaseEmotionFXData()
+            {
+                m_emfxNativeData.clear();
+                m_emfxNativeData.shrink_to_fit();
+            }
+
             AZStd::vector<AZ::u8> m_emfxNativeData;
         };
 

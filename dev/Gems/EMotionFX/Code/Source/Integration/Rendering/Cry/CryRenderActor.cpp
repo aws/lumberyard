@@ -475,6 +475,53 @@ namespace EMotionFX
                 // It's now safe to use this LOD.
                 lod.m_isReady = true;
             }
+            
+            //Cry rendering does skinning on the GPU, the goal is to remove all GPU deformed meshes and unused morph targets. 
+            //We have to do it after the vertex buffers get created for the GPU, for CryRenderActor that is after the Finalize()
+            const uint32 numNodes = actor->GetNumNodes();
+            EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
+            if (skeleton == nullptr)
+            {
+                AZ_Error("EMotionFX", false, "Skeleton couln't be null here! Will return");
+                return;
+            }
+
+            // iterate through all geometry LOD levels
+            for (uint32 lodLevel = 0; lodLevel < numLODs; ++lodLevel)
+            {
+                // iterate through all nodes
+                for (uint32 n = 0; n < numNodes; ++n)
+                {
+                    // get the current node
+                    EMotionFX::Node* node = skeleton->GetNode(n);
+                    if (node == nullptr)
+                    {
+                        continue;
+                    }
+
+                    // get the mesh for the node, if there is any
+                    EMotionFX::Mesh* mesh = actor->GetMesh(lodLevel, n);
+                    if (mesh == nullptr)
+                    {
+                        continue;
+                    }
+
+                    // skip collision meshes
+                    if (mesh->GetIsCollisionMesh())
+                    {
+                        continue;
+                    }
+
+                    // classify the mesh type
+                    EMotionFX::Mesh::EMeshType meshType = mesh->ClassifyMeshType(lodLevel, actor, node->GetNodeIndex(), false, 4, 200);
+
+                    // remove the meshes
+                    if (meshType != EMotionFX::Mesh::MESHTYPE_CPU_DEFORMED)
+                    {
+                        actor->RemoveNodeMeshForLOD(lodLevel, n);
+                    } // if mesh is cpu deformed
+                }
+            }
         }
     } // namespace Integration
 } // namespace EMotionFX

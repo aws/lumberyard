@@ -69,6 +69,7 @@ namespace EMotionFX
             RenderBackend* renderBackend = AZ::Interface<RenderBackendManager>::Get()->GetRenderBackend();
             assetData->m_renderActor.reset(renderBackend->CreateActor(assetData));
 
+            assetData->ReleaseEmotionFXData();
             return static_cast<bool>(assetData->m_emfxActor);
         }
 

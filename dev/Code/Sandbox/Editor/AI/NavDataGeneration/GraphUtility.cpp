@@ -369,7 +369,7 @@ bool CGraph::CreateOutline(const string& areaName, ListNodeIds& insideNodes, Lis
     while (!insideNodesCurrent.empty())
     {
         GraphNode* nextCandidate = NULL;
-        int     theOtherVertexIdx;
+        int     theOtherVertexIdx = 0;
         int     nextOtherVertexIdx = 0;
         bool    bAddVertex = true;
 

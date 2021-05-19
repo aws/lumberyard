@@ -10,103 +10,117 @@
  *
  */
 
-#include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
+#include <AzTest/AzTest.h>
 
-#include <Mocks/ISystemMock.h>
+#include <ISystem.h>
+
+#include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 
 #include <Components/ClothComponent.h>
 #include <Components/EditorClothComponent.h>
 
-#include <System/SystemComponent.h>
+#include <ActorHelper.h>
+#include <Integration/ActorComponentBus.h>
+
+namespace NvCloth
+{
+    namespace Internal
+    {
+        extern const char* const StatusMessageSelectNode;
+        extern const char* const StatusMessageNoAsset;
+        extern const char* const StatusMessageNoClothNodes;
+    }
+}
 
 namespace UnitTest
 {
     namespace
     {
-        using EntityPtr = AZStd::unique_ptr<AZ::Entity>;
-
-        const AZ::Uuid EditorMeshComponentTypeId = "{FC315B86-3280-4D03-B4F0-5553D7D08432}";
-        const AZ::Uuid MeshComponentTypeId = "{2F4BAD46-C857-4DCB-A454-C412DE67852A}";
         const AZ::Uuid EditorActorComponentTypeId = "{A863EE1B-8CFD-4EDD-BA0D-1CEC2879AD44}";
         const AZ::Uuid ActorComponentTypeId = "{BDC97E7F-A054-448B-A26F-EA2B5D78E377}";
     }
 
-    class NvClothEditorTest
+    //! Sets up a mock global environment to
+    //! change between server and client.
+    class NvClothEditorClothComponent
         : public ::testing::Test
     {
+    public:
+        const AZStd::string JointRootName = "root_node";
+        const AZStd::string MeshNodeName = "cloth_mesh_node";
+
+        const AZStd::vector<AZ::Vector3> MeshVertices = {{
+            AZ::Vector3(-1.0f, 0.0f, 0.0f),
+            AZ::Vector3(1.0f, 0.0f, 0.0f),
+            AZ::Vector3(0.0f, 1.0f, 0.0f)
+        }};
+        
+        const AZStd::vector<NvCloth::SimIndexType> MeshIndices = {{
+            0, 1, 2
+        }};
+        
+        const AZStd::vector<AZ::Vector2> MeshUVs = {{
+            AZ::Vector2(0.0f, 0.0f),
+            AZ::Vector2(1.0f, 0.0f),
+            AZ::Vector2(0.5f, 1.0f)
+        }};
+        
+        // [inverse mass, motion constrain radius, backstop offset, backstop radius]
+        const AZStd::vector<AZ::Color> MeshClothData = {{
+            AZ::Color(0.75f, 0.6f, 0.5f, 0.1f),
+            AZ::Color(1.0f, 0.16f, 0.1f, 1.0f),
+            AZ::Color(0.25f, 1.0f, 0.9f, 0.5f)
+        }};
+
+        const AZ::u32 LodLevel = 0;
+
+        static void SetUpTestCase();
+        static void TearDownTestCase();
+
     protected:
-        static void SetUpTestCase()
-        {
-            if (s_app == nullptr)
-            {
-                AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+        AZStd::unique_ptr<AZ::Entity> CreateInactiveEditorEntity(const char* entityName);
+        AZStd::unique_ptr<AZ::Entity> CreateActiveGameEntityFromEditorEntity(AZ::Entity* editorEntity);
 
-                // override global environment
-                s_previousGEnv = gEnv;
-                s_mockGEnv = AZStd::make_unique<SSystemGlobalEnvironment>();
-                gEnv = s_mockGEnv.get();
-
-                NvCloth::SystemComponent::InitializeNvClothLibrary();
-
-                s_app = aznew AzToolsFramework::ToolsApplication;
-                AzToolsFramework::ToolsApplication::Descriptor appDescriptor;
-                appDescriptor.m_useExistingAllocator = true;
-                appDescriptor.m_modules.emplace_back(AZ::DynamicModuleDescriptor());
-                appDescriptor.m_modules.back().m_dynamicLibraryPath = "Gem.LmbrCentral.Editor.ff06785f7145416b9d46fde39098cb0c.v0.1.0";
-                appDescriptor.m_modules.emplace_back(AZ::DynamicModuleDescriptor());
-                appDescriptor.m_modules.back().m_dynamicLibraryPath = "Gem.EMotionFX.Editor.044a63ea67d04479aa5daf62ded9d9ca.v0.1.0";
-
-                s_app->Start(appDescriptor);
-
-                s_app->RegisterComponentDescriptor(NvCloth::ClothComponent::CreateDescriptor());
-                s_app->RegisterComponentDescriptor(NvCloth::EditorClothComponent::CreateDescriptor());
-            }
-        }
-
-        static void TearDownTestCase()
-        {
-            if (s_app)
-            {
-                s_app->Stop();
-                delete s_app;
-                s_app = nullptr;
-
-                NvCloth::SystemComponent::TearDownNvClothLibrary();
-
-                // restore global environment
-                gEnv = s_previousGEnv;
-                s_mockGEnv.reset();
-                s_previousGEnv = nullptr;
-
-                AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-            }
-        }
-
-        static AzToolsFramework::ToolsApplication* s_app;
-
+    private:
         static AZStd::unique_ptr<SSystemGlobalEnvironment> s_mockGEnv;
-
         static SSystemGlobalEnvironment* s_previousGEnv;
     };
 
-    AzToolsFramework::ToolsApplication* NvClothEditorTest::s_app = nullptr;
+    AZStd::unique_ptr<SSystemGlobalEnvironment> NvClothEditorClothComponent::s_mockGEnv;
+    SSystemGlobalEnvironment* NvClothEditorClothComponent::s_previousGEnv = nullptr;
 
-    AZStd::unique_ptr<SSystemGlobalEnvironment> NvClothEditorTest::s_mockGEnv;
+    void NvClothEditorClothComponent::SetUpTestCase()
+    {
+        // override global environment
+        s_previousGEnv = gEnv;
+        s_mockGEnv = AZStd::make_unique<SSystemGlobalEnvironment>();
+        gEnv = s_mockGEnv.get();
 
-    SSystemGlobalEnvironment* NvClothEditorTest::s_previousGEnv = nullptr;
+#if !defined(CONSOLE)
+        // Set environment to not be a server by default.
+        gEnv->SetIsDedicated(false);
+#endif
+    }
 
-    EntityPtr CreateInactiveEditorEntity(const char* entityName)
+    void NvClothEditorClothComponent::TearDownTestCase()
+    {
+        // restore global environment
+        gEnv = s_previousGEnv;
+        s_mockGEnv.reset();
+        s_previousGEnv = nullptr;
+    }
+
+    AZStd::unique_ptr<AZ::Entity> NvClothEditorClothComponent::CreateInactiveEditorEntity(const char* entityName)
     {
         AZ::Entity* entity = nullptr;
         UnitTest::CreateDefaultEditorEntity(entityName, &entity);
         entity->Deactivate();
-
         return AZStd::unique_ptr<AZ::Entity>(entity);
     }
 
-    EntityPtr CreateActiveGameEntityFromEditorEntity(AZ::Entity* editorEntity)
+    AZStd::unique_ptr<AZ::Entity> NvClothEditorClothComponent::CreateActiveGameEntityFromEditorEntity(AZ::Entity* editorEntity)
     {
-        EntityPtr gameEntity = AZStd::make_unique<AZ::Entity>();
+        auto gameEntity = AZStd::make_unique<AZ::Entity>();
         AzToolsFramework::ToolsApplicationRequestBus::Broadcast(
             &AzToolsFramework::ToolsApplicationRequests::PreExportEntity, *editorEntity, *gameEntity);
         gameEntity->Init();
@@ -114,9 +128,9 @@ namespace UnitTest
         return gameEntity;
     }
 
-    TEST_F(NvClothEditorTest, EditorClothComponent_DependencyMissing_EntityIsInvalid)
+    TEST_F(NvClothEditorClothComponent, EditorClothComponent_DependencyMissing_EntityIsInvalid)
     {
-        EntityPtr entity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
+        auto entity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
         entity->CreateComponent<NvCloth::EditorClothComponent>();
 
         // the entity should not be in a valid state because the cloth component requires a mesh or an actor component
@@ -125,20 +139,9 @@ namespace UnitTest
         EXPECT_TRUE(sortOutcome.GetError().m_code == AZ::Entity::DependencySortResult::MissingRequiredService);
     }
 
-    TEST_F(NvClothEditorTest, EditorClothComponent_MeshDependencySatisfied_EntityIsValid)
+    TEST_F(NvClothEditorClothComponent, EditorClothComponent_ActorDependencySatisfied_EntityIsValid)
     {
-        EntityPtr entity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
-        entity->CreateComponent<NvCloth::EditorClothComponent>();
-        entity->CreateComponent(EditorMeshComponentTypeId);
-
-        // the entity should be in a valid state because the cloth component requirement is satisfied
-        AZ::Entity::DependencySortOutcome sortOutcome = entity->EvaluateDependenciesGetDetails();
-        EXPECT_TRUE(sortOutcome.IsSuccess());
-    }
-
-    TEST_F(NvClothEditorTest, EditorClothComponent_ActorDependencySatisfied_EntityIsValid)
-    {
-        EntityPtr entity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
+        auto entity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
         entity->CreateComponent<NvCloth::EditorClothComponent>();
         entity->CreateComponent(EditorActorComponentTypeId);
 
@@ -147,12 +150,12 @@ namespace UnitTest
         EXPECT_TRUE(sortOutcome.IsSuccess());
     }
 
-    TEST_F(NvClothEditorTest, EditorClothComponent_MultipleClothComponents_EntityIsValid)
+    TEST_F(NvClothEditorClothComponent, EditorClothComponent_MultipleClothComponents_EntityIsValid)
     {
 
-        EntityPtr entity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
+        auto entity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
         entity->CreateComponent<NvCloth::EditorClothComponent>();
-        entity->CreateComponent(EditorMeshComponentTypeId);
+        entity->CreateComponent(EditorActorComponentTypeId);
 
         // the cloth component should be compatible with multiple cloth components
         entity->CreateComponent<NvCloth::EditorClothComponent>();
@@ -163,36 +166,188 @@ namespace UnitTest
         EXPECT_TRUE(sortOutcome.IsSuccess());
     }
 
-    TEST_F(NvClothEditorTest, EditorClothComponent_ClothWithMesh_CorrectRuntimeComponents)
-    {
-        // create an editor entity with a cloth component and a mesh component
-        EntityPtr editorEntity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
-        editorEntity->CreateComponent<NvCloth::EditorClothComponent>();
-        editorEntity->CreateComponent(EditorMeshComponentTypeId);
-        editorEntity->Activate();
-
-        EntityPtr gameEntity = CreateActiveGameEntityFromEditorEntity(editorEntity.get());
-
-        // check that the runtime entity has the expected components
-        EXPECT_TRUE(gameEntity->FindComponent<NvCloth::ClothComponent>() != nullptr);
-        EXPECT_TRUE(gameEntity->FindComponent(MeshComponentTypeId) != nullptr);
-    }
-
-    TEST_F(NvClothEditorTest, EditorClothComponent_ClothWithActor_CorrectRuntimeComponents)
+    TEST_F(NvClothEditorClothComponent, EditorClothComponent_ClothWithActor_CorrectRuntimeComponents)
     {
         // create an editor entity with a cloth component and an actor component
-        EntityPtr editorEntity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
+        auto editorEntity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
         editorEntity->CreateComponent<NvCloth::EditorClothComponent>();
         editorEntity->CreateComponent(EditorActorComponentTypeId);
         editorEntity->Activate();
 
-        EntityPtr gameEntity = CreateActiveGameEntityFromEditorEntity(editorEntity.get());
+        auto gameEntity = CreateActiveGameEntityFromEditorEntity(editorEntity.get());
 
         // check that the runtime entity has the expected components
         EXPECT_TRUE(gameEntity->FindComponent<NvCloth::ClothComponent>() != nullptr);
         EXPECT_TRUE(gameEntity->FindComponent(ActorComponentTypeId) != nullptr);
     }
 
-    AZ_UNIT_TEST_HOOK();
-    
+    TEST_F(NvClothEditorClothComponent, EditorClothComponent_OnActivationNoMeshCreated_ReturnsMeshNodeListWithNoAssetMessage)
+    {
+        auto editorEntity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
+        auto* editorClothComponent = editorEntity->CreateComponent<NvCloth::EditorClothComponent>();
+        editorEntity->CreateComponent(EditorActorComponentTypeId);
+        editorEntity->Activate();
+
+        const NvCloth::MeshNodeList& meshNodeList = editorClothComponent->GetMeshNodeList();
+
+        EXPECT_EQ(meshNodeList.size(), 1);
+        EXPECT_TRUE(meshNodeList[0] == NvCloth::Internal::StatusMessageNoAsset);
+    }
+
+    TEST_F(NvClothEditorClothComponent, EditorClothComponent_OnMeshCreatedWithEmptyActor_ReturnsMeshNodeListWithNoClothMessage)
+    {
+        auto editorEntity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
+        auto* editorClothComponent = editorEntity->CreateComponent<NvCloth::EditorClothComponent>();
+        editorEntity->CreateComponent(EditorActorComponentTypeId);
+        editorEntity->Activate();
+
+        {
+            auto actor = AZStd::make_unique<ActorHelper>("actor_test");
+            actor->FinishSetup();
+
+            auto actorAsset = CreateAssetFromActor(AZStd::move(actor));
+            EMotionFX::Integration::ActorComponentRequestBus::Event(editorEntity->GetId(),
+                &EMotionFX::Integration::ActorComponentRequestBus::Handler::SetActorAsset, actorAsset.GetId());
+        }
+
+        const NvCloth::MeshNodeList& meshNodeList = editorClothComponent->GetMeshNodeList();
+
+        EXPECT_EQ(meshNodeList.size(), 1);
+        EXPECT_TRUE(meshNodeList[0] == NvCloth::Internal::StatusMessageNoClothNodes);
+    }
+
+    TEST_F(NvClothEditorClothComponent, EditorClothComponent_OnMeshCreatedWithActorWithoutClothMesh_ReturnsMeshNodeListWithNoClothMessage)
+    {
+        auto editorEntity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
+        auto* editorClothComponent = editorEntity->CreateComponent<NvCloth::EditorClothComponent>();
+        editorEntity->CreateComponent(EditorActorComponentTypeId);
+        editorEntity->Activate();
+
+        {
+            auto actor = AZStd::make_unique<ActorHelper>("actor_test");
+            auto jointRootIndex = actor->AddJoint(JointRootName);
+            actor->SetMesh(LodLevel, jointRootIndex, CreateEMotionFXMesh(jointRootIndex, MeshVertices, MeshIndices, {}, MeshUVs));
+            actor->FinishSetup();
+
+            auto actorAsset = CreateAssetFromActor(AZStd::move(actor));
+            EMotionFX::Integration::ActorComponentRequestBus::Event(editorEntity->GetId(),
+                &EMotionFX::Integration::ActorComponentRequestBus::Handler::SetActorAsset, actorAsset.GetId());
+        }
+
+        const NvCloth::MeshNodeList& meshNodeList = editorClothComponent->GetMeshNodeList();
+
+        EXPECT_EQ(meshNodeList.size(), 1);
+        EXPECT_TRUE(meshNodeList[0] == NvCloth::Internal::StatusMessageNoClothNodes);
+    }
+
+    TEST_F(NvClothEditorClothComponent, EditorClothComponent_OnMeshCreatedWithActorWithClothMesh_ReturnsValidMeshNodeList)
+    {
+        auto editorEntity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
+        auto* editorClothComponent = editorEntity->CreateComponent<NvCloth::EditorClothComponent>();
+        editorEntity->CreateComponent(EditorActorComponentTypeId);
+        editorEntity->Activate();
+
+        {
+            auto actor = AZStd::make_unique<ActorHelper>("actor_test");
+            actor->AddJoint(JointRootName);
+            auto meshNodeIndex = actor->AddJoint(MeshNodeName, AZ::Transform::CreateIdentity(), JointRootName);
+            actor->SetMesh(LodLevel, meshNodeIndex, CreateEMotionFXMesh(meshNodeIndex, MeshVertices, MeshIndices, {}, MeshUVs, MeshClothData));
+            actor->FinishSetup();
+
+            auto actorAsset = CreateAssetFromActor(AZStd::move(actor));
+            EMotionFX::Integration::ActorComponentRequestBus::Event(editorEntity->GetId(),
+                &EMotionFX::Integration::ActorComponentRequestBus::Handler::SetActorAsset, actorAsset.GetId());
+        }
+
+        const NvCloth::MeshNodeList& meshNodeList = editorClothComponent->GetMeshNodeList();
+
+        EXPECT_EQ(meshNodeList.size(), 2);
+        EXPECT_TRUE(meshNodeList[0] == NvCloth::Internal::StatusMessageSelectNode);
+        EXPECT_TRUE(meshNodeList[1] == MeshNodeName);
+    }
+
+    TEST_F(NvClothEditorClothComponent, EditorClothComponent_OnMeshCreatedWithActorWithNoBackstop_ReturnsEmptyMeshNodesWithBackstopData)
+    {
+        // [inverse mass, motion constrain radius, backstop offset, backstop radius]
+        const AZStd::vector<AZ::Color> meshClothDataNoBackstop = {{
+            AZ::Color(0.75f, 1.0f, 0.5f, 0.0f),
+            AZ::Color(1.0f, 1.0f, 0.5f, 0.0f),
+            AZ::Color(0.25f, 1.0f, 0.5f, 0.0f)
+        }};
+
+        auto editorEntity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
+        auto* editorClothComponent = editorEntity->CreateComponent<NvCloth::EditorClothComponent>();
+        editorEntity->CreateComponent(EditorActorComponentTypeId);
+        editorEntity->Activate();
+
+        {
+            auto actor = AZStd::make_unique<ActorHelper>("actor_test");
+            actor->AddJoint(JointRootName);
+            auto meshNodeIndex = actor->AddJoint(MeshNodeName, AZ::Transform::CreateIdentity(), JointRootName);
+            actor->SetMesh(LodLevel, meshNodeIndex, CreateEMotionFXMesh(meshNodeIndex, MeshVertices, MeshIndices, {}, MeshUVs, meshClothDataNoBackstop));
+            actor->FinishSetup();
+
+            auto actorAsset = CreateAssetFromActor(AZStd::move(actor));
+            EMotionFX::Integration::ActorComponentRequestBus::Event(editorEntity->GetId(),
+                &EMotionFX::Integration::ActorComponentRequestBus::Handler::SetActorAsset, actorAsset.GetId());
+        }
+
+        const auto& meshNodesWithBackstopData = editorClothComponent->GetMeshNodesWithBackstopData();
+
+        EXPECT_TRUE(meshNodesWithBackstopData.empty());
+    }
+
+    TEST_F(NvClothEditorClothComponent, EditorClothComponent_OnMeshCreatedWithActorWithBackstop_ReturnsValidMeshNodesWithBackstopData)
+    {
+        auto editorEntity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
+        auto* editorClothComponent = editorEntity->CreateComponent<NvCloth::EditorClothComponent>();
+        editorEntity->CreateComponent(EditorActorComponentTypeId);
+        editorEntity->Activate();
+
+        {
+            auto actor = AZStd::make_unique<ActorHelper>("actor_test");
+            actor->AddJoint(JointRootName);
+            auto meshNodeIndex = actor->AddJoint(MeshNodeName, AZ::Transform::CreateIdentity(), JointRootName);
+            actor->SetMesh(LodLevel, meshNodeIndex, CreateEMotionFXMesh(meshNodeIndex, MeshVertices, MeshIndices, {}, MeshUVs, MeshClothData));
+            actor->FinishSetup();
+
+            auto actorAsset = CreateAssetFromActor(AZStd::move(actor));
+            EMotionFX::Integration::ActorComponentRequestBus::Event(editorEntity->GetId(),
+                &EMotionFX::Integration::ActorComponentRequestBus::Handler::SetActorAsset, actorAsset.GetId());
+        }
+
+        const auto& meshNodesWithBackstopData = editorClothComponent->GetMeshNodesWithBackstopData();
+
+        EXPECT_EQ(meshNodesWithBackstopData.size(), 1);
+        EXPECT_TRUE(meshNodesWithBackstopData.find(MeshNodeName) != meshNodesWithBackstopData.end());
+    }
+
+    TEST_F(NvClothEditorClothComponent, EditorClothComponent_OnMeshDestroyed_ReturnsMeshNodeListWithNoAssetMessage)
+    {
+        auto editorEntity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
+        auto* editorClothComponent = editorEntity->CreateComponent<NvCloth::EditorClothComponent>();
+        editorEntity->CreateComponent(EditorActorComponentTypeId);
+        editorEntity->Activate();
+
+        {
+            auto actor = AZStd::make_unique<ActorHelper>("actor_test");
+            actor->AddJoint(JointRootName);
+            auto meshNodeIndex = actor->AddJoint(MeshNodeName, AZ::Transform::CreateIdentity(), JointRootName);
+            actor->SetMesh(LodLevel, meshNodeIndex, CreateEMotionFXMesh(meshNodeIndex, MeshVertices, MeshIndices, {}, MeshUVs, MeshClothData));
+            actor->FinishSetup();
+
+            auto actorAsset = CreateAssetFromActor(AZStd::move(actor));
+            EMotionFX::Integration::ActorComponentRequestBus::Event(editorEntity->GetId(),
+                &EMotionFX::Integration::ActorComponentRequestBus::Handler::SetActorAsset, actorAsset.GetId());
+        }
+
+        editorClothComponent->OnMeshDestroyed();
+
+        const NvCloth::MeshNodeList& meshNodeList = editorClothComponent->GetMeshNodeList();
+        const auto& meshNodesWithBackstopData = editorClothComponent->GetMeshNodesWithBackstopData();
+
+        EXPECT_EQ(meshNodeList.size(), 1);
+        EXPECT_TRUE(meshNodeList[0] == NvCloth::Internal::StatusMessageNoAsset);
+        EXPECT_TRUE(meshNodesWithBackstopData.empty());
+    }
 } // namespace UnitTest

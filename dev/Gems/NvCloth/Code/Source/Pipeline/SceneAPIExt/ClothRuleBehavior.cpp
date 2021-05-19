@@ -64,7 +64,7 @@ namespace NvCloth
         }
 
         void ClothRuleBehavior::InitializeObject(
-            const AZ::SceneAPI::Containers::Scene& scene,
+            [[maybe_unused]] const AZ::SceneAPI::Containers::Scene& scene,
             AZ::SceneAPI::DataTypes::IManifestObject& target)
         {
             // When a cloth rule is created in the FBX Editor Settings...

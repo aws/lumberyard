@@ -101,6 +101,10 @@ namespace PhysXEditorTests
     {
         if (s_app)
         {
+            for (auto* component : s_systemComponentEntity->GetComponents())
+            {
+                s_systemComponentEntity->DeactivateComponent(*component);
+            }
             delete s_systemComponentEntity;
             s_systemComponentEntity = nullptr;
             s_app->Stop();

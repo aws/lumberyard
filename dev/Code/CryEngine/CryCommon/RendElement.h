@@ -277,8 +277,9 @@ public:
     void mfClearFlags(uint16 fl)  override { m_Flags &= ~fl; }
     bool mfCheckUpdate(int Flags, uint16 nFrame, bool bTessellation = false) override
     {
-        if (nFrame != m_nFrameUpdated || (m_Flags & (FCEF_DIRTY | FCEF_SKINNED | FCEF_UPDATEALWAYS)))
+        if (nFrame != m_nFrameUpdated || (m_Flags & (FCEF_DIRTY | FCEF_SKINNED | FCEF_UPDATEALWAYS)) || m_bTessellation != bTessellation)
         {
+            m_bTessellation = bTessellation;
             m_nFrameUpdated = nFrame;
             return mfUpdate(Flags, bTessellation);
         }
@@ -300,6 +301,7 @@ public:
 
 protected:
     IRenderElementDelegate * m_delegate = nullptr;
+    bool m_bTessellation = false;
 };
 
 #include "CREMesh.h"

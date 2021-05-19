@@ -66,24 +66,28 @@ namespace CopyDependencyBuilder
             const AZStd::string& sourceFilePath,
             AZStd::vector<AZStd::string>& sourceDependencyPaths,
             AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
-            AssetBuilderSDK::ProductPathDependencySet& pathDependencies) const;
+            AssetBuilderSDK::ProductPathDependencySet& pathDependencies,
+            const AZStd::string& watchFolderPath) const;
 
         SchemaMatchResult MatchLastUsedSchema(
             const AZStd::string& sourceFilePath,
             AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
-            AssetBuilderSDK::ProductPathDependencySet& pathDependencies) const;
+            AssetBuilderSDK::ProductPathDependencySet& pathDependencies,
+            const AZStd::string& watchFolderPath) const;
 
         SchemaMatchResult ParseXmlFile(
             const AZStd::string& schemaFilePath,
             const AZStd::string& sourceFilePath,
             AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
-            AssetBuilderSDK::ProductPathDependencySet& pathDependencies) const;
+            AssetBuilderSDK::ProductPathDependencySet& pathDependencies,
+            const AZStd::string& watchFolderPath) const;
 
         AZ::Outcome <void, bool> SearchForMatchingRule(
             const AZStd::string& sourceFilePath, 
             const AZStd::string& schemaFilePath,
             const AzFramework::Version<MaxVersionPartsCount>& version,
-            const AZStd::vector<AzFramework::MatchingRule>& matchingRules) const;
+            const AZStd::vector<AzFramework::MatchingRule>& matchingRules,
+            const AZStd::string& watchFolderPath) const;
 
         bool SearchForDependencySearchRule(
             AZ::rapidxml::xml_node<char>* xmlFileRootNode, 
@@ -92,7 +96,8 @@ namespace CopyDependencyBuilder
             const AZStd::vector<AzFramework::DependencySearchRule>& matchingRules,
             AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
             AssetBuilderSDK::ProductPathDependencySet& pathDependencies,
-            const AZStd::string& sourceAssetFolder) const;
+            const AZStd::string& sourceAssetFolder,
+            const AZStd::string& watchFolderPath) const;
 
         AZStd::list<AZStd::string> m_schemaFileDirectories;
         bool m_printDebug{ false };

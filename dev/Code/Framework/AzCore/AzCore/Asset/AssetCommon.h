@@ -311,8 +311,16 @@ namespace AZ
             /**
              * Releases reference on asset data, if one is held.
              * \return true if a reference was held, and therefore released.
+             * \note The current AssetId is not cleared by this call.
              */
             bool Release();
+
+            /**
+             * Releases reference on asset data if one is held and resets all internal state.
+             * \return true if a reference was held, and therefore released.
+             * \note The current AssetId will be cleared by this call.
+             */
+            bool Reset();
 
             /**
              * Reloads an asset if an asset is create.
@@ -378,7 +386,24 @@ namespace AZ
             AssetData* m_assetData = nullptr;       ///< Pointer to the asset data, it's always present when we have bound an asset (it doesn't have to be loaded)
             AssetLoadBehavior m_loadBehavior;       ///< Load behavior for the asset reference
             AZStd::string m_assetHint;              ///< Last known path to the asset m_assetId refers to
+
+        private:
+            static void ResetAsset(Asset& asset);
         };
+
+        template<typename T>
+        void Asset<T>::ResetAsset(Asset<T>& asset)
+        {
+            AZ_Assert(
+                asset.m_assetData == nullptr, "m_assetData is not null. "
+                "Ensure either Release or Reset are called first to free the AssetData reference");
+
+            asset.m_assetId = AssetId();
+            asset.m_assetType = AssetType::CreateNull();
+            asset.m_assetData = nullptr;
+            asset.m_loadBehavior = AssetLoadBehavior::Default;
+            asset.m_assetHint = AZStd::string();
+        }
 
         template<typename T, typename U>
         Asset<T> static_pointer_cast(const Asset<U>& p) { return Asset<T>(p); }
@@ -731,7 +756,7 @@ namespace AZ
 
                 m_assetId = AZStd::move(rhs.m_assetId);
                 m_assetType = AZStd::move(rhs.m_assetType);
-                m_assetData = rhs.m_assetData;
+                m_assetData = AZStd::exchange(rhs.m_assetData, nullptr);
                 m_loadBehavior = rhs.m_loadBehavior;
 
                 if (!preserveAssetHint)
@@ -740,11 +765,7 @@ namespace AZ
                     m_assetHint = AZStd::move(rhs.m_assetHint);
                 }
 
-                rhs.m_assetId = AssetId();
-                rhs.m_assetType = AssetType::CreateNull();
-                rhs.m_assetData = 0;
-                rhs.m_loadBehavior = AssetLoadBehavior::Default;
-                rhs.m_assetHint = AZStd::string();
+                ResetAsset(rhs);
             }
             return *this;
         }
@@ -1021,6 +1042,14 @@ namespace AZ
             }
 
             return false;
+        }
+
+        template<class T>
+        bool Asset<T>::Reset()
+        {
+            const bool released = Release();
+            ResetAsset(*this);
+            return released;
         }
 
         //=========================================================================

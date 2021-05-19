@@ -51,7 +51,6 @@ def _create_parser():
     parser.add_argument('-nofetch', action='store_true',help='Do not download a zip (Must already be present in the download directory)')
     parser.add_argument('-dependencies', action='store_true',help='Skip fetching and unpacking, only install dependencies')
     parser.add_argument('-noheaders', action='store_true',help='Skip installing headers')
-    parser.add_argument('-skiprestricted', action='store_true',help='Skip restricted platforms')
     parser.add_argument('-source', help='The local source folder where the aws-native-sdk zip reside', default ='')
     return parser
 
@@ -262,9 +261,6 @@ def get_platform_list(args):
     platform_list.append(get_android_v8())
     platform_list.append(get_linux())
 
-    if not args.skiprestricted:
-        add_restricted_platform_list(platform_list)
-
     if args.platform is not None:
         platform_list = [ this_obj for this_obj in platform_list if re.search(args.platform, this_obj.get('name'), re.I) ]
 
@@ -463,15 +459,5 @@ def get_all_items(version_url, target_dir, args):
     if not args.noclean:
         for file_name in fetched_set:
             cleanup_item(file_name, args)
-
-def add_restricted_platform_list(platform_list):
-    try:
-        from restricted_platforms import add_restricted_platforms
-        add_restricted_platforms(platform_list, get_default_library_list())
-    except ImportError as e:
-        print('No restricted module found - {}'.format(e.message))
-        return False
-    else:
-        return True
 
 main()

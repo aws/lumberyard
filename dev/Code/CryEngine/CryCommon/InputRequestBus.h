@@ -106,6 +106,33 @@ namespace AZ
         virtual void PopAllContexts() = 0;
 
         /**
+        * This will insert a new context prior to an existing context that is already in the stack.
+        *
+        * \return True if the existing context was found and the new context inserted prior to it, false otherwise.
+        */
+        virtual bool InsertContext(const AZStd::string& context, const AZStd::string& existingContextToInsertPriorTo) = 0;
+
+        /**
+        * This will replace an existing context that is already in the stack with a new context.
+        *
+        * If the existing context is the current context, it will be deactivated and the new context activated,
+        * otherwise the current context will remain unchanged.
+        *
+        * \return True if the existing context was found and replaced with the new context, false otherwise.
+        */
+        virtual bool ReplaceContext(const AZStd::string& context, const AZStd::string& existingContextToReplace) = 0;
+
+        /**
+        * This will remove an existing context that is already in the stack.
+        *
+        * If the existing context is the current context, calling this has the same effect as calling PopContext,
+        * otherwise the current context will remain unchanged.
+        *
+        * \return True if the existing context was found and removed, false otherwise.
+        */
+        virtual bool RemoveContext(const AZStd::string& existingContextToRemove) = 0;
+
+        /**
         * This will return the name of the top of the input context stack
         */
         virtual AZStd::string GetCurrentContext() = 0;

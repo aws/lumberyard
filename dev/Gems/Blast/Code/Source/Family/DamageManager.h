@@ -12,7 +12,9 @@
 #pragma once
 
 #include <Blast/BlastMaterial.h>
+#include <Blast/BlastSystemBus.h>
 #include <Family/ActorTracker.h>
+#include <AzCore/Interface/Interface.h>
 
 namespace Blast
 {
@@ -75,9 +77,9 @@ namespace Blast
             BlastActor& actor, float damage, const AZ::Vector3& localPosition0, const AZ::Vector3& localPosition1,
             const AZ::Vector3& localPosition2);
 
-        static AZStd::vector<BlastActor*> DamageManager::OverlapSphere(
+        static AZStd::vector<BlastActor*> OverlapSphere(
             ActorTracker& actorTracker, float radius, const AZ::Transform& pose);
-        static AZStd::vector<BlastActor*> DamageManager::OverlapCapsule(
+        static AZStd::vector<BlastActor*> OverlapCapsule(
             ActorTracker& actorTracker, const AZ::Vector3& position0, const AZ::Vector3& position1, float maxRadius);
 
         static AZ::Vector3 TransformToLocal(BlastActor& actor, const AZ::Vector3& globalPosition);

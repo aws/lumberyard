@@ -221,6 +221,11 @@ private: // Internal particle editor members
     bool m_needLibraryRefresh;
     bool m_requireLayoutReload;
 
+    QIcon m_groupWithLodIcon;
+    QIcon m_lodIcon;
+    QIcon m_groupIcon;
+    QIcon m_emptyIcon;
+
     EditorUIPlugin::EditorLibraryUndoManager *m_undoManager;
 
 };

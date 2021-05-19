@@ -100,6 +100,61 @@ namespace AzToolsFramework
             m_serializeContext.EnumerateInstanceConst(instance, typeId, elementCallback, nullptr, AZ::SerializeContext::ENUM_ACCESS_FOR_READ, nullptr, nullptr);
         }
 
+        TypeCollection TypeFingerprinter::GatherAllTypesForComponents() const
+        {
+            TypeCollection types;
+
+            m_serializeContext.EnumerateDerived(
+                [this, &types]
+            (const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& /*knownType*/)
+                {
+                    if (!classData->m_azRtti->IsAbstract())
+                    {
+                        types.insert(classData->m_typeId);
+                    }
+
+                    // We need to recursively include all the types referenced by the component in the fingerprint
+                    AZStd::queue<const AZ::SerializeContext::ClassElement*> elementQueue;
+
+                    for (const auto& element : classData->m_elements)
+                    {
+                        elementQueue.push(&element);
+                    }
+
+                    while (!elementQueue.empty())
+                    {
+                        const auto* element = elementQueue.front();
+                        elementQueue.pop();
+
+                        auto [insertedElement, didInsert] = types.insert(element->m_typeId);
+
+                        if (didInsert)
+                        {
+                            const auto* elementClassData = m_serializeContext.FindClassData(element->m_typeId);
+
+                            if (elementClassData)
+                            {
+                                for (const auto& subElement : elementClassData->m_elements)
+                                {
+                                    elementQueue.push(&subElement);
+                                }
+                            }
+                            else
+                            {
+                                AZ_Warning("TypeFingerprinter", false, "Failed to find class data for type %s while generating fingerprint in hierarchy of %s component.  Fingerprint may not be accurate.",
+                                    element->m_typeId.ToString<AZStd::string>().c_str(),
+                                    classData->m_name);
+                            }
+                        }
+                    }
+
+                    return true;
+                },
+                azrtti_typeid<AZ::Component>(), azrtti_typeid<AZ::Component>());
+
+            return types;
+        }
+
         TypeFingerprint TypeFingerprinter::GenerateFingerprintForAllTypes(const TypeCollection& typeCollection) const
         {
             // Sort all types before fingerprinting

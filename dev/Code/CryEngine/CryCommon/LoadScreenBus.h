@@ -68,6 +68,32 @@ using LoadScreenNotificationBus = AZ::EBus<LoadScreenNotifications>;
 struct LoadScreenUpdateNotifications
     : public AZ::EBusTraits
 {
+    /**
+     * Values to help you set when a particular handler is notified to update/render.
+    */
+    enum LoadScreenOrder : int
+    {
+        ORDER_FIRST = 0,       ///< First position in the render handler order.
+
+        ORDER_VIDEO = 300,     ///< Suggested render handler position for video components.
+
+        ORDER_DEFAULT = 500,     ///< Default render handler position.
+
+        ORDER_UI = 1000,    ///< Suggested render handler position for UI components.
+
+        ORDER_LAST = 100000,  ///< Last position in the render handler order.
+    };
+
+    static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::MultipleAndOrdered;
+
+    struct BusHandlerOrderCompare
+    {
+        AZ_FORCE_INLINE bool operator()(LoadScreenUpdateNotifications* left, LoadScreenUpdateNotifications* right) const
+        {
+            return left->GetRenderOrder() < right->GetRenderOrder();
+        }
+    };
+
     //! Invoked when the load screen should be updated and rendered. Single threaded loading only.
     virtual void UpdateAndRender(float deltaTimeInSeconds) = 0;
 
@@ -76,6 +102,9 @@ struct LoadScreenUpdateNotifications
 
     //! Invoked when the load screen should be updated. Multi-threaded loading only.
     virtual void LoadThreadRender() = 0;
+
+    //! Returns a value used to decide when this should be rendered compared to other handlers. Lower numbers are rendered first.
+    virtual int GetRenderOrder() const { return ORDER_DEFAULT; }
 };
 using LoadScreenUpdateNotificationBus = AZ::EBus<LoadScreenUpdateNotifications>;
 

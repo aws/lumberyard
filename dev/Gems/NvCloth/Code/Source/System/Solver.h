@@ -40,6 +40,7 @@ namespace NvCloth
 
         void AddCloth(Cloth* cloth);
         void RemoveCloth(Cloth* cloth);
+        size_t GetNumCloths() const;
 
         // ISolver overrides ...
         const AZStd::string& GetName() const override;

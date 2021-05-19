@@ -1267,7 +1267,7 @@ bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 in
     PROFILE_FRAME(CDeferredShading_DecalPass);
     PROFILE_SHADER_SCOPE;
 
-    gcpRendD3D->m_RP.m_FlagsShader_RT &= ~(RT_LIGHTSMASK | g_HWSR_MaskBit[HWSR_SAMPLE4]);
+    gcpRendD3D->m_RP.m_FlagsShader_RT &= ~(RT_LIGHTSMASK | g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_SLIM_GBUFFER]);
 
     CD3D9Renderer* const __restrict rd = gcpRendD3D;
     int nThreadID = rd->m_RP.m_nProcessThreadID;
@@ -1354,6 +1354,11 @@ bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 in
     if (CRenderer::CV_r_DeferredShadingLBuffersFmt == 2)
     {
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_DEFERRED_RENDER_TARGET_OPTIMIZATION];
+    }
+
+    if (CRenderer::CV_r_SlimGBuffer)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SLIM_GBUFFER];
     }
     
     if (bUseLightVolumes)
@@ -3483,7 +3488,7 @@ void CDeferredShading::DirectionalOcclusionPass()
     CTexture* pHeightMapAODepth, * pHeightMapAO;
     HeightMapOcclusionPass(pHeightMapFrustum, pHeightMapAODepth, pHeightMapAO);
 
-    rd->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2]);
+    rd->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SLIM_GBUFFER]);
     CTexture* pDstSSDO = CTexture::s_ptexStereoR;// re-using stereo buffers (only full resolution 32bit non-multisampled available at this step)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_3
@@ -3504,6 +3509,7 @@ void CDeferredShading::DirectionalOcclusionPass()
 
     rd->m_RP.m_FlagsShader_RT |= CRenderer::CV_r_ssdoHalfRes ? g_HWSR_MaskBit[HWSR_SAMPLE0] : 0;
     rd->m_RP.m_FlagsShader_RT |= pHeightMapFrustum ? g_HWSR_MaskBit[HWSR_SAMPLE1] : 0;
+    rd->m_RP.m_FlagsShader_RT |= CRenderer::CV_r_SlimGBuffer ? g_HWSR_MaskBit[HWSR_SLIM_GBUFFER] : 0;
 
     bool isRenderingFur = FurPasses::GetInstance().IsRenderingFur();
     rd->m_RP.m_FlagsShader_RT |= isRenderingFur ? g_HWSR_MaskBit[HWSR_SAMPLE2] : 0;

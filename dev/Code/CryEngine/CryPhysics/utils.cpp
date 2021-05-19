@@ -571,6 +571,11 @@ int BakeScaleIntoGeometry(phys_geometry*& pgeom, IGeomManager* pGeoman, const Ve
     IGeometry* pGeomScaled = 0;
     if (phys_geometry* pAdam = (phys_geometry*)pgeom->pGeom->GetForeignData(DATA_UNSCALED_GEOM))
     {
+        if (!pAdam->pGeom)
+        {
+            return 0;
+        }       
+
         if (bReleaseOld)
         {
             pGeoman->UnregisterGeometry(pgeom), bReleaseOld = 0;

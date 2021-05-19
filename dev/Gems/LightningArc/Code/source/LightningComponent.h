@@ -141,6 +141,7 @@ namespace Lightning
         AZ::Vector3 m_strikeOffset;
 
         AZ::Transform m_strikeLocalTM;
+        bool m_transformInitialized = false;
 
         float m_originalParticleScale;
 

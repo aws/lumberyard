@@ -24,6 +24,8 @@ namespace Capabilities
         Capability() = default;
 
         Capability(const AZStd::string& identifier,
+            const AZStd::vector<AZStd::string>& alias,
+            const AZStd::string& dependency,
             const AZStd::string& description,
             const AZStd::string& tooltip,
             const AZStd::vector<AZStd::string>& tags,
@@ -31,6 +33,8 @@ namespace Capabilities
             const AZStd::vector<AZStd::string>& categories,
             const bool isDefault)
             : m_identifier(identifier)
+            , m_alias(alias)
+            , m_dependency(dependency)
             , m_description(description)
             , m_tooltip(tooltip)
             , m_tags(tags)
@@ -43,6 +47,8 @@ namespace Capabilities
         ~Capability() = default;
 
         const AZStd::string& GetIdentifier() const { return m_identifier; }
+        const AZStd::vector<AZStd::string>& GetAlias() const { return m_alias; }
+        const AZStd::string& GetDependency() const { return m_dependency; }
         const AZStd::string& GetDescription() const { return m_description; }
         const AZStd::string& GetTooltip() const { return m_tooltip; }
         const AZStd::vector<AZStd::string>& GetTags() const { return m_tags; }
@@ -55,6 +61,8 @@ namespace Capabilities
 
     private:
         AZStd::string m_identifier;
+        AZStd::vector<AZStd::string> m_alias;
+        AZStd::string m_dependency;
         AZStd::string m_description;
         AZStd::string m_tooltip;
         AZStd::vector<AZStd::string> m_tags;

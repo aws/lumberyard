@@ -785,7 +785,7 @@ namespace LmbrCentral
 #endif
     }
 
-    void EditorMeshComponent::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
+    void EditorMeshComponent::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& /*assetInfo*/)
     {
         if (m_mesh.m_meshAsset.GetId() != assetId)
         {

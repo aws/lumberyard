@@ -566,6 +566,306 @@ namespace Twitch
 
     namespace Internal
     {
+        //! Reflect a Value class     
+        #define ReflectValueSerialization(context, _type)                                                       \
+            context.Class<_type>()->                                                                            \
+                Version(0)->                                                                                    \
+                Field("Value", &_type::Value)->                                                                 \
+                FieldFromBase<_type>("Result", &_type::Result);
+
+        void ReflectSerialization(AZ::SerializeContext& context)
+        {
+            context.Class<ReceiptID>()->
+                Version(0)
+                ;
+            ReflectValueSerialization(context, Int64Value);
+            ReflectValueSerialization(context, Uint64Value);
+            ReflectValueSerialization(context, StringValue);
+
+            context.Class<UserNotifications>()->
+                Version(0)->
+                Field("EMail", &UserNotifications::EMail)->
+                Field("Push", &UserNotifications::Push)
+                ;
+
+            context.Class<UserInfo>()->
+                Version(0)->
+                Field("ID", &UserInfo::ID)->
+                Field("Bio", &UserInfo::Bio)->
+                Field("CreatedDate", &UserInfo::CreatedDate)->
+                Field("DisplayName", &UserInfo::DisplayName)->
+                Field("EMail", &UserInfo::EMail)->
+                Field("Logo", &UserInfo::Logo)->
+                Field("Name", &UserInfo::Name)->
+                Field("ProfileBanner", &UserInfo::ProfileBanner)->
+                Field("ProfileBannerBackgroundColor", &UserInfo::ProfileBannerBackgroundColor)->
+                Field("Type", &UserInfo::Type)->
+                Field("UpdatedDate", &UserInfo::UpdatedDate)->
+                Field("Notifications", &UserInfo::Notifications)->
+                Field("EMailVerified", &UserInfo::EMailVerified)->
+                Field("Partnered", &UserInfo::Partnered)->
+                Field("TwitterConnected", &UserInfo::TwitterConnected)
+                ;
+            ReflectValueSerialization(context, UserInfoValue);
+
+            context.Class<FriendRecommendation>()->
+                Version(0)->
+                Field("Reason", &FriendRecommendation::Reason)->
+                Field("User", &FriendRecommendation::User)
+                ;
+            ReflectValueSerialization(context, FriendRecommendationValue);
+
+            context.Class<GetFriendReturn>()->
+                Version(0)->
+                Field("Cursor", &GetFriendReturn::Cursor)->
+                Field("Friends", &GetFriendReturn::Friends)
+                ;
+            ReflectValueSerialization(context, GetFriendValue);
+
+            context.Class<FriendStatus>()->
+                Version(0)->
+                Field("Status", &FriendStatus::Status)->
+                Field("User", &FriendStatus::User)
+                ;
+            ReflectValueSerialization(context, FriendStatusValue);
+
+            context.Class<FriendRequest>()->
+                Version(0)->
+                Field("IsRecommended", &FriendRequest::IsRecommended)->
+                Field("IsStranger", &FriendRequest::IsStranger)->
+                Field("NonStrangerReason", &FriendRequest::NonStrangerReason)->
+                Field("RequestedDate", &FriendRequest::RequestedDate)->
+                Field("User", &FriendRequest::User)
+                ;
+
+            context.Class<FriendRequestResult>()->
+                Version(0)->
+                Field("Total", &FriendRequestResult::Total)->
+                Field("Cursor", &FriendRequestResult::Cursor)->
+                Field("Requests", &FriendRequestResult::Requests)
+                ;
+            ReflectValueSerialization(context, FriendRequestValue);
+
+            context.Class<PresenceStatus>()->
+                Version(0)->
+                Field("ActivityType", &PresenceStatus::ActivityType)->
+                Field("Availability", &PresenceStatus::Availability)->
+                Field("Index", &PresenceStatus::Index)->
+                Field("UpdatedDate", &PresenceStatus::UpdatedDate)->
+                Field("UserID", &PresenceStatus::UserID)
+                ;
+            ReflectValueSerialization(context, PresenceStatusValue);
+
+            context.Class<PresenceSettings>()->
+                Version(0)->
+                Field("IsInvisible", &PresenceSettings::IsInvisible)->
+                Field("ShareActivity", &PresenceSettings::ShareActivity)
+                ;
+            ReflectValueSerialization(context, PresenceSettingsValue);
+
+            context.Class<ChannelInfo>()->
+                Version(0)->
+                Field("NumFollowers", &ChannelInfo::NumFollowers)->
+                Field("NumViews", &ChannelInfo::NumViews)->
+                Field("NumItemsRecieved", &ChannelInfo::NumItemsRecieved)->
+                Field("Partner", &ChannelInfo::Partner)->
+                Field("Mature", &ChannelInfo::Mature)->
+                Field("Id", &ChannelInfo::Id)->
+                Field("BroadcasterLanguage", &ChannelInfo::BroadcasterLanguage)->
+                Field("DisplayName", &ChannelInfo::DisplayName)->
+                Field("eMail", &ChannelInfo::eMail)->
+                Field("GameName", &ChannelInfo::GameName)->
+                Field("Lanugage", &ChannelInfo::Lanugage)->
+                Field("Logo", &ChannelInfo::Logo)->
+                Field("Name", &ChannelInfo::Name)->
+                Field("ProfileBanner", &ChannelInfo::ProfileBanner)->
+                Field("ProfileBannerBackgroundColor", &ChannelInfo::ProfileBannerBackgroundColor)->
+                Field("Status", &ChannelInfo::Status)->
+                Field("StreamKey", &ChannelInfo::StreamKey)->
+                Field("UpdatedDate", &ChannelInfo::UpdatedDate)->
+                Field("CreatedDate", &ChannelInfo::CreatedDate)->
+                Field("URL", &ChannelInfo::URL)->
+                Field("VideoBanner", &ChannelInfo::VideoBanner)
+                ;
+            ReflectValueSerialization(context, ChannelInfoValue);
+
+            context.Class<UpdateValuebool>()->
+                Version(0)
+                ;
+
+            context.Class<UpdateValueuint>()->
+                Version(0)
+                ;
+
+            context.Class<UpdateValuestring>()->
+                Version(0)
+                ;
+
+            context.Class<ChannelUpdateInfo>()->
+                Version(0)->
+                Field("ChannelFeedEnabled", &ChannelUpdateInfo::ChannelFeedEnabled)->
+                Field("Delay", &ChannelUpdateInfo::Delay)->
+                Field("Status", &ChannelUpdateInfo::Status)->
+                Field("GameName", &ChannelUpdateInfo::GameName)
+                ;
+            ReflectValueSerialization(context, UserInfoListValue);
+
+            context.Class<Follower>()->
+                Version(0)->
+                Field("Notifications", &Follower::Notifications)->
+                Field("CreatedDate", &Follower::CreatedDate)->
+                Field("User", &Follower::User)
+                ;
+
+            context.Class<FollowerResult>()->
+                Version(0)->
+                Field("Total", &FollowerResult::Total)->
+                Field("Cursor", &FollowerResult::Cursor)->
+                Field("Followers", &FollowerResult::Followers)
+                ;
+            ReflectValueSerialization(context, FollowerResultValue);
+
+            context.Class<TeamInfo>()->
+                Version(0)->
+                Field("ID", &TeamInfo::ID)->
+                Field("Background", &TeamInfo::Background)->
+                Field("Banner", &TeamInfo::Banner)->
+                Field("CreatedDate", &TeamInfo::CreatedDate)->
+                Field("DisplayName", &TeamInfo::DisplayName)->
+                Field("Info", &TeamInfo::Info)->
+                Field("Logo", &TeamInfo::Logo)->
+                Field("Name", &TeamInfo::Name)->
+                Field("UpdatedDate", &TeamInfo::UpdatedDate)
+                ;
+            ReflectValueSerialization(context, ChannelTeamValue);
+
+            context.Class<SubscriberInfo>()->
+                Version(0)->
+                Field("ID", &SubscriberInfo::ID)->
+                Field("CreatedDate", &SubscriberInfo::CreatedDate)->
+                Field("User", &SubscriberInfo::User)
+                ;
+
+            context.Class<Subscription>()->
+                Version(0)->
+                Field("Total", &Subscription::Total)->
+                Field("Subscribers", &Subscription::Subscribers)
+                ;
+            ReflectValueSerialization(context, SubscriberValue);
+            ReflectValueSerialization(context, SubscriberbyUserValue);
+
+            context.Class<VideoChannelInfo>()->
+                Version(0)->
+                Field("ID", &VideoChannelInfo::ID)->
+                Field("DisplayName", &VideoChannelInfo::DisplayName)->
+                Field("Name", &VideoChannelInfo::Name)
+                ;
+
+            context.Class<FPSInfo>()->
+                Version(0)->
+                Field("Chunked", &FPSInfo::Chunked)->
+                Field("High", &FPSInfo::High)->
+                Field("Low", &FPSInfo::Low)->
+                Field("Medium", &FPSInfo::Medium)->
+                Field("Mobile", &FPSInfo::Mobile)
+                ;
+
+            context.Class<PreviewInfo>()->
+                Version(0)->
+                Field("Large", &PreviewInfo::Large)->
+                Field("Medium", &PreviewInfo::Medium)->
+                Field("Small", &PreviewInfo::Small)->
+                Field("Template", &PreviewInfo::Template)
+                ;
+
+            context.Class<ResolutionsInfo>()->
+                Version(0)->
+                Field("Chunked", &ResolutionsInfo::Chunked)->
+                Field("High", &ResolutionsInfo::High)->
+                Field("Low", &ResolutionsInfo::Low)->
+                Field("Medium", &ResolutionsInfo::Medium)->
+                Field("Mobile", &ResolutionsInfo::Mobile)
+                ;
+
+            context.Class<ThumbnailInfo>()->
+                Version(0)->
+                Field("Type", &ThumbnailInfo::Type)->
+                Field("Url", &ThumbnailInfo::Url)
+                ;
+
+            context.Class<ThumbnailsInfo>()->
+                Version(0)->
+                Field("Large", &ThumbnailsInfo::Large)->
+                Field("Medium", &ThumbnailsInfo::Medium)->
+                Field("Small", &ThumbnailsInfo::Small)->
+                Field("Template", &ThumbnailsInfo::Template)
+                ;
+
+            context.Class<VideoInfo>()->
+                Version(0)->
+                Field("Length", &VideoInfo::Length)->
+                Field("Views", &VideoInfo::Views)->
+                Field("BroadcastID", &VideoInfo::BroadcastID)->
+                Field("Type", &VideoInfo::Type)->
+                Field("CreatedDate", &VideoInfo::CreatedDate)->
+                Field("Description", &VideoInfo::Description)->
+                Field("DescriptionHTML", &VideoInfo::DescriptionHTML)->
+                Field("ID", &VideoInfo::ID)->
+                Field("Game", &VideoInfo::Game)->
+                Field("Language", &VideoInfo::Language)->
+                Field("PublishedDate", &VideoInfo::PublishedDate)->
+                Field("Status", &VideoInfo::Status)->
+                Field("TagList", &VideoInfo::TagList)->
+                Field("Title", &VideoInfo::Title)->
+                Field("URL", &VideoInfo::URL)->
+                Field("Viewable", &VideoInfo::Viewable)->
+                Field("ViewableAt", &VideoInfo::ViewableAt)->
+                Field("Channel", &VideoInfo::Channel)->
+                Field("FPS", &VideoInfo::FPS)->
+                Field("Preview", &VideoInfo::Preview)->
+                Field("Thumbnails", &VideoInfo::Thumbnails)->
+                Field("Resolutions", &VideoInfo::Resolutions)
+                ;
+
+            context.Class<VideoReturn>()->
+                Version(0)->
+                Field("Total", &VideoReturn::Total)->
+                Field("Videos", &VideoReturn::Videos)
+                ;
+            ReflectValueSerialization(context, VideoReturnValue);
+
+            context.Class<StartChannelCommercialResult>()->
+                Version(0)->
+                Field("Duration", &StartChannelCommercialResult::Duration)->
+                Field("RetryAfter", &StartChannelCommercialResult::RetryAfter)->
+                Field("Message", &StartChannelCommercialResult::Message)
+                ;
+            ReflectValueSerialization(context, StartChannelCommercialValue);
+
+            context.Class<CommunityInfo>()->
+                Version(0)->
+                Field("ID", &CommunityInfo::ID)->
+                Field("AvatarImageURL", &CommunityInfo::AvatarImageURL)->
+                Field("CoverImageURL", &CommunityInfo::CoverImageURL)->
+                Field("Description", &CommunityInfo::Description)->
+                Field("DescriptionHTML", &CommunityInfo::DescriptionHTML)->
+                Field("Language", &CommunityInfo::Language)->
+                Field("Name", &CommunityInfo::Name)->
+                Field("OwnerID", &CommunityInfo::OwnerID)->
+                Field("Rules", &CommunityInfo::Rules)->
+                Field("RulesHTML", &CommunityInfo::RulesHTML)->
+                Field("Summary", &CommunityInfo::Summary)
+                ;
+            ReflectValueSerialization(context, CommunityInfoValue);
+
+            context.Class<CommunityInfoReturn>()->
+                Version(0)->
+                Field("Total", &CommunityInfoReturn::Total)->
+                Field("Communities", &CommunityInfoReturn::Communities)
+                ;
+            ReflectValueSerialization(context, CommunityInfoReturnValue);
+        }
+
         class BehaviorTwitchNotifyBus
             : public TwitchNotifyBus::Handler
             , public AZ::BehaviorEBusHandler
@@ -742,6 +1042,15 @@ namespace Twitch
 
         #define ENUM_CLASS_HELPER(className, enumName) Enum<(int)className::enumName>(#enumName)
 
+        //! Reflect a Result class     
+        #define ReflectValueClass(context, _type)                                                               \
+            context.Class<_type>()->                                                                            \
+                Property("Value", [](const _type& value) { return value.Value; }, nullptr)->                    \
+                Property("Result", [](const _type& value) { return value.Result; }, nullptr)->                  \
+                Method("ToString", &_type::ToString)->                                                          \
+                Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)     \
+                ;
+
         void Reflect(AZ::BehaviorContext & context)
         {
             /*
@@ -794,27 +1103,9 @@ namespace Twitch
                     Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)->
                 Property("ID", &ReceiptID::GetID, &ReceiptID::SetID)
                 ;
-
-            context.Class<Int64Value>()->
-                Property("Value", [](const Int64Value& i64Value) { return i64Value.Value; }, nullptr)->
-                Property("Result", [](const Int64Value& i64Value) { return i64Value.Result; }, nullptr)->
-                Method("ToString", &Int64Value::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
-
-            context.Class<Uint64Value>()->
-                Property("Value", [](const Uint64Value& u64Value) { return u64Value.Value; }, nullptr)->
-                Property("Result", [](const Uint64Value& u64Value) { return u64Value.Result; }, nullptr)->
-                Method("ToString", &Uint64Value::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
-
-            context.Class<StringValue>()->
-                Property("Value", [](const StringValue& strValue) { return strValue.Value; }, nullptr)->
-                Property("Result", [](const StringValue& strValue) { return strValue.Result; }, nullptr)->
-                Method("ToString", &StringValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, Int64Value);
+            ReflectValueClass(context, Uint64Value);
+            ReflectValueClass(context, StringValue);
 
             context.Class<UserNotifications>()->
                 Property("EMail", [](const UserNotifications& value) { return value.EMail; }, nullptr)->
@@ -838,49 +1129,25 @@ namespace Twitch
                 Property("Partnered", [](const UserInfo& value) { return value.Partnered; }, nullptr)->
                 Property("TwitterConnected", [](const UserInfo& value) { return value.TwitterConnected; }, nullptr)
                 ;
-
-            context.Class<UserInfoValue>()->
-                Property("Value", [](const UserInfoValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const UserInfoValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &UserInfoValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, UserInfoValue);
 
             context.Class<FriendRecommendation>()->
                 Property("Reason", [](const FriendRecommendation& value) { return value.Reason; }, nullptr)->
                 Property("User", [](const FriendRecommendation& value) { return value.User; }, nullptr)
                 ;
-
-            context.Class<FriendRecommendationValue>()->
-                Property("Value", [](const FriendRecommendationValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const FriendRecommendationValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &FriendRecommendationValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, FriendRecommendationValue);
 
             context.Class<GetFriendReturn>()->
                 Property("Cursor", [](const GetFriendReturn& value) { return value.Cursor; }, nullptr)->
                 Property("Friends", [](const GetFriendReturn& value) { return value.Friends; }, nullptr)
                 ;
-
-            context.Class<GetFriendValue>()->
-                Property("Value", [](const GetFriendValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const GetFriendValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &GetFriendValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, GetFriendValue);
 
             context.Class<FriendStatus>()->
                 Property("Status", [](const FriendStatus& value) { return value.Status; }, nullptr)->
                 Property("User", [](const FriendStatus& value) { return value.User; }, nullptr)
                 ;
-
-            context.Class<FriendStatusValue>()->
-                Property("Value", [](const FriendStatusValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const FriendStatusValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &FriendStatusValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, FriendStatusValue);
 
             context.Class<FriendRequest>()->
                 Property("IsRecommended", [](const FriendRequest& value) { return value.IsRecommended; }, nullptr)->
@@ -895,13 +1162,7 @@ namespace Twitch
                 Property("Cursor", [](const FriendRequestResult& value) { return value.Cursor; }, nullptr)->
                 Property("Requests", [](const FriendRequestResult& value) { return value.Requests; }, nullptr)
                 ;
-
-            context.Class<FriendRequestValue>()->
-                Property("Value", [](const FriendRequestValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const FriendRequestValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &FriendRequestValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, FriendRequestValue);
 
             context.Class<PresenceStatus>()->
                 Property("ActivityType", [](const PresenceStatus& value) { return value.ActivityType; }, nullptr)->
@@ -910,25 +1171,13 @@ namespace Twitch
                 Property("UpdatedDate", [](const PresenceStatus& value) { return value.UpdatedDate; }, nullptr)->
                 Property("UserID", [](const PresenceStatus& value) { return value.UserID; }, nullptr)
                 ;
-
-            context.Class<PresenceStatusValue>()->
-                Property("Value", [](const PresenceStatusValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const PresenceStatusValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &PresenceStatusValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, PresenceStatusValue);
 
             context.Class<PresenceSettings>()->
                 Property("IsInvisible", [](const PresenceSettings& value) { return value.IsInvisible; }, nullptr)->
                 Property("ShareActivity", [](const PresenceSettings& value) { return value.ShareActivity; }, nullptr)
                 ;
-
-            context.Class<PresenceSettingsValue>()->
-                Property("Value", [](const PresenceSettingsValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const PresenceSettingsValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &PresenceSettingsValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, PresenceSettingsValue);
 
             context.Class<ChannelInfo>()->
                 Property("NumFollowers", [](const ChannelInfo& value) { return value.NumFollowers; }, nullptr)->
@@ -953,13 +1202,7 @@ namespace Twitch
                 Property("URL", [](const ChannelInfo& value) { return value.URL; }, nullptr)->
                 Property("VideoBanner", [](const ChannelInfo& value) { return value.VideoBanner; }, nullptr)
                 ;
-
-            context.Class<ChannelInfoValue>()->
-                Property("Value", [](const ChannelInfoValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const ChannelInfoValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &ChannelInfoValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, ChannelInfoValue);
 
             context.Class<UpdateValuebool>()->
                 Property("Value", &UpdateValuebool::GetValue, &UpdateValuebool::SetValue)->
@@ -982,13 +1225,7 @@ namespace Twitch
                 Property("Status", BehaviorValueProperty(&ChannelUpdateInfo::Status))->
                 Property("GameName", BehaviorValueProperty(&ChannelUpdateInfo::GameName))
                 ;
-
-            context.Class<UserInfoListValue>()->
-                Property("Value", [](const UserInfoListValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const UserInfoListValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &UserInfoListValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, UserInfoListValue);
 
             context.Class<Follower>()->
                 Property("Notifications", [](const Follower& value) { return value.Notifications; }, nullptr)->
@@ -1001,13 +1238,7 @@ namespace Twitch
                 Property("Cursor", [](const FollowerResult& value) { return value.Cursor; }, nullptr)->
                 Property("Followers", [](const FollowerResult& value) { return value.Followers; }, nullptr)
                 ;
-
-            context.Class<FollowerResultValue>()->
-                Property("Value", [](const FollowerResultValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const FollowerResultValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &FollowerResultValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, FollowerResultValue);
 
             context.Class<TeamInfo>()->
                 Property("ID", [](const TeamInfo& value) { return value.ID; }, nullptr)->
@@ -1020,13 +1251,7 @@ namespace Twitch
                 Property("Name", [](const TeamInfo& value) { return value.Name; }, nullptr)->
                 Property("UpdatedDate", [](const TeamInfo& value) { return value.UpdatedDate; }, nullptr)
                 ;
-
-            context.Class<ChannelTeamValue>()->
-                Property("Value", [](const ChannelTeamValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const ChannelTeamValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &ChannelTeamValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, ChannelTeamValue);
 
             context.Class<SubscriberInfo>()->
                 Property("ID", [](const SubscriberInfo& value) { return value.ID; }, nullptr)->
@@ -1038,20 +1263,8 @@ namespace Twitch
                 Property("Total", [](const Subscription& value) { return value.Total; }, nullptr)->
                 Property("Subscribers", [](const Subscription& value) { return value.Subscribers; }, nullptr)
                 ;
-
-            context.Class<SubscriberValue>()->
-                Property("Value", [](const SubscriberValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const SubscriberValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &SubscriberValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
-
-            context.Class<SubscriberbyUserValue>()->
-                Property("Value", [](const SubscriberbyUserValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const SubscriberbyUserValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &SubscriberbyUserValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, SubscriberValue);
+            ReflectValueClass(context, SubscriberbyUserValue);
 
             context.Class<VideoChannelInfo>()->
                 Property("ID", [](const VideoChannelInfo& value) { return value.ID; }, nullptr)->
@@ -1123,26 +1336,14 @@ namespace Twitch
                 Property("Total", [](const VideoReturn& value) { return value.Total; }, nullptr)->
                 Property("Videos", [](const VideoReturn& value) { return value.Videos; }, nullptr)
                 ;
-
-            context.Class<VideoReturnValue>()->
-                Property("Value", [](const VideoReturnValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const VideoReturnValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &VideoReturnValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, VideoReturnValue);
 
             context.Class<StartChannelCommercialResult>()->
                 Property("Duration", [](const StartChannelCommercialResult& value) { return value.Duration; }, nullptr)->
                 Property("RetryAfter", [](const StartChannelCommercialResult& value) { return value.RetryAfter; }, nullptr)->
                 Property("Message", [](const StartChannelCommercialResult& value) { return value.Message; }, nullptr)
                 ;
-
-            context.Class<StartChannelCommercialValue>()->
-                Property("Value", [](const StartChannelCommercialValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const StartChannelCommercialValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &StartChannelCommercialValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, StartChannelCommercialValue);
 
             context.Class<CommunityInfo>()->
                 Property("ID", [](const CommunityInfo& value) { return value.ID; }, nullptr)->
@@ -1157,25 +1358,13 @@ namespace Twitch
                 Property("RulesHTML", [](const CommunityInfo& value) { return value.RulesHTML; }, nullptr)->
                 Property("Summary", [](const CommunityInfo& value) { return value.Summary; }, nullptr)
                 ;
-
-            context.Class<CommunityInfoValue>()->
-                Property("Value", [](const CommunityInfoValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const CommunityInfoValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &CommunityInfoValue::ToString)->
-                    Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, CommunityInfoValue);
 
             context.Class<CommunityInfoReturn>()->
                 Property("Total", [](const CommunityInfoReturn& value) { return value.Total; }, nullptr)->
                 Property("Communities", [](const CommunityInfoReturn& value) { return value.Communities; }, nullptr)
                 ;
-
-            context.Class<CommunityInfoReturnValue>()->
-                Property("Value", [](const CommunityInfoReturnValue& value) { return value.Value; }, nullptr)->
-                Property("Result", [](const CommunityInfoReturnValue& value) { return value.Result; }, nullptr)->
-                Method("ToString", &CommunityInfoReturnValue::ToString)->
-                Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
+            ReflectValueClass(context, CommunityInfoReturnValue);
 
             context.EBus<TwitchRequestBus>("TwitchRequestBus")
                 ->Event("SetApplicationID", &TwitchRequestBus::Events::SetApplicationID)

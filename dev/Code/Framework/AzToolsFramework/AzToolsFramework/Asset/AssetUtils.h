@@ -58,5 +58,15 @@ namespace AzToolsFramework
         //! Returns a list of GemInfo of all the gems that are active for the for the specified game project. 
         //! Please note that the game project could be in a different location to the engine therefore we need the assetRoot param.
         bool GetGemsInfo(const char* root, const char* assetRoot, const char* gameName, AZStd::vector<GemInfo>& gemInfoList);
+
+        //! A utility function which checks the given path starting at the root and updates the relative path to be the actual case correct path.
+        //! For example, if you pass it "c:\lumberyard\dev" as the root and "editor\icons\whatever.ico" as the relative path.
+        //! It may update relativePathFromRoot to be "Editor\Icons\Whatever.ico" if such a casing is the actual physical case on disk already.
+        //! @param root a trusted already-case-correct path (will not be case corrected). If empty it will be set to appRoot.
+        //! @param relativePathFromRoot a non-trusted (may be incorrect case) path relative to rootPath,
+        //!        which will be normalized and updated to be correct casing.
+        //! @return if such a file does NOT exist, it returns FALSE, else returns TRUE.
+        //! @note A very expensive function!  Call sparingly.
+        bool UpdateFilePathToCorrectCase(const QString& root, QString& relativePathFromRoot);
     } //namespace AssetUtils
 } //namespace AzToolsFramework

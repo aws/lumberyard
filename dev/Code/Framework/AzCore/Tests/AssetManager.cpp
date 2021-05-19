@@ -1,4 +1,4 @@
-﻿/*
+/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -9,6 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#include <Asset/LegacyAssetHandler.h>
+
 #include "FileIOBaseTestTypes.h"
 
 #include <AzCore/Asset/AssetManager.h>
@@ -740,6 +742,34 @@ namespace UnitTest
         ASSERT_FALSE(Utils::LoadObjectFromStreamInPlace(memStream, toRead, &context, desc));
         // LoadObjectFromStreamInPlace generates two errors. One is can't find the handler. Another one is can't load referenced asset.
         AZ_TEST_STOP_TRACE_SUPPRESSION(2);
+    }
+
+    TEST_F(AssetManagerTest, AssetCanBeReleased)
+    {
+        const auto assetId = AssetId(Uuid::CreateRandom());
+        Asset<MyAssetType> asset = m_testAssetManager->CreateAsset<MyAssetType>(assetId);
+
+        EXPECT_NE(asset.Get(), nullptr);
+
+        asset.Release();
+
+        EXPECT_EQ(asset.Get(), nullptr);
+        EXPECT_EQ(asset.GetId(), assetId);
+        EXPECT_EQ(asset.GetType(), AzTypeInfo<MyAssetType>::Uuid());
+    }
+
+    TEST_F(AssetManagerTest, AssetCanBeReset)
+    {
+        const auto assetId = AssetId(Uuid::CreateRandom());
+        Asset<MyAssetType> asset = m_testAssetManager->CreateAsset<MyAssetType>(assetId);
+
+        EXPECT_NE(asset.Get(), nullptr);
+
+        asset.Reset();
+
+        EXPECT_EQ(asset.Get(), nullptr);
+        EXPECT_FALSE(asset.GetId().IsValid());
+        EXPECT_TRUE(asset.GetType().IsNull());
     }
 
     TEST_F(AssetManagerTest, AssetPtrRefCount)
@@ -3133,6 +3163,7 @@ namespace UnitTest
             AssetHandlerAndCatalog() = default;
             AZStd::atomic<int> m_numCreations = { 0 };
             AZStd::atomic<int> m_numDestructions = { 0 };
+            int m_loadDelay = 0;
             AZ::SerializeContext* m_context = nullptr;
 #if defined(USE_LOCAL_STORAGE)
             template <class T>
@@ -3242,6 +3273,12 @@ namespace UnitTest
             bool LoadAssetData(const Asset<AssetData>& asset, IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override
             {
                 AssetData* data = asset.Get();
+
+                if(m_loadDelay > 0)
+                {
+                    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(m_loadDelay));
+                }
+
                 return Utils::LoadObjectFromStreamInPlace(*stream, m_context, data->RTTI_GetType(), data, AZ::ObjectStream::FilterDescriptor(assetLoadFilterCB));
             }
             bool SaveAssetData(const Asset<AssetData>& asset, IO::GenericStream* stream) override
@@ -4046,7 +4083,7 @@ namespace UnitTest
         // this should ensure that some jobs are actually running, while some are in queue
         AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(5));
 
-        AssetManager::Instance().PrepareShutDown();
+        AssetManager::Instance().CancelAllActiveJobs();
 
         AssetManager::Instance().UnregisterHandler(m_assetHandlerAndCatalog);
         AssetManager::Instance().UnregisterCatalog(m_assetHandlerAndCatalog);
@@ -4073,7 +4110,7 @@ namespace UnitTest
             // this should ensure that some jobs are actually running, while some are in queue
             AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(5));
 
-            AssetManager::Instance().PrepareShutDown();
+            AssetManager::Instance().CancelAllActiveJobs();
             // we are unregistering the handler that has still not destroyed all of its active assets
             AZ_TEST_START_TRACE_SUPPRESSION;
             AssetManager::Instance().UnregisterHandler(m_assetHandlerAndCatalog);
@@ -4093,6 +4130,277 @@ namespace UnitTest
         AssetManager::Destroy();
 
         SetLeakExpected();
+    }
+
+    struct MockLegacyAsset : AssetData
+    {
+        AZ_CLASS_ALLOCATOR(MockLegacyAsset, AZ::SystemAllocator, 0);
+        AZ_RTTI(MockLegacyAsset, "{215934A2-417E-48CC-AF24-E44AC56C25E4}", AssetData);
+
+        static void Reflect(SerializeContext& context)
+        {
+            context.Class<MockLegacyAsset>();
+        }
+    };
+
+    struct MockLegacyHandler
+        : LegacyAssetHandler
+        , AssetCatalog
+    {
+        AZ_CLASS_ALLOCATOR(MockLegacyHandler, AZ::SystemAllocator, 0);
+
+        AssetPtr CreateAsset(const AssetId& id, const AssetType& type) override
+        {
+            return aznew MockLegacyAsset();
+        }
+
+        bool LoadAssetData(const Asset<AssetData>& asset, IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override
+        {
+            return true;
+        }
+
+        bool SaveAssetData(const Asset<AssetData>& asset, IO::GenericStream* stream) override
+        {
+            return false;
+        }
+
+        AssetStreamInfo GetStreamInfoForLoad(const AssetId& assetId, const AssetType& assetType) override
+        {
+            AssetStreamInfo info;
+            info.m_dataOffset = 0;
+            info.m_isCustomStreamType = false;
+            info.m_streamFlags = IO::OpenMode::ModeRead;
+
+            if (AZ::Uuid(MYASSET1_ID) == assetId.m_guid)
+            {
+                info.m_streamName = "TestAsset1.txt";
+            }
+
+            if (!info.m_streamName.empty())
+            {
+                AZStd::string fullName = GetTestFolderPath() + info.m_streamName;
+                info.m_dataLen = static_cast<size_t>(IO::SystemFile::Length(fullName.c_str()));
+            }
+            else
+            {
+                info.m_dataLen = 0;
+            }
+
+            return info;
+        }
+
+        void DestroyAsset(AssetPtr ptr) override
+        {
+            delete ptr;
+        }
+        void GetHandledAssetTypes(AZStd::vector<AssetType>& assetTypes) override
+        {
+            assetTypes.push_back(azrtti_typeid<MockLegacyAsset>());
+        }
+        void ProcessQueuedAssetRequests() override
+        {
+            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(10));
+        }
+    };
+
+    struct CancellationTest : AssetJobsMultithreadedTest
+    {
+        void SetUp() override
+        {
+            m_data = AZStd::make_unique<StaticData>();
+
+            AssetJobsMultithreadedTest::SetUp();
+        }
+        void TearDown() override
+        {
+            m_data = nullptr;
+
+            AssetJobsMultithreadedTest::TearDown();
+        }
+
+        auto MakeThread(const AZStd::function<void()>& workFunction)
+        {
+            m_data->m_threads.emplace_back([this, workFunction]()
+                {
+                    m_data->startSignal.acquire();
+
+                    do
+                    {
+                        workFunction();
+
+                        --m_data->threadCount;
+                        m_data->cv.notify_one();
+                        m_data->startSignal.acquire();
+                    } while (m_data->running);
+                });
+
+            return m_data->m_threads.back().get_id();
+        };
+
+        void RunTest(int numIterations)
+        {
+            ASSERT_EQ(NumThreads, m_data->m_threads.size());
+
+            for (int i = 0; i < numIterations; ++i)
+            {
+                m_data->threadCount = NumThreads;
+                m_data->startSignal.release(NumThreads);
+
+                // Used to detect a deadlock.  If we wait for more than 5 seconds, it's likely a deadlock has occurred
+                bool timedOut = false;
+                AZStd::mutex mutex;
+                while (m_data->threadCount > 0 && !timedOut)
+                {
+                    AZStd::unique_lock<AZStd::mutex> lock(mutex);
+                    timedOut = (AZStd::cv_status::timeout == m_data->cv.wait_until(lock, AZStd::chrono::system_clock::now() + AZStd::chrono::seconds(5)));
+                }
+
+                EXPECT_TRUE(m_data->threadCount == 0) << "Failed on iteration " << i;
+
+                AssetManager::Instance().ReEnableJobProcessing();
+            }
+
+            m_data->running = false;
+            m_data->startSignal.release(NumThreads);
+
+            for (auto&& thread : m_data->m_threads)
+            {
+                thread.join();
+            }
+
+            AssetManager::Destroy();
+        }
+
+        static inline constexpr size_t NumThreads = 3;
+
+        struct StaticData
+        {
+            AZStd::atomic_int threadCount = NumThreads;
+            AZStd::atomic_bool running = true;
+            AZStd::condition_variable cv;
+            AZStd::semaphore startSignal{ unsigned(0) };
+            AZStd::vector<AZStd::thread> m_threads;
+        };
+
+        AZStd::unique_ptr<StaticData> m_data;
+    };
+
+    TEST_F(CancellationTest, AssetManagerShutdown_DeadlockTest)
+    {
+        SerializeContext context;
+        AssetD::Reflect(context);
+        AssetC::Reflect(context);
+        AssetB::Reflect(context);
+        AssetA::Reflect(context);
+
+        AssetManager::Descriptor desc;
+        desc.m_maxWorkerThreads = 2;
+        AssetManager::Create(desc);
+
+        auto& db = AssetManager::Instance();
+
+        AssetHandlerAndCatalog* assetHandlerAndCatalog = aznew AssetHandlerAndCatalog;
+        assetHandlerAndCatalog->m_context = &context;
+        assetHandlerAndCatalog->m_loadDelay = 10;
+
+        AZStd::vector<AssetType> types;
+        assetHandlerAndCatalog->GetHandledAssetTypes(types);
+
+        for (const auto& type : types)
+        {
+            db.RegisterHandler(assetHandlerAndCatalog, type);
+            db.RegisterCatalog(assetHandlerAndCatalog, type);
+        }
+
+        {
+            // AssetD is MYASSET4
+            AssetD d;
+            d.data = 42;
+            EXPECT_TRUE(AZ::Utils::SaveObjectToFile(GetTestFolderPath() + "TestAsset4.txt", AZ::DataStream::ST_XML, &d, &context));
+
+            // AssetC is MYASSET3
+            AssetC c;
+            c.data.Create(AssetId(MYASSET4_ID), false); // point at D
+            EXPECT_TRUE(AZ::Utils::SaveObjectToFile(GetTestFolderPath() + "TestAsset3.txt", AZ::DataStream::ST_XML, &c, &context));
+
+            // AssetB is MYASSET2
+            AssetB b;
+            b.data.Create(AssetId(MYASSET3_ID), false); // point at C
+            EXPECT_TRUE(AZ::Utils::SaveObjectToFile(GetTestFolderPath() + "TestAsset2.txt", AZ::DataStream::ST_XML, &b, &context));
+
+            // AssetA will be written to disk as MYASSET1
+            AssetA a;
+            a.data.Create(AssetId(MYASSET2_ID), false); // point at B
+            EXPECT_TRUE(AZ::Utils::SaveObjectToFile(GetTestFolderPath() + "TestAsset1.txt", AZ::DataStream::ST_XML, &a, &context));
+        }
+
+        MakeThread([&db]()
+        {
+            auto asset = db.GetAsset<AssetA>(AssetId(MYASSET1_ID), true, nullptr, true);
+        });
+
+        MakeThread([&db]()
+        {
+            auto asset = db.GetAsset<AssetA>(AssetId(MYASSET1_ID), true, nullptr, true);
+        });
+
+        MakeThread([]()
+        {
+            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(5));
+            AssetManager::Instance().CancelAllActiveJobs();
+        });
+
+        constexpr int numIterations = 25;
+
+        RunTest(numIterations);
+    }
+
+    TEST_F(CancellationTest, AssetManagerShutdown_LegacyHandler_DeadlockTest)
+    {
+        SerializeContext context;
+        MockLegacyAsset::Reflect(context);
+
+        AssetManager::Descriptor desc;
+        desc.m_maxWorkerThreads = 2;
+        AssetManager::Create(desc);
+
+        auto& db = AssetManager::Instance();
+
+        MockLegacyHandler* legacyHandler = aznew MockLegacyHandler();
+
+        AssetHandlerAndCatalog* assetHandlerAndCatalog = aznew AssetHandlerAndCatalog;
+        assetHandlerAndCatalog->m_context = &context;
+
+        AZStd::vector<AssetType> types;
+        assetHandlerAndCatalog->GetHandledAssetTypes(types);
+
+        for (const auto& type : types)
+        {
+            db.RegisterHandler(assetHandlerAndCatalog, type);
+            db.RegisterCatalog(assetHandlerAndCatalog, type);
+        }
+
+        constexpr int numIterations = 25;
+
+        auto legacyLoaderThreadId = MakeThread([&db]()
+        {
+            auto asset = db.GetAsset<MockLegacyAsset>(AssetId(MYASSET1_ID), true, nullptr, true);
+        });
+        
+        MakeThread([&db]()
+        {
+            auto asset = db.GetAsset<MockLegacyAsset>(AssetId(MYASSET1_ID), true, nullptr, true);
+        });
+
+        db.RegisterLegacyHandler(legacyHandler, azrtti_typeid<MockLegacyAsset>(), legacyLoaderThreadId);
+        db.RegisterCatalog(legacyHandler, azrtti_typeid<MockLegacyAsset>());
+
+        MakeThread([]()
+        {
+            AssetManager::Instance().CancelAllActiveJobs();
+        });
+
+        RunTest(numIterations);
     }
 }
 

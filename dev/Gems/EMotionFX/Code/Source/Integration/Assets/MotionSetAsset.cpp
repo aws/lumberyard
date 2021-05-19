@@ -83,11 +83,9 @@ namespace EMotionFX
             MotionSetAsset* m_assetData;
         };
 
-        //////////////////////////////////////////////////////////////////////////
-        MotionSetAsset::MotionSetAsset()
-            : m_isReloadPending(false)
-        {
-        }
+        MotionSetAsset::MotionSetAsset(AZ::Data::AssetId id)
+            : EMotionFXAsset(id)
+        {}
 
         MotionSetAsset::~MotionSetAsset()
         {

@@ -114,7 +114,7 @@ namespace WhiteBox
         AZ::Data::Asset<Pipeline::WhiteBoxMeshAsset> CreateOrFindMeshAsset(const AZStd::string& assetPath);
         void LoadMesh();
         void DeserializeWhiteBox();
-        bool IsUsingAsset();
+        bool IsUsingAsset() const;
 
         // AZ::Data::AssetBus ...
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;

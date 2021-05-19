@@ -77,6 +77,9 @@ namespace AssetBundler
 
         m_assetSeedManager = AZStd::make_unique<AzToolsFramework::AssetSeedManager>();
         AZ_TracePrintf(AssetBundler::AppWindowName, "\n");
+
+        // There is no need to update the UserSettings file, so we can avoid a race condition by disabling save on shutdown
+        AZ::UserSettingsComponentRequestBus::Broadcast(&AZ::UserSettingsComponentRequests::DisableSaveOnFinalize);
     }
 
     void ApplicationManager::DestroyApplication()
@@ -281,7 +284,8 @@ namespace AssetBundler
             PrintFlag,
             PlatformArg,
             AssetCatalogFileArg,
-            VerboseFlag
+            VerboseFlag,
+            IgnoreFileCaseFlag
         };
 
         m_allAssetListsArgs = {
@@ -384,14 +388,23 @@ namespace AssetBundler
 
         SeedsParams params;
 
+        params.m_ignoreFileCase = parser->HasSwitch(IgnoreFileCaseFlag);
+        AddMetric("IgnoreFileCase flag", params.m_ignoreFileCase);
+
         // Read in Seed List Files arg
         auto requiredArgOutcome = GetFilePathArg(parser, SeedListFileArg, SeedsCommand, true);
         if (!requiredArgOutcome.IsSuccess())
         {
             return AZ::Failure(requiredArgOutcome.GetError());
         }
+        bool checkFileCase = true;
         // Seed List files do not have platform-specific file names
-        params.m_seedListFile = FilePath(requiredArgOutcome.GetValue());
+        params.m_seedListFile = FilePath(requiredArgOutcome.GetValue(), checkFileCase, params.m_ignoreFileCase);
+
+        if (!params.m_seedListFile.IsValid())
+        {
+            return AZ::Failure(params.m_seedListFile.ErrorString());
+        }
 
         // Read in Add/Remove Platform to All Seeds flag
         params.m_addPlatformToAllSeeds = parser->HasSwitch(AddPlatformToAllSeedsFlag);
@@ -425,7 +438,11 @@ namespace AssetBundler
         }
         if (!argOutcome.IsSuccess())
         {
-            params.m_assetCatalogFile = FilePath(argOutcome.GetValue());
+            params.m_assetCatalogFile = FilePath(argOutcome.GetValue(), checkFileCase, params.m_ignoreFileCase);
+            if (!params.m_assetCatalogFile.IsValid())
+            {
+                return AZ::Failure(params.m_assetCatalogFile.ErrorString());
+            }
             AddFlagAttribute("AssetCatalogFile arg", true);
         }
 
@@ -2803,6 +2820,7 @@ namespace AssetBundler
         AZ_Printf(AppWindowName, "%-31s---Defaults to all enabled platforms. Platforms can be changed by modifying AssetProcessorPlatformConfig.ini.\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-Updates the path hints stored in the Seed List file.\n", UpdateSeedPathArg);
         AZ_Printf(AppWindowName, "    --%-25s-Removes the path hints stored in the Seed List file.\n", RemoveSeedPathArg);
+        AZ_Printf(AppWindowName, "    --%-25s-Allows input file path to still match if the file path case is different than on disk.\n", IgnoreFileCaseFlag);
         AZ_Printf(AppWindowName, "    --%-25s-[Testing] Specifies the Asset Catalog file referenced by all Seed operations.\n", AssetCatalogFileArg);
         AZ_Printf(AppWindowName, "%-31s---Designed to be used in Unit Tests.\n", "");
     }

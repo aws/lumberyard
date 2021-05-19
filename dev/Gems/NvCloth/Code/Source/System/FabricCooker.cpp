@@ -22,7 +22,7 @@
 
 namespace NvCloth
 {
-    namespace
+    namespace Internal
     {
         FabricId ComputeFabricId(
             const AZStd::vector<SimParticleFormat>& particles,
@@ -310,7 +310,7 @@ namespace NvCloth
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Cloth);
 
-        return Cook(particles, indices, fabricGravity, useGeodesicTether);
+        return Internal::Cook(particles, indices, fabricGravity, useGeodesicTether);
     }
 
     void FabricCooker::SimplifyMesh(
@@ -327,7 +327,7 @@ namespace NvCloth
         AZStd::vector<SimParticleFormat> weldedParticles;
         AZStd::vector<SimIndexType> weldedIndices;
         AZStd::vector<int> weldedRemappedVertices;
-        WeldVertices(
+        Internal::WeldVertices(
             particles, indices,
             weldedParticles, weldedIndices,
             weldedRemappedVertices);
@@ -342,7 +342,7 @@ namespace NvCloth
 
         // Remove static particles
         AZStd::vector<int> simplifiedRemappedVertices;
-        RemoveStaticTriangles(
+        Internal::RemoveStaticTriangles(
             weldedParticles, weldedIndices,
             simplifiedParticles, simplifiedIndices,
             simplifiedRemappedVertices);

@@ -15,6 +15,7 @@
 
 #include <QApplication>
 #include <QLineEdit>
+#include <QWheelEvent>
 
 namespace UnitTest
 {
@@ -63,9 +64,15 @@ namespace UnitTest
         {
             QApplication::setActiveWindow(nullptr);
 
+            // Regenerate this list in case any of them were deleted during the test
+            m_spinBoxes = { m_intSpinBox.get(), m_doubleSpinBox.get(), m_doubleSpinBoxWithLineEdit.get() };
+
             for (auto spinBox : m_spinBoxes)
             {
-                spinBox->setParent(nullptr);
+                if (spinBox)
+                {
+                    spinBox->setParent(nullptr);
+                }
             }
 
             m_dummyWidget.reset();
@@ -241,5 +248,37 @@ namespace UnitTest
 
         m_doubleSpinBox->clearFocus();
         EXPECT_THAT(m_doubleSpinBox->suffix().toUtf8().constData(), StrEq("m"));
+    }
+
+    // There is logic in our AzQtComponents::SpinBoxWatcher that delays processing of the end of wheel
+    // events by 100msec, which used to result in a crash if the SpinBox happened to be deleted after
+    // the timer was started and before it was triggered. This test was added to ensure the new handling
+    // works correctly by no longer crashing in this scenario.
+    TEST_F(SpinBoxFixture, SpinBoxClearDelayedWheelTimeoutAfterDelete)
+    {
+        // The wheel movement logic won't be triggered unless the SpinBox is focused at the start
+        m_intSpinBox->setFocus();
+
+        // Simulate the mouse wheel scrolling
+        // The delta for the wheel changing doesn't matter, it just needs to be different
+        auto delta = QPoint(10, 10);
+        auto spinBox = m_intSpinBox.get();
+        QWheelEvent wheelEventBegin(QPoint(), QPoint(), QPoint(), QPoint(), Qt::NoButton, Qt::NoModifier, Qt::ScrollBegin, false);
+        QWheelEvent wheelEventUpdate(delta, delta, delta, delta, Qt::NoButton, Qt::NoModifier, Qt::ScrollUpdate, false);
+        QWheelEvent wheelEventEnd(QPoint(), QPoint(), QPoint(), QPoint(), Qt::NoButton, Qt::NoModifier, Qt::ScrollEnd, false);
+        QApplication::sendEvent(spinBox, &wheelEventBegin);
+        QApplication::sendEvent(spinBox, &wheelEventUpdate);
+        QApplication::sendEvent(spinBox, &wheelEventEnd);
+
+        // Delete the SpinBox after triggering the mouse wheel scroll
+        m_intSpinBox.reset();
+
+        // The timeout in question is triggered 100msec after the mouse wheel has been moved
+        // Waiting 200msec here to make sure it has been triggered
+        QTest::qWait(200);
+
+        // Verifying the SpinBox was deleted, although the true verification is that before the fix this
+        // test would result in a crash
+        EXPECT_TRUE(m_intSpinBox.get() == nullptr);
     }
 } // namespace UnitTest

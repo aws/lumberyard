@@ -222,7 +222,8 @@
                         "ServiceLambdaConfiguration", 
                         "Runtime"
                     ]
-                }
+                },
+                "Timeout": 10
             }, 
             "Type": "AWS::Lambda::Function"
         }, 

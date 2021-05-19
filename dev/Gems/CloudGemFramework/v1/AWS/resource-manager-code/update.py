@@ -57,18 +57,25 @@ def after_project_updated(hook, **kwargs):
                            constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS)
 
 
-def upload_project_content(context, content_path, customer_cognito_id=None, expiration=constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS):
-    if not os.path.isdir(content_path):
-        raise HandledError('Cloud Gem Portal project content not found at {}.'.format(content_path))
+def upload_project_content(context, content_path: str, customer_cognito_id=None, expiration=constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS):
+    # See if cloud gem portal should be deployed
+    # Not supported in Framework versions >= 1.1.5 by default
+    cloud_gem_portal_enabled = context.config.deploy_cloud_gem_portal
 
-    uploader = Uploader(
-        context,
-        bucket=context.stack.get_physical_resource_id(context.config.project_stack_id, AWS_S3_BUCKET_NAME),
-        key=''
-    )
+    if cloud_gem_portal_enabled:
+        if not os.path.isdir(content_path):
+            raise HandledError('Cloud Gem Portal project content not found at {}.'.format(content_path))
 
-    uploader.upload_dir(BUCKET_ROOT_DIRECTORY_NAME, content_path)
-    write_bootstrap(context, customer_cognito_id, expiration)
+        uploader = Uploader(
+            context,
+            bucket=context.stack.get_physical_resource_id(context.config.project_stack_id, AWS_S3_BUCKET_NAME),
+            key=''
+        )
+
+        uploader.upload_dir(BUCKET_ROOT_DIRECTORY_NAME, content_path)
+        write_bootstrap(context, customer_cognito_id, expiration)
+    else:
+        print("CloudGemPortal deployment skipped.")
 
 
 def write_bootstrap(context, customer_cognito_id, expiration=constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS):
@@ -160,6 +167,7 @@ def get_index(s3_client, bucket_id):
     content = s3_index_obj_request['Body'].read().decode('utf-8')
     return content
 
+
 def get_index_url(context, region):
     if context.config.custom_domain_name:
         service_url = 'https://{}/{}.api.{}'.format(context.config.custom_domain_name, region, get_service_api_id(context))
@@ -168,24 +176,30 @@ def get_index_url(context, region):
 
     return "{}/open-cloud-gem-portal".format(service_url)
 
+
 def get_bootstrap(s3_client, bucket_id):
     content = get_index(s3_client, bucket_id)
     return get_match_group(BOOTSTRAP_REGEX_PATTERN, content)
 
+
 def get_domain_variable(content):
     return get_match_group(DOMAIN_REGEX_PATTERN, content)
+
 
 def get_domain(presigned_url):
     parts = presigned_url.split('/')
     return parts[2]
 
+
 def get_service_api_id(context):
     cgp_service_api_info = custom_resource_utils.get_embedded_physical_id(context.stack.get_physical_resource_id(context.config.project_stack_id, "ServiceApi"))
     return json.loads(cgp_service_api_info.replace(get_match_group(SERVICE_API_PREFIX_PATTERN, cgp_service_api_info), ""))['RestApiId']
 
+
 def get_match_group(pattern, content):
     match = re.search(pattern, content, re.M | re.I)
     return match.group()
+
 
 def create_portal_administrator(context):
     resource = context.config.project_resources[constant.PROJECT_RESOURCE_NAME_USER_POOL]
@@ -272,6 +286,7 @@ def updateUserPoolEmailMessage(context, url, project_config_bucket_id):
     except ClientError:
         return
 
+
 # version constants
 V_1_0_0 = Version('1.0.0')
 V_1_1_0 = Version('1.1.0')
@@ -279,6 +294,7 @@ V_1_1_1 = Version('1.1.1')
 V_1_1_2 = Version('1.1.2')
 V_1_1_3 = Version('1.1.3')
 V_1_1_4 = Version('1.1.4')
+V_1_1_5 = Version('1.1.5')  # Version without CloudGemPortal
 
 
 def add_framework_version_update_writable_files(hook, from_version, to_version, writable_file_paths, **kwargs):
@@ -294,7 +310,7 @@ def add_framework_version_update_writable_files(hook, from_version, to_version, 
 
 
 def before_framework_version_updated(hook, from_version, to_version, **kwargs):
-    '''Called by the framework before updating the project's framework version.'''
+    """Called by the framework before updating the project's framework version."""
 
     if from_version < V_1_1_1:
         hook.context.resource_group_controller.before_update_framework_version_to_1_1_1(from_version)
@@ -307,6 +323,9 @@ def before_framework_version_updated(hook, from_version, to_version, **kwargs):
 
     if from_version < V_1_1_4:
         hook.context.resource_group_controller.before_update_framework_version_to_1_1_4(from_version)
+
+    if from_version < V_1_1_5:
+        hook.context.resource_group_controller.before_update_framework_version_to_1_1_5(from_version)
     # Repeat this pattern to add more upgrade processing:
     #
     # if from_version < VERSION_CHANGE_WAS_INTRODUCED:
@@ -314,7 +333,7 @@ def before_framework_version_updated(hook, from_version, to_version, **kwargs):
 
 
 def after_framework_version_updated(hook, from_version, to_version, **kwargs):
-    '''Called by the framework after updating the project's framework version.'''
+    """Called by the framework after updating the project's framework version."""
 
     # Repeat this pattern to add more upgrade processing:
     #
@@ -324,11 +343,13 @@ def after_framework_version_updated(hook, from_version, to_version, **kwargs):
     # currently don't have anything to do...
     pass
 
+
 def __get_presigned_url(s3, bucket_id, key, expiration):
-    presigned_url = s3.generate_presigned_url('get_object',
-       Params={'Bucket': bucket_id, 'Key': key},
-       ExpiresIn=expiration,
-       HttpMethod="GET")
+    presigned_url = s3.generate_presigned_url(
+        'get_object',
+        Params={'Bucket': bucket_id, 'Key': key},
+        ExpiresIn=expiration,
+        HttpMethod="GET")
     return presigned_url
 
 

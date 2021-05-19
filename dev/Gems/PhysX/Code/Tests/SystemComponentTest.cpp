@@ -70,6 +70,7 @@ namespace PhysXEditorTests
         MOCK_METHOD1(SetFixedDeltaTime, void(float));
         MOCK_METHOD1(DeferDelete, void(AZStd::unique_ptr<Physics::WorldBody>));
         MOCK_METHOD1(Overlap, AZStd::vector<Physics::OverlapHit>(const Physics::OverlapRequest&));
+        MOCK_METHOD2(OverlapUnbounded, void(const Physics::OverlapRequest& request, const Physics::HitCallback<Physics::OverlapHit>& hitCallback));
         MOCK_METHOD1(SetTriggerEventCallback, void(Physics::ITriggerEventCallback*));
         MOCK_METHOD1(StartSimulation, void(float));
         MOCK_METHOD0(FinishSimulation, void());

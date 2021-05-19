@@ -52,6 +52,7 @@ namespace LyShine
         void UpdateAndRender(float deltaTimeInSeconds) override;
         void LoadThreadUpdate(float deltaTimeInSeconds) override;
         void LoadThreadRender() override;
+        int GetRenderOrder() const override { return ORDER_UI; }
         // ~LoadScreenUpdateNotificationBus::Handler
 
     protected:

@@ -329,7 +329,7 @@ namespace ScriptCanvasEditor
             TraverseTree();
         }
 
-        void ScriptCanvasRootPaletteTreeItem::OnCatalogAssetRemoved(const AZ::Data::AssetId& /*assetId*/)
+        void ScriptCanvasRootPaletteTreeItem::OnCatalogAssetRemoved(const AZ::Data::AssetId& /*assetId*/, const AZ::Data::AssetInfo& /*assetInfo*/)
         {
             TraverseTree();
         }

@@ -81,12 +81,7 @@ namespace AzToolsFramework
         const AZ::Transform worldFromLocalUniformScale = TransformUniformScale(m_worldFromLocal);
 
         const GridSnapParameters gridSnapParams = GridSnapSettings(interaction.m_interactionId.m_viewportId);
-        const GridSnapAction gridSnapAction = GridSnapAction(gridSnapParams, interaction.m_keyboardModifiers.Alt());
-
-        AzFramework::CameraState cameraState;
-        ViewportInteraction::ViewportInteractionRequestBus::EventResult(
-            cameraState, interaction.m_interactionId.m_viewportId,
-            &ViewportInteraction::ViewportInteractionRequestBus::Events::GetCameraState);
+        const AzFramework::CameraState cameraState = GetCameraState(interaction.m_interactionId.m_viewportId);
 
         // build up initial start state for each axis
         for (const auto& fixed : m_fixedAxes)
@@ -102,6 +97,7 @@ namespace AzToolsFramework
 
         if (m_onLeftMouseDownCallback)
         {
+            const GridSnapAction gridSnapAction = GridSnapAction(gridSnapParams, interaction.m_keyboardModifiers.Alt());
             // pass action containing all linear actions for each axis to handler
             m_onLeftMouseDownCallback(BuildMultiLinearManipulatorAction(
                 worldFromLocalUniformScale, m_localTransform, interaction, m_fixedAxes, m_starters, gridSnapAction));

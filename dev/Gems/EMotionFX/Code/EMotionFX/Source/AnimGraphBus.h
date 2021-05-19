@@ -63,6 +63,7 @@ namespace EMotionFX
         */
         virtual void OnVirtualFinalNodeSet(BlendTree* blendTree) { AZ_UNUSED(blendTree); }
 
+        virtual void OnReferenceAnimGraphAboutToBeChanged([[maybe_unused]] AnimGraphReferenceNode* referenceNode) {}
         /**
         * Called whenever the anim graph in a reference node changed.
         */

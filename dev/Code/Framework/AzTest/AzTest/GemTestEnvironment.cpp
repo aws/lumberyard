@@ -20,17 +20,13 @@ namespace AZ
 {
     namespace Test
     {
-        void GemTestApplication::SetComponentDescriptors(const AZStd::vector<AZ::ComponentDescriptor*>& componentDescriptors)
+        // Helper function to avoid having duplicate components
+        template<typename T>
+        void AddComponentIfNotPresent(AZ::Entity* entity)
         {
-            m_componentDescriptors = componentDescriptors;
-        }
-
-        void GemTestApplication::CreateReflectionManager()
-        {
-            AZ::ComponentApplication::CreateReflectionManager();
-            for (AZ::ComponentDescriptor* descriptor : m_componentDescriptors)
+            if (entity->FindComponent<T>() == nullptr)
             {
-                RegisterComponentDescriptor(descriptor);
+                entity->AddComponent(aznew T());
             }
         }
 
@@ -64,6 +60,11 @@ namespace AZ
                 requiredComponents.begin(), requiredComponents.end());
         }
 
+        AZ::ComponentApplication* GemTestEnvironment::CreateApplicationInstance()
+        {
+            return aznew AZ::ComponentApplication;
+        }
+
         void GemTestEnvironment::SetupEnvironment()
         {
             UnitTest::TraceBusHook::SetupEnvironment();
@@ -71,13 +72,13 @@ namespace AZ
             AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
 
             AddGemsAndComponents();
+            PreCreateApplication();
 
             // Create the application.
-            m_application = aznew GemTestApplication;
+            m_application = CreateApplicationInstance();
             AZ::ComponentApplication::Descriptor appDesc;
             appDesc.m_useExistingAllocator = true;
             appDesc.m_enableDrilling = false;
-            m_application->SetComponentDescriptors(m_parameters->m_componentDescriptors);
 
             // Set up gems for loading.
             for (const AZStd::string& dynamicModulePath : m_parameters->m_dynamicModulePaths)
@@ -88,14 +89,24 @@ namespace AZ
             }
 
             // Create a system entity.
-            PreCreateApplication();
             m_systemEntity = m_application->Create(appDesc);
+
+            for (AZ::ComponentDescriptor* descriptor : m_parameters->m_componentDescriptors)
+            {
+                m_application->RegisterComponentDescriptor(descriptor);
+            }
+
             PostCreateApplication();
-            m_systemEntity->AddComponent(aznew AZ::MemoryComponent());
-            m_systemEntity->AddComponent(aznew AZ::AssetManagerComponent());
-            m_systemEntity->AddComponent(aznew AZ::JobManagerComponent());
+
+            // Some applications (e.g. ToolsApplication) already add some of these components
+            // So making sure we don't duplicate them on the system entity.
+            AddComponentIfNotPresent<AZ::MemoryComponent>(m_systemEntity);
+            AddComponentIfNotPresent<AZ::AssetManagerComponent>(m_systemEntity);
+            AddComponentIfNotPresent<AZ::JobManagerComponent>(m_systemEntity);
+
             m_systemEntity->Init();
             m_systemEntity->Activate();
+            PostSystemEntityActivate();
 
             // Create a separate entity in order to activate this gem's required components.  Note that this assumes
             // any component dependencies are already satisfied either by the system entity or the entities which were
@@ -132,12 +143,8 @@ namespace AZ
             delete m_parameters;
             m_parameters = nullptr;
 
-            TeardownAllocatorAndTraceBus();
-        }
-
-        void GemTestEnvironment::TeardownAllocatorAndTraceBus()
-        {
             AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+
             UnitTest::TraceBusHook::TeardownEnvironment();
         }
     } // namespace Test

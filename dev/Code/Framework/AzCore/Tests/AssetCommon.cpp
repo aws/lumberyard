@@ -138,5 +138,35 @@ namespace UnitTest
         AssetId right("{10000000-4444-4444-4444-CCCCCCCCCCCC}", 1);
         ASSERT_FALSE(left < right);
     }
+
+    TEST_F(AllocatorsFixture, AssetReleaseRetainsAssetState_Id_Type_Hint)
+    {
+        const AssetId id("{52C79B55-B5AA-4841-AFC8-683D77716287}", 1);
+        const AssetType type("{A99E8722-1F1D-4CA9-B89B-921EB3D907A9}");
+        const AZStd::string hint("an asset hint");
+
+        Asset<AssetData> assetWithHint(id, type, hint);
+
+        assetWithHint.Release();
+
+        EXPECT_EQ(assetWithHint.GetId(), id);
+        EXPECT_EQ(assetWithHint.GetType(), type);
+        EXPECT_EQ(assetWithHint.GetHint(), hint);
+    }
+
+    TEST_F(AllocatorsFixture, AssetResetDefaultsAssetState_Id_Type_Hint)
+    {
+        const AssetId id("{52C79B55-B5AA-4841-AFC8-683D77716287}", 1);
+        const AssetType type("{A99E8722-1F1D-4CA9-B89B-921EB3D907A9}");
+        const AZStd::string hint("an asset hint");
+
+        Asset<AssetData> assetWithHint(id, type, hint);
+
+        assetWithHint.Reset();
+
+        EXPECT_EQ(assetWithHint.GetId(), AssetId());
+        EXPECT_EQ(assetWithHint.GetType(), AssetType::CreateNull());
+        EXPECT_EQ(assetWithHint.GetHint(), AZStd::string{});
+    }
 }
 

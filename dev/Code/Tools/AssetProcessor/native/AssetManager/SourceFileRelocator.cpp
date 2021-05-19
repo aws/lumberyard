@@ -205,7 +205,10 @@ Please note that only those seed files will get updated that are active for your
         QSet<QString> metaDataFileEntries;
         for (QStringList::Iterator fileIter = pathMatches.begin(); fileIter != pathMatches.end();)
         {
+            bool advanceIterator = true;
             QString file = *fileIter;
+
+
             for (int idx = 0; idx < m_platformConfig->MetaDataFileTypesCount(); idx++)
             {
                 QPair<QString, QString> metaInfo = m_platformConfig->GetMetaDataFileTypeAt(idx);
@@ -217,18 +220,18 @@ Please note that only those seed files will get updated that are active for your
                         AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Metadata file %s will be ignored because --%s was specified in the command line.\n",
                             file.toUtf8().constData(), AssetProcessor::ExcludeMetaDataFiles);
                         fileIter = pathMatches.erase(fileIter);
+                        advanceIterator = false;
                         continue;
                     }
-                    else
+
+                    QString normalizedFilePath = AssetUtilities::NormalizeFilePath(file);
+                    if (metaDataFileEntries.find(normalizedFilePath) == metaDataFileEntries.end())
                     {
-                        QString normalizedFilePath = AssetUtilities::NormalizeFilePath(file);
-                        if (metaDataFileEntries.find(normalizedFilePath) == metaDataFileEntries.end())
-                        {
-                            SourceFileRelocationInfo metaDataFile(file.toUtf8().data(), scanFolderInfo);
-                            metaDataFile.m_isMetaDataFile = true;
-                            metadataFiles.emplace_back(metaDataFile);
-                            metaDataFileEntries.insert(normalizedFilePath);
-                        }
+                        SourceFileRelocationInfo metaDataFile(file.toUtf8().data(), scanFolderInfo);
+                        metaDataFile.m_isMetaDataFile = true;
+                        metaDataFile.m_metadataInfo = metaInfo;
+                        metadataFiles.emplace_back(metaDataFile);
+                        metaDataFileEntries.insert(normalizedFilePath);
                     }
                 }
                 else if (!excludeMetaDataFiles && (file.endsWith("." + metaInfo.second, Qt::CaseInsensitive) || metaInfo.second.isEmpty()))
@@ -243,41 +246,45 @@ Please note that only those seed files will get updated that are active for your
                     else
                     {
                         AZ::StringFunc::Path::ReplaceExtension(metadataFilePath, metaInfo.first.toUtf8().data());
-                    };
+                    }
 
                     // The metadata file can have a different case than the source file,
                     // We are trying to finding the correct case for the file here
 
-                    QString metadaFileCorrectCase;
+                    QString metadataFileCorrectCase;
                     QFileInfo fileInfo(metadataFilePath.c_str());
                     QStringList fileEntries = fileInfo.absoluteDir().entryList(QDir::Files);
                     for (const QString& fileEntry : fileEntries)
                     {
                         if (QString::compare(fileEntry, fileInfo.fileName(), Qt::CaseInsensitive) == 0)
                         {
-                            metadaFileCorrectCase = AssetUtilities::NormalizeFilePath(fileInfo.absoluteDir().filePath(fileEntry));
+                            metadataFileCorrectCase = AssetUtilities::NormalizeFilePath(fileInfo.absoluteDir().filePath(fileEntry));
                             break;
                         }
                     }
 
-                    if (QFile::exists(metadataFilePath.c_str()) && metaDataFileEntries.find(metadaFileCorrectCase) == metaDataFileEntries.end())
+                    if (QFile::exists(metadataFilePath.c_str()) && metaDataFileEntries.find(metadataFileCorrectCase) == metaDataFileEntries.end())
                     {
                         QString databaseSourceName;
                         PlatformConfiguration::ConvertToRelativePath(file, scanFolderInfo, databaseSourceName);
                         auto sourceFileIndex = sourceIndexMap.find(databaseSourceName);
                         if (sourceFileIndex != sourceIndexMap.end())
                         {
-                            SourceFileRelocationInfo metaDataFile(metadaFileCorrectCase.toUtf8().data(), scanFolderInfo);
+                            SourceFileRelocationInfo metaDataFile(metadataFileCorrectCase.toUtf8().data(), scanFolderInfo);
                             metaDataFile.m_isMetaDataFile = true;
                             metaDataFile.m_sourceFileIndex = sourceFileIndex.value();
+                            metaDataFile.m_metadataInfo = metaInfo;
                             metadataFiles.emplace_back(metaDataFile);
-                            metaDataFileEntries.insert(metadaFileCorrectCase);
+                            metaDataFileEntries.insert(metadataFileCorrectCase);
                         }  
                     }
                 }
             }
 
-            fileIter++;
+            if(advanceIterator)
+            {
+                ++fileIter;
+            }
         }
     }
 
@@ -580,7 +587,7 @@ Please note that only those seed files will get updated that are active for your
         for (SourceFileRelocationInfo& relocationInfo : relocationContainer)
         {
             AZStd::string newDestinationPath;
-            // A valid sourceFile Index ( i.e non negative) indicates that it is a metadafile and therefore
+            // A valid sourceFile Index ( i.e non negative) indicates that it is a metadata file and therefore
             // we would have to determine the destination info from the source file itself.
             if (relocationInfo.m_sourceFileIndex == AssetProcessor::SourceFileRelocationInvalidIndex)
             {
@@ -612,9 +619,15 @@ Please note that only those seed files will get updated that are active for your
             else
             {
                 newDestinationPath = relocationContainer[relocationInfo.m_sourceFileIndex].m_newAbsolutePath;
-                AZStd::string fullFileName;
-                AZ::StringFunc::Path::GetFullFileName(relocationInfo.m_oldAbsolutePath.c_str(), fullFileName);
-                AZ::StringFunc::Path::ReplaceFullName(newDestinationPath, fullFileName.c_str());
+
+                if(relocationInfo.m_metadataInfo.second.isEmpty())
+                {
+                    newDestinationPath += ("." + relocationInfo.m_metadataInfo.first).toUtf8().constData();
+                }
+                else
+                {
+                    AZ::StringFunc::Path::ReplaceExtension(newDestinationPath, relocationInfo.m_metadataInfo.first.toUtf8().constData());
+                }
             }
 
            
@@ -874,7 +887,7 @@ Please note that only those seed files will get updated that are active for your
             AZStd::move(updateTasks)));
     }
 
-    AZ::Outcome<RelocationSuccess, AZStd::string> SourceFileRelocator::Delete(const AZStd::string& source, bool previewOnly, bool allowDependencyBreaking, bool removeEmptyFolders, bool excludeMetaDataFiles)
+    AZ::Outcome<RelocationSuccess, MoveFailure> SourceFileRelocator::Delete(const AZStd::string& source, bool previewOnly, bool allowDependencyBreaking, bool removeEmptyFolders, bool excludeMetaDataFiles)
     {
         AZStd::string normalizedSource = AssetUtilities::NormalizeFilePath(source.c_str()).toUtf8().constData();
 
@@ -885,7 +898,7 @@ Please note that only those seed files will get updated that are active for your
 
         if (!result.IsSuccess())
         {
-            return AZ::Failure(result.TakeError());
+            return AZ::Failure(MoveFailure(result.TakeError(), false));
         }
 
         // If no files were found, just early out
@@ -906,7 +919,7 @@ Please note that only those seed files will get updated that are active for your
                 {
                     if (!relocationInfo.m_productDependencyEntries.empty() || !relocationInfo.m_sourceDependencyEntries.empty())
                     {
-                        return AZ::Failure(AZStd::string("Delete failed.  There are files that have dependencies that may break as a result of being deleted.\n"));
+                        return AZ::Failure(MoveFailure("Delete failed.  There are files that have dependencies that may break as a result of being deleted.\n", true));
                     }
                 }
             }
@@ -941,6 +954,13 @@ Please note that only those seed files will get updated that are active for your
         {
             bool found = false;
             bool readOnly = false;
+
+            if(entry.m_operationStatus != SourceFileRelocationStatus::None)
+            {
+                // When moving metadata files we call HandleSourceControlResult twice and re-use the relocationContainer
+                // Which means some files in the container have already been processed, so skip them to avoid confusing errors
+                continue;
+            }
 
             for (const AzToolsFramework::SourceControlFileInfo& scInfo : info)
             {

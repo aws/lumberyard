@@ -14,13 +14,14 @@
 
 #include <gmock/gmock.h>
 
-#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzFramework/Physics/Casts.h>
 #include <AzFramework/Physics/SystemBus.h>
 
 #include <Blast/BlastSystemBus.h>
-#include <BlastMocks.h>
+#include <Tests/Mocks/BlastMocks.h>
 
 #include <NvBlastExtPxManager.h>
 

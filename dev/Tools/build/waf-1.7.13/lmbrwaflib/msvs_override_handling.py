@@ -204,7 +204,7 @@ def _get_project_overrides(ctx, target):
   
     # Open file
     try:
-        file = open(vcxproj_file)
+        file = open(vcxproj_file, encoding='utf-8')
     except IOError: # the only reason for this is trying to read non-existent vcxprojs, usually inapplicable to the current configuration
         return ({}, {})
     except:

@@ -1894,6 +1894,7 @@ namespace AZ
 #define AZ_EBUS_SEQ_61(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,_31,_32,_33,_34,_35,_36,_37,_38,_39,_40,_41,_42,_43,_44,_45,_46,_47,_48,_49,_50,_51,_52,_53,_54,_55,_56,_57,_58,_59,_60,_61) AZ_EBUS_SEQ_60(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,_31,_32,_33,_34,_35,_36,_37,_38,_39,_40,_41,_42,_43,_44,_45,_46,_47,_48,_49,_50,_51,_52,_53,_54,_55,_56,_57,_58,_59,_60) (_61)
 #define AZ_EBUS_SEQ_62(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,_31,_32,_33,_34,_35,_36,_37,_38,_39,_40,_41,_42,_43,_44,_45,_46,_47,_48,_49,_50,_51,_52,_53,_54,_55,_56,_57,_58,_59,_60,_61,_62) AZ_EBUS_SEQ_61(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,_31,_32,_33,_34,_35,_36,_37,_38,_39,_40,_41,_42,_43,_44,_45,_46,_47,_48,_49,_50,_51,_52,_53,_54,_55,_56,_57,_58,_59,_60,_61) (_62)
 #define AZ_EBUS_SEQ_63(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,_31,_32,_33,_34,_35,_36,_37,_38,_39,_40,_41,_42,_43,_44,_45,_46,_47,_48,_49,_50,_51,_52,_53,_54,_55,_56,_57,_58,_59,_60,_61,_62,_63) AZ_EBUS_SEQ_62(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,_31,_32,_33,_34,_35,_36,_37,_38,_39,_40,_41,_42,_43,_44,_45,_46,_47,_48,_49,_50,_51,_52,_53,_54,_55,_56,_57,_58,_59,_60,_61,_62) (_63)
+#define AZ_EBUS_SEQ_64(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,_31,_32,_33,_34,_35,_36,_37,_38,_39,_40,_41,_42,_43,_44,_45,_46,_47,_48,_49,_50,_51,_52,_53,_54,_55,_56,_57,_58,_59,_60,_61,_62,_63,_64) AZ_EBUS_SEQ_63(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,_31,_32,_33,_34,_35,_36,_37,_38,_39,_40,_41,_42,_43,_44,_45,_46,_47,_48,_49,_50,_51,_52,_53,_54,_55,_56,_57,_58,_59,_60,_61,_62,_63) (_64)
 
 #define AZ_EBUS_SEQ(...) AZ_MACRO_SPECIALIZE(AZ_EBUS_SEQ_,AZ_VA_NUM_ARGS(__VA_ARGS__),(__VA_ARGS__))
 
@@ -1922,7 +1923,7 @@ namespace AZ
 #define AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) macro## _WITH_DOC(name, args)
 #define AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(...) AZ_SEQ_JOIN(AZ_BEHAVIOR_EBUS_MACRO_CALLER_, AZ_VA_NUM_ARGS(__VA_ARGS__))
 
-// Supports Handler functions with up to 20 parameters
+// Supports Handler functions with up to 32 parameters
 #define AZ_BEHAVIOR_EBUS_MACRO_CALLER_0(macro)
 #define AZ_BEHAVIOR_EBUS_MACRO_CALLER_2(macro, name, args)       AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args)
 #define AZ_BEHAVIOR_EBUS_MACRO_CALLER_4(macro, name, args, ...)  AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
@@ -1944,10 +1945,22 @@ namespace AZ
 #define AZ_BEHAVIOR_EBUS_MACRO_CALLER_36(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
 #define AZ_BEHAVIOR_EBUS_MACRO_CALLER_38(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
 #define AZ_BEHAVIOR_EBUS_MACRO_CALLER_40(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_42(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_44(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_46(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_48(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_50(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_52(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_54(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_56(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_58(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_60(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_62(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_MACRO_CALLER_64(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
 
 #define AZ_BEHAVIOR_EBUS_MACRO_CALLER(macro, ...) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
 
-// Supports Handler functions with up to 40 parameters
+// Supports Handler functions with up to 64 parameters
 #define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_0(unpacker_macro, macro)
 #define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_1(unpacker_macro, macro, name) macro(name)
 #define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_2(unpacker_macro, macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
@@ -1989,8 +2002,32 @@ namespace AZ
 #define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_38(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
 #define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_39(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
 #define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_40(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_41(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_42(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_43(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_44(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_45(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_46(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_47(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_48(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_49(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_50(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_51(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_52(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_53(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_54(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_55(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_56(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_57(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_58(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_59(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_60(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_61(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_62(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_63(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_1ARG_UNPACKER_64(unpacker_macro, macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
 
-// Supports Handler functions with up to 20 parameters
+// Supports Handler functions with up to 32 parameters
 #define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_0(unpacker_macro, macro)
 #define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_2(unpacker_macro, macro, name, variableOverrides, ...) macro(name)
 #define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_4(unpacker_macro, macro, name, variableOverrides, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro,macro, __VA_ARGS__))
@@ -2012,6 +2049,19 @@ namespace AZ
 #define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_36(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
 #define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_38(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
 #define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_40(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_42(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_44(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_46(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_48(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_50(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_52(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_54(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_56(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_58(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_60(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_62(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_2ARG_UNPACKER_64(unpacker_macro, macro, name, variableOverrides, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, __VA_ARGS__) (unpacker_macro, macro, __VA_ARGS__))
+
 
 #define AZ_BEHAVIOR_EBUS_UNPACKER_NEXT(unpacker_macro, ...) AZ_SEQ_JOIN(unpacker_macro ## _, AZ_VA_NUM_ARGS(__VA_ARGS__))
 

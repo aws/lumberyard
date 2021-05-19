@@ -376,7 +376,7 @@ class Context(ctx):
 
 		if out:
 			if not isinstance(out, str):
-				out = out.decode(sys.stdout.encoding or 'iso8859-1', 'replace')
+				out = out.decode(sys.stdout.encoding or 'iso8859-1', 'ignore')
 			if ' '  in out:
 				if self.logger:
 					self.logger.debug('out: %s' % out)
@@ -384,7 +384,7 @@ class Context(ctx):
 					write_output(sys.stdout, out)
 		if err:		
 			if not isinstance(err, str):
-				err = err.decode(sys.stdout.encoding or 'iso8859-1', 'replace')
+				err = err.decode(sys.stdout.encoding or 'iso8859-1', 'ignore')
 			if self.logger:
 				self.logger.error('err: %s' % err)
 			else:
@@ -435,9 +435,9 @@ class Context(ctx):
 			raise Errors.WafError('Execution failure: %s' % str(e), ex=e)
 
 		if not isinstance(out, str):
-			out = out.decode(sys.stdout.encoding or 'iso8859-1', 'replace')
+			out = out.decode(sys.stdout.encoding or 'iso8859-1', 'ignore')
 		if not isinstance(err, str):
-			err = err.decode(sys.stdout.encoding or 'iso8859-1', 'replace')
+			err = err.decode(sys.stdout.encoding or 'iso8859-1', 'ignore')
 
 		if out and quiet != STDOUT and quiet != BOTH:
 			self.to_log('out: %s' % out)

@@ -2434,7 +2434,7 @@ namespace AZ
     // EnumerateDerived
     // [11/13/2012]
     //=========================================================================
-    void SerializeContext::EnumerateDerived(const TypeInfoCB& callback, const Uuid& classId, const Uuid& typeId)
+    void SerializeContext::EnumerateDerived(const TypeInfoCB& callback, const Uuid& classId, const Uuid& typeId) const
     {
         // right now this function is SLOW, traverses all serialized types. If we need faster
         // we will need to cache/store derived type in the base type.

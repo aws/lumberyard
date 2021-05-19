@@ -1,7 +1,20 @@
 {
     "auto": {
         "Tests": [
-            "Tests/EditorTest.cpp"
+            "Tests/NvClothEditorTestEnvironment.cpp",
+            "Tests/UnitTestHelper.h",
+            "Tests/UnitTestHelper.cpp",
+            "Tests/ActorHelper.h",
+            "Tests/ActorHelper.cpp",
+            "Tests/TriangleInputHelper.h",
+            "Tests/TriangleInputHelper.cpp",
+            "Tests/MeshVertexColorDataStub.h"
+        ],
+        "Tests/Components": [
+            "Tests/Components/EditorClothComponentTest.cpp"
+        ],
+        "Tests/Pipeline/SceneAPIExt": [
+            "Tests/Pipeline/SceneAPIExt/ClothRuleTest.cpp"
         ]
     }
 }

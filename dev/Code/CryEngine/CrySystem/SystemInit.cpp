@@ -2443,6 +2443,39 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
             }
         }
 
+#if defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
+
+        // Before starting the Asset Processor, determine the timeout in ms if necessary
+        int numMillisecondsToWaitForConnect = 2000;
+
+#endif // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
+
+#if defined(AZ_PLATFORM_WINDOWS)
+
+        // On Windows, if we detect the Asset Processor is open, extend the wait time.
+        // This has become necessary on Jenkins automated test jobs after the Qt 5.15 upgrade.
+        PROCESSENTRY32 processInfo;
+        processInfo.dwSize = sizeof(processInfo);
+
+        HANDLE processesSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+        if (processesSnapshot != INVALID_HANDLE_VALUE)
+        {
+            Process32First(processesSnapshot, &processInfo);
+            do
+            {
+                // Check for an AssetProcessor
+                if (_strcmpi(processInfo.szExeFile, "AssetProcessor.exe") == 0)
+                {
+                    numMillisecondsToWaitForConnect = 100000;
+                    break;
+                }
+            } while (Process32Next(processesSnapshot, &processInfo));
+
+            CloseHandle(processesSnapshot);
+        }
+
+#endif // defined(AZ_PLATFORM_WINDOWS)
+
         //start the asset processor connection async
         engineConnection->Connect(initParams.remoteIP, initParams.remotePort);
 
@@ -2462,8 +2495,6 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
             //make any adjustments, like adding the ip to the white list
             //however if we timeout, meaning it never negotiated then
             //we can present that information to the user
-
-            int numMillisecondsToWaitForConnect = 2000;
 
             //we should be able to connect
             while (!engineConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::milliseconds(numMillisecondsToWaitForConnect))

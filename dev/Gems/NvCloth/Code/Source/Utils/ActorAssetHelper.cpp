@@ -197,8 +197,8 @@ namespace NvCloth
 
             const float inverseMass = clothVertexData.GetR();
             const float motionConstraint = clothVertexData.GetG();
-            const float backstopOffset = AZ::GetClamp(static_cast<float>(clothVertexData.GetB()) * 2.0f - 1.0f, -1.0f, 1.0f); // Convert range from [0,1] -> [-1,1]
             const float backstopRadius = clothVertexData.GetA();
+            const float backstopOffset = ConvertBackstopOffset(clothVertexData.GetB());
 
             meshClothInfo.m_particles[index].Set(
                 sourcePositions[index],

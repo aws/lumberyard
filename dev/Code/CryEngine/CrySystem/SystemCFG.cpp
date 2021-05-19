@@ -20,6 +20,8 @@
 #include "XConsole.h"
 #include "CryFile.h"
 
+#include <AzCore/Console/IConsole.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
 #include <IScriptSystem.h>
@@ -568,14 +570,26 @@ bool CSystemConfiguration::ParseSystemConfig()
 //////////////////////////////////////////////////////////////////////////
 void CSystem::OnLoadConfigurationEntry(const char* szKey, const char* szValue, const char* szGroup)
 {
-    if (!gEnv->pConsole)
+    bool azConsoleProcessed = false;
+    auto console = AZ::Interface<AZ::IConsole>::Get();
+    if (console)
     {
-        return;
+        AZStd::string command(AZStd::string::format("%s %s", szKey, szValue));
+
+        azConsoleProcessed = console->PerformCommand(command.c_str());
     }
 
-    if (*szKey != 0)
+    if (!azConsoleProcessed)
     {
-        gEnv->pConsole->LoadConfigVar(szKey, szValue);
+        if (!gEnv->pConsole)
+        {
+            return;
+        }
+
+        if (*szKey != 0)
+        {
+            gEnv->pConsole->LoadConfigVar(szKey, szValue);
+        }
     }
 }
 

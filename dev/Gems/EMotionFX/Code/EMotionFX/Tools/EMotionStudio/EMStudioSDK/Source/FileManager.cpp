@@ -176,7 +176,7 @@ namespace EMStudio
         OnCatalogAssetChanged(assetId);
     }
 
-    void FileManager::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
+    void FileManager::OnCatalogAssetRemoved(const AZ::Data::AssetId& /*assetId*/, const AZ::Data::AssetInfo& /*assetInfo*/)
     {
     }
 

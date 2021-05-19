@@ -49,6 +49,8 @@ def build(bld):
         disable_pch             = True,
         win_features            = ['crcfix'],
         includes                = [bld.Path('Code/CryEngine/CryCommon')],
+        test_includes           = ['Tests',
+                                   bld.Path('Gems/EMotionFX/Code/Source')],
         
         # Dependencies
         use                     = ['EMotionFXStaticLib'],
@@ -64,6 +66,8 @@ def build(bld):
             defines             = ['NVCLOTH_EDITOR'],
             includes            = [bld.Path('Code/Tools'),
                                    bld.Path('Code/CryEngine/CryCommon')],
+            test_includes       = ['Tests',
+                                   bld.Path('Gems/EMotionFX/Code/Source')],
             
             # Dependencies
             use                 = ['SceneCore', 'EMotionFXStaticLib'],

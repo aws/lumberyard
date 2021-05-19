@@ -508,6 +508,10 @@ void CLyShine::OnLevelUnload()
     // tracks the loaded debug canvas
     LyShineDebug::Reset();
 
+    // Must clear canvases queued for deletion or the assets they reference will leak when the
+    // renderer unloads the level.
+    m_uiCanvasManager->DeleteCanvasesQueuedForDeletion();
+
     // Delete all the canvases in m_canvases map that a not loaded in the editor and are not
     // marked to be kept between levels.
     m_uiCanvasManager->DestroyLoadedCanvases(true);

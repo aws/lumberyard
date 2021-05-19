@@ -149,13 +149,6 @@ namespace AZ
         int APKFileHandler::Read(void* asset, char* buffer, int size)
         {
             ANDROID_IO_PROFILE_SECTION_ARGS("APK Read");
-            MemoryBuffer* buf = Get().GetInMemoryFileBuffer(asset);
-            if (buf)
-            {
-                const char* tempBuf = buf->m_buffer + buf->m_offset;
-                memcpy(buffer, tempBuf, size);
-                return size;
-            }
 
             APKFileHandler& apkHandler = Get();
 
@@ -164,6 +157,14 @@ namespace AZ
                 size = apkHandler.m_numBytesToRead;
             }
             apkHandler.m_numBytesToRead -= size;
+
+            MemoryBuffer* buf = apkHandler.GetInMemoryFileBuffer(asset);
+            if (buf)
+            {
+                const char* tempBuf = buf->m_buffer + buf->m_offset;
+                memcpy(buffer, tempBuf, size);
+                return size;
+            }
 
             return AAsset_read(static_cast<AAsset*>(asset), buffer, static_cast<size_t>(size));
         }

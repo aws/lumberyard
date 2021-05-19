@@ -533,10 +533,8 @@ void AssetCatalogModel::OnCatalogAssetAdded(const AZ::Data::AssetId& assetId)
     }
 }
 
-void AssetCatalogModel::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
+void AssetCatalogModel::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& assetInfo)
 {
-    AZ::Data::AssetInfo assetInfo;
-    EBUS_EVENT_RESULT(assetInfo, AZ::Data::AssetCatalogRequestBus, GetAssetInfoById, assetId);
     AssetCatalogEntry* asset = RemoveAsset(assetInfo.m_relativePath.c_str());
     if (asset)
     {

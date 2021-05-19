@@ -12,25 +12,71 @@
 
 #pragma once
 
+#include <AzCore/base.h>
 #include <AzCore/PlatformDef.h>
 
 #include <gmock/gmock.h>
 #include <ostream>
 
-namespace UnitTest
-{
-    AZ_PUSH_DISABLE_WARNING(4100, "-Wno-unused-parameter")
-    // matcher to make tests easier to read and failures more useful (more information is included in the output)
-    MATCHER_P(IsClose, v, "") { return arg.IsClose(v); }
-    MATCHER_P2(IsClose, v, t, "") { return arg.IsClose(v, t); }
-    AZ_POP_DISABLE_WARNING
-} // namespace UnitTest
-
 namespace AZ
 {
+    class Vector2;
     class Vector3;
+    class Vector4;
     class Quaternion;
+    class Transform;
+    class Color;
 
+    std::ostream& operator<<(std::ostream& os, const Vector2& vec);
     std::ostream& operator<<(std::ostream& os, const Vector3& vec);
+    std::ostream& operator<<(std::ostream& os, const Vector4& vec);
     std::ostream& operator<<(std::ostream& os, const Quaternion& quat);
+    std::ostream& operator<<(std::ostream& os, const Transform& transform);
+    std::ostream& operator<<(std::ostream& os, const Color& transform);
 } // namespace AZ
+
+namespace UnitTest
+{
+    // is-close matcher to make tests easier to read and failures more useful
+    MATCHER_P(IsClose, expected, "")
+    {
+        AZ_UNUSED(result_listener);
+        return arg.IsClose(expected);
+    }
+
+    // is-close matcher with tolerance to make tests easier to read and failures more useful
+    MATCHER_P2(IsCloseTolerance, expected, tolerance, "")
+    {
+        AZ_UNUSED(result_listener);
+        return arg.IsClose(expected, tolerance);
+    }
+
+    // is-close matcher for use with Pointwise container comparisons
+    MATCHER(ContainerIsClose, "")
+    {
+        AZ_UNUSED(result_listener);
+        const auto& [expected, actual] = arg;
+        return expected.IsClose(actual);
+    }
+
+    // is-close matcher with tolerance for use with Pointwise container comparisons
+    MATCHER_P(ContainerIsCloseTolerance, tolerance, "")
+    {
+        AZ_UNUSED(result_listener);
+        const auto& [expected, actual] = arg;
+        return expected.IsClose(actual, tolerance);
+    }
+
+    // IsFinite matcher to make it easier to validate Vector2, Vector3, Vector4 and Quaternion.
+    // For example:
+    //     AZ::Quaternion rotation;
+    //     EXPECT_THAT(rotation, IsFinite());
+    //
+    //     AZStd::vector<AZ::Vector3> positions;
+    //     EXPECT_THAT(positions, ::testing::Each(IsFinite()));
+    MATCHER(IsFinite, "")
+    {
+        AZ_UNUSED(result_listener);
+        return arg.IsFinite();
+    }
+} // namespace UnitTest

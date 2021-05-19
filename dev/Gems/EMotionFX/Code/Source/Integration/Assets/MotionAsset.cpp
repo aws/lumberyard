@@ -22,10 +22,9 @@ namespace EMotionFX
         AZ_CLASS_ALLOCATOR_IMPL(MotionAsset, EMotionFXAllocator, 0);
         AZ_CLASS_ALLOCATOR_IMPL(MotionAssetHandler, EMotionFXAllocator, 0);
 
-        //////////////////////////////////////////////////////////////////////////
-        MotionAsset::MotionAsset()
-        {
-        }
+        MotionAsset::MotionAsset(AZ::Data::AssetId id)
+            : EMotionFXAsset(id)
+        {}
 
         //////////////////////////////////////////////////////////////////////////
         void MotionAsset::SetData(EMotionFX::SkeletalMotion* motion)

@@ -15,7 +15,9 @@
 #include "Rendering/WhiteBoxRenderData.h"
 #include "Viewport/WhiteBoxViewportConstants.h"
 #include "WhiteBoxLegacyRenderMesh.h"
+#include "WhiteBoxLegacyMaterialsRequestBus.h"
 
+#include <AzCore/Math/Color.h>
 #include <CryCommon/IRenderer.h>
 // IRenderMesh.h must be included after
 #include <CryCommon/IRenderMesh.h>
@@ -68,6 +70,7 @@ namespace WhiteBox
         void SetShadowRenderFlags(bool shadows);
         bool LoadWhiteBoxMaterial(const WhiteBoxMaterial& whiteboxMaterial);
         void SetWhiteBoxMaterialProperties(_smart_ptr<IMaterial> material, const WhiteBoxMaterial& whiteboxMaterial);
+        _smart_ptr<IMaterial> FindMaterial(const WhiteBoxMaterial& whiteboxMaterial);
 
         WhiteBoxMaterial m_material;
         AZStd::unique_ptr<IStatObj> m_statObj;
@@ -83,22 +86,58 @@ namespace WhiteBox
         Destroy();
     }
 
+    _smart_ptr<IMaterial> LegacyRenderNode::FindMaterial(const WhiteBoxMaterial& whiteboxMaterial)
+    {
+        // two currently available White Box materials
+        constexpr const char* checkerMaterialName = "materials/checker_material";
+        constexpr const char* solidMaterialName = "materials/solid_material";
+
+        // build look-up for material
+        const char* materialName = whiteboxMaterial.m_useTexture ? checkerMaterialName : solidMaterialName;
+        const AZ::Crc32 materialNameCrc(materialName);
+        const AZ::u32 materialTint = AZ::Color(
+                                         whiteboxMaterial.m_tint.GetX(), whiteboxMaterial.m_tint.GetY(),
+                                         whiteboxMaterial.m_tint.GetZ(), AZ::VectorFloat::CreateOne())
+                                         .ToU32();
+
+        // either find or load one of the existing default materials
+        const auto accessMaterial = [](const char* materialName)
+        {
+            if (auto material = gEnv->p3DEngine->GetMaterialManager()->FindMaterial(materialName))
+            {
+                return material;
+            }
+
+            return gEnv->p3DEngine->GetMaterialManager()->LoadMaterial(materialName);
+        };
+
+        // attempt to find the specific version of the material
+        const auto materialKey = WhiteBoxLegacyMaterialKey{materialTint, materialNameCrc};
+        _smart_ptr<IMaterial> material = nullptr;
+        WhiteBoxLegacyMaterialsRequestBus::BroadcastResult(
+            material, &WhiteBoxLegacyMaterialsRequestBus::Events::FindMaterial, materialKey);
+
+        // if it was not found, clone the variant of the material and store it
+        if (material == nullptr)
+        {
+            material = gEnv->p3DEngine->GetMaterialManager()->CloneMaterial(accessMaterial(materialName));
+            WhiteBoxLegacyMaterialsRequestBus::Broadcast(
+                &WhiteBoxLegacyMaterialsRequestBus::Events::AddMaterial, materialKey, material);
+        }
+
+        return material;
+    }
+
     bool LegacyRenderNode::LoadWhiteBoxMaterial(const WhiteBoxMaterial& whiteboxMaterial)
     {
-        _smart_ptr<IMaterial> baseMaterial = whiteboxMaterial.m_useTexture
-            ? gEnv->p3DEngine->GetMaterialManager()->LoadMaterial("materials/checker_material")
-            : gEnv->p3DEngine->GetMaterialManager()->LoadMaterial("materials/solid_material");
-
-        _smart_ptr<IMaterial> material = gEnv->p3DEngine->GetMaterialManager()->CloneMaterial(baseMaterial);
-
-        if (!material)
+        auto material = FindMaterial(whiteboxMaterial);
+        if (material == nullptr)
         {
             return false;
         }
 
         // customize the material according to the WhiteBoxMaterial properties
         SetWhiteBoxMaterialProperties(material, whiteboxMaterial);
-        m_statObj->SetMaterial(material);
         return true;
     }
 
@@ -110,7 +149,7 @@ namespace WhiteBox
         }
         else
         {
-            SetWhiteBoxMaterialProperties(GetMaterial(), whiteboxMaterial);
+            SetWhiteBoxMaterialProperties(FindMaterial(whiteboxMaterial), whiteboxMaterial);
             return true;
         }
     }
@@ -127,6 +166,8 @@ namespace WhiteBox
         // for now, there is only 'tint' but this will be expanded on in the future
         Vec3 tint = AZVec3ToLYVec3(m_material.m_tint);
         material->SetGetMaterialParamVec3("diffuse", tint, false);
+
+        m_statObj->SetMaterial(material);
     }
 
     void LegacyRenderNode::Create(const WhiteBoxRenderData& renderData, const Matrix34& renderTransform)
@@ -222,10 +263,8 @@ namespace WhiteBox
         {
             AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "Optimize IndexedMesh");
 
-#if defined(AZ_PLATFORM_WINDOWS)
             // required to generate the mesh using CMeshCompiler
-            indexedMesh->Optimize();
-#endif
+            indexedMesh->Build();
         }
 
         m_statObj->Invalidate(false);

@@ -269,6 +269,8 @@ void AssetProcessorManagerTest::SetUp()
 
 void AssetProcessorManagerTest::TearDown()
 {
+    AssetUtilities::ResetGameName();
+
     m_data = nullptr;
 
     QObject::disconnect(m_idleConnection);
@@ -1396,13 +1398,16 @@ void PathDependencyTest::TearDown()
     AssetProcessorManagerTest::TearDown();
 }
 
-void PathDependencyTest::CaptureJobs(AZStd::vector<AssetProcessor::JobDetails>& jobDetailsList, const char* sourceFilePath)
+void PathDependencyTest::CaptureJobs(AZStd::vector<AssetProcessor::JobDetails>& jobDetailsList, const AZStd::vector<const char*>& sourceFilePaths)
 {
     using namespace AssetProcessor;
     using namespace AssetBuilderSDK;
     QDir tempPath(m_tempDir.path());
-    QString absPath(tempPath.absoluteFilePath(sourceFilePath));
-    UnitTestUtils::CreateDummyFile(absPath, QString::number(QDateTime::currentMSecsSinceEpoch()));
+
+    for (auto&& path : sourceFilePaths)
+    {
+        UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath(path), QString::number(QDateTime::currentMSecsSinceEpoch()));
+    }
 
     // prepare to capture the job details as the APM inspects the file.
     auto connection = QObject::connect(m_assetProcessorManager.get(), &AssetProcessorManager::AssetToProcess, [&jobDetailsList](JobDetails jobDetails)
@@ -1412,30 +1417,38 @@ void PathDependencyTest::CaptureJobs(AZStd::vector<AssetProcessor::JobDetails>& 
 
     // tell the APM about the file:
     m_isIdling = false;
-    QMetaObject::invokeMethod(m_assetProcessorManager.get(), "AssessModifiedFile", Qt::QueuedConnection, Q_ARG(QString, absPath));
-    ASSERT_TRUE(BlockUntilIdle(5000));
 
-    // Some tests intentionally finish with mixed slashes, so only use the corrected path to perform the job comparison.
-    AZStd::string absPathCorrectSeparator(absPath.toUtf8().constData());
-    AZStd::replace(absPathCorrectSeparator.begin(), absPathCorrectSeparator.end(), AZ_WRONG_DATABASE_SEPARATOR, AZ_CORRECT_DATABASE_SEPARATOR);
-
-    bool foundJob = false;
-
-    for (const auto& details : jobDetailsList)
+    for (auto&& path : sourceFilePaths)
     {
-        ASSERT_FALSE(details.m_autoFail);
-
-        // we should have gotten at least one request to actually process that job:
-        AZStd::string jobPath(details.m_jobEntry.GetAbsoluteSourcePath().toUtf8().constData());
-        AZStd::replace(jobPath.begin(), jobPath.end(), AZ_WRONG_DATABASE_SEPARATOR, AZ_CORRECT_DATABASE_SEPARATOR);
-
-        if (jobPath == absPathCorrectSeparator)
-        {
-            foundJob = true;
-        }
+        QMetaObject::invokeMethod(m_assetProcessorManager.get(), "AssessModifiedFile", Qt::QueuedConnection, Q_ARG(QString, tempPath.absoluteFilePath(path)));
     }
 
-    ASSERT_TRUE(foundJob);
+    ASSERT_TRUE(BlockUntilIdle(5000));
+
+    for (auto&& path : sourceFilePaths)
+    {
+        // Some tests intentionally finish with mixed slashes, so only use the corrected path to perform the job comparison.
+        AZStd::string absPathCorrectSeparator(tempPath.absoluteFilePath(path).toUtf8().constData());
+        AZStd::replace(absPathCorrectSeparator.begin(), absPathCorrectSeparator.end(), AZ_WRONG_DATABASE_SEPARATOR, AZ_CORRECT_DATABASE_SEPARATOR);
+
+        bool foundJob = false;
+
+        for (const auto& details : jobDetailsList)
+        {
+            ASSERT_FALSE(details.m_autoFail);
+
+            // we should have gotten at least one request to actually process that job:
+            AZStd::string jobPath(details.m_jobEntry.GetAbsoluteSourcePath().toUtf8().constData());
+            AZStd::replace(jobPath.begin(), jobPath.end(), AZ_WRONG_DATABASE_SEPARATOR, AZ_CORRECT_DATABASE_SEPARATOR);
+
+            if (jobPath == absPathCorrectSeparator)
+            {
+                foundJob = true;
+            }
+        }
+
+        ASSERT_TRUE(foundJob);
+    }
 
     QObject::disconnect(connection);
 }
@@ -1446,7 +1459,7 @@ bool PathDependencyTest::ProcessAsset(TestAsset& asset, const OutputAssetSet& ou
     using namespace AssetBuilderSDK;
 
     AZStd::vector<JobDetails> capturedDetails;
-    CaptureJobs(capturedDetails, (folderPath + asset.m_name + extension).c_str());
+    CaptureJobs(capturedDetails, { (folderPath + asset.m_name + extension).c_str() });
 
     // Make sure both counts are the same.  Otherwise certain code might not trigger
     EXPECT_EQ(capturedDetails.size(), outputAssets.size()) << "The number of captured jobs does not match the number of provided output assets.  This can cause AP to not consider the asset to be completely done.";
@@ -1506,7 +1519,7 @@ void VerifyDependencies(AzToolsFramework::AssetDatabase::ProductDependencyDataba
 {
     EXPECT_EQ(dependencyContainer.size(), assetIds.size() + unresolvedPaths.size());
     
-    for (const AZ::Data::AssetId assetId : assetIds)
+    for (const AZ::Data::AssetId& assetId : assetIds)
     {
         bool found = false;
 
@@ -1666,7 +1679,7 @@ TEST_F(PathDependencyTest, AssetProcessed_Impl_SelfReferrentialProductDependency
 
     TestAsset mainFile("testFileName");
     AZStd::vector<JobDetails> capturedDetails;
-    CaptureJobs(capturedDetails, ("subfolder1/" + mainFile.m_name + ".txt").c_str());
+    CaptureJobs(capturedDetails, { ("subfolder1/" + mainFile.m_name + ".txt").c_str() });
 
     ASSERT_FALSE(capturedDetails.empty());
 
@@ -4517,6 +4530,7 @@ void ModtimeScanningTest::SetUp()
 void ModtimeScanningTest::TearDown()
 {
     m_data = nullptr;
+    AssetUtilities::SetUseFileHashOverride(false, false);
 
     AssetProcessorManagerTest::TearDown();
 }
@@ -4930,7 +4944,11 @@ void MockBuilderInfoHandler::CreateJobs(const AssetBuilderSDK::CreateJobsRequest
         jobDescriptor.SetPlatformIdentifier(platform.m_identifier.c_str());
         jobDescriptor.m_additionalFingerprintInfo = m_jobFingerprint.toUtf8().data();
 
-        if (!m_jobDependencyFilePath.isEmpty())
+        if(m_jobDependencyFunc)
+        {
+            m_jobDependencyFunc(platform, request, jobDescriptor);
+        }
+        else if (!m_jobDependencyFilePath.isEmpty())
         {
             jobDescriptor.m_jobDependencyList.push_back(AssetBuilderSDK::JobDependency("Mock Job", "pc", AssetBuilderSDK::JobDependencyType::Order, 
                 AssetBuilderSDK::SourceFileDependency(m_jobDependencyFilePath.toUtf8().constData(), AZ::Uuid::CreateNull())));
@@ -5411,7 +5429,7 @@ TEST_F(JobDependencyTest, JobDependency_ThatWasPreviouslyRun_IsFound)
 
     capturedDetails.clear();
     m_data->m_mockBuilderInfoHandler.m_jobDependencyFilePath = "a.txt";
-    CaptureJobs(capturedDetails, "subfolder1/b.txt");
+    CaptureJobs(capturedDetails, { "subfolder1/b.txt" });
 
     ASSERT_EQ(capturedDetails.size(), 1);
     ASSERT_EQ(capturedDetails[0].m_jobDependencyList.size(), 1);
@@ -5421,15 +5439,33 @@ TEST_F(JobDependencyTest, JobDependency_ThatWasPreviouslyRun_IsFound)
 TEST_F(JobDependencyTest, JobDependency_ThatWasJustRun_IsFound)
 {
     AZStd::vector<JobDetails> capturedDetails;
-    CaptureJobs(capturedDetails, "subfolder1/c.txt");
+    CaptureJobs(capturedDetails, { "subfolder1/c.txt" });
 
     capturedDetails.clear();
     m_data->m_mockBuilderInfoHandler.m_jobDependencyFilePath = "c.txt";
-    CaptureJobs(capturedDetails, "subfolder1/b.txt");
+    CaptureJobs(capturedDetails, { "subfolder1/b.txt" });
 
     ASSERT_EQ(capturedDetails.size(), 1);
     ASSERT_EQ(capturedDetails[0].m_jobDependencyList.size(), 1);
     ASSERT_EQ(capturedDetails[0].m_jobDependencyList[0].m_builderUuidList.size(), 1);
+}
+
+TEST_F(JobDependencyTest, JobDependency_RunAtTheSameTime_IsFound)
+{
+    m_data->m_mockBuilderInfoHandler.m_jobDependencyFunc = [](const AssetBuilderSDK::PlatformInfo& platform, const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::JobDescriptor& jobDescriptor)
+    {
+        if(request.m_sourceFile == "b.txt")
+        {
+            jobDescriptor.m_jobDependencyList.push_back(AssetBuilderSDK::JobDependency("Mock Job", platform.m_identifier, AssetBuilderSDK::JobDependencyType::Order,
+                AssetBuilderSDK::SourceFileDependency("c.txt", AZ::Uuid::CreateNull())));
+        }
+    };
+
+    AZStd::vector<JobDetails> capturedDetails;
+    CaptureJobs(capturedDetails, { "subfolder1/b.txt", "subfolder1/c.txt" });
+    
+    ASSERT_EQ(capturedDetails.size(), 2);
+    ASSERT_STREQ(capturedDetails[0].m_jobEntry.m_pathRelativeToWatchFolder.toUtf8().constData(), "c.txt");
 }
 
 TEST_F(JobDependencyTest, JobDependency_ThatHasNotRun_IsNotFound)
@@ -5438,7 +5474,7 @@ TEST_F(JobDependencyTest, JobDependency_ThatHasNotRun_IsNotFound)
     
     capturedDetails.clear();
     m_data->m_mockBuilderInfoHandler.m_jobDependencyFilePath = "c.txt";
-    CaptureJobs(capturedDetails, "subfolder1/b.txt");
+    CaptureJobs(capturedDetails, { "subfolder1/b.txt" });
 
     ASSERT_EQ(capturedDetails.size(), 1);
     ASSERT_EQ(capturedDetails[0].m_jobDependencyList.size(), 1);
@@ -5564,7 +5600,7 @@ TEST_F(ChainJobDependencyTest, ChainDependency_EndCaseHasNoDependency)
 {
     AZStd::vector<JobDetails> capturedDetails;
 
-    CaptureJobs(capturedDetails, AZStd::string::format("subfolder1/%d.txt", 0).c_str());
+    CaptureJobs(capturedDetails, { AZStd::string::format("subfolder1/%d.txt", 0).c_str() });
 
     ASSERT_EQ(capturedDetails.size(), 1);
     ASSERT_EQ(capturedDetails[0].m_jobDependencyList.size(), 0);
@@ -5577,7 +5613,7 @@ TEST_F(ChainJobDependencyTest, TestChainDependency_Multi)
     // Run through the dependencies in forward order so everything gets added to the database
     for (int i = 0; i < ChainLength; ++i)
     {
-        CaptureJobs(capturedDetails, AZStd::string::format("subfolder1/%d.txt", i).c_str());
+        CaptureJobs(capturedDetails, { AZStd::string::format("subfolder1/%d.txt", i).c_str() });
 
         ASSERT_EQ(capturedDetails.size(), 1);
         ASSERT_EQ(capturedDetails[0].m_jobDependencyList.size(), i > 0 ? 1 : 0);
@@ -5590,7 +5626,7 @@ TEST_F(ChainJobDependencyTest, TestChainDependency_Multi)
     // Ex: 3 triggers -> 2 -> 1 -> 0
     for (int i = ChainLength - 1; i >= 0; --i)
     {
-        CaptureJobs(capturedDetails, AZStd::string::format("subfolder1/%d.txt", i).c_str());
+        CaptureJobs(capturedDetails, { AZStd::string::format("subfolder1/%d.txt", i).c_str() });
 
         ASSERT_EQ(capturedDetails.size(), ChainLength - i);
         ASSERT_EQ(capturedDetails[0].m_jobDependencyList.size(), i > 0 ? 1 : 0);

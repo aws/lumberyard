@@ -73,6 +73,12 @@ void CIndexedMesh::Optimize(const char* szComment) PREFAST_SUPPRESS_WARNING(6262
 }
 #endif
 
+void CIndexedMesh::Build()
+{
+    mesh_compiler::CMeshCompiler meshCompiler;
+    meshCompiler.Compile(*this, mesh_compiler::MESH_COMPILE_TANGENTS);
+}
+
 void CIndexedMesh::CalcBBox()
 {
     const int vertexCount = GetVertexCount();

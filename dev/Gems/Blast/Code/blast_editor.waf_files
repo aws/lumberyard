@@ -1,31 +1,6 @@
 {
-    "none": {
-        "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
-        ]
-    },
-    "auto": {
-        "Source": [
-            "Source/Editor/EditorBlastFamilyComponent.h",
-            "Source/Editor/EditorBlastFamilyComponent.cpp",
-            "Source/Editor/EditorBlastMeshDataComponent.cpp",
-            "Source/Editor/EditorBlastMeshDataComponent.h",
-            "Source/Editor/EditorBlastSliceAssetHandler.h",
-            "Source/Editor/EditorBlastSliceAssetHandler.cpp",
-            "Source/Editor/EditorSystemComponent.h",
-            "Source/Editor/EditorSystemComponent.cpp"
-        ],
-        "Editor/Widgets": [
-            "Editor/ConfigurationWidget.h",
-            "Editor/ConfigurationWidget.cpp",
-            "Editor/EditorWindow.h",
-            "Editor/EditorWindow.cpp",
-            "Editor/EditorWindow.ui",
-            "Editor/MaterialIdWidget.h",
-            "Editor/MaterialIdWidget.cpp",
-            "Editor/SettingsWidget.h",
-            "Editor/SettingsWidget.cpp"
-        ]
+    "none":
+    {
+        "Source": []
     }
 }

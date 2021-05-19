@@ -11,6 +11,7 @@
 */
 
 #include <native/tests/AssetProcessorTest.h>
+#include <AzCore/Outcome/Outcome.h>
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
 #include <native/utilities/MissingDependencyScanner.h>
 #include <AssetDatabase/AssetDatabase.h>
@@ -79,6 +80,96 @@ namespace AssetProcessor
             AssetProcessorTest::TearDown();
         }
 
+        AZ::Outcome<AZ::s64, AZStd::string> CreateScanFolder(const AZStd::string& scanFolderName, const AZStd::string& scanFolderPath)
+        {
+            AzToolsFramework::AssetDatabase::ScanFolderDatabaseEntry scanFolder;
+            scanFolder.m_displayName = scanFolderName;
+            scanFolder.m_portableKey = scanFolderName;
+            scanFolder.m_scanFolder = scanFolderPath;
+            if (!m_data->m_dbConn->SetScanFolder(scanFolder))
+            {
+                return AZ::Failure(AZStd::string::format("Could not set create scan folder %s", scanFolderName.c_str()));
+            }
+            return AZ::Success(scanFolder.m_scanFolderID);
+        }
+
+        struct SourceAndProductInfo
+        {
+            AZ::Uuid m_uuid;
+            AZ::s64 m_productId;
+        };
+        AZ::Outcome<SourceAndProductInfo, AZStd::string> CreateSourceAndProductAsset(AZ::s64 scanFolderPK, const AZStd::string& sourceName, const AZStd::string& platform, const AZStd::string& productName)
+        {
+            using namespace AzToolsFramework::AssetDatabase;
+            SourceDatabaseEntry sourceEntry;
+            sourceEntry.m_sourceName = sourceName;
+            sourceEntry.m_sourceGuid = AssetUtilities::CreateSafeSourceUUIDFromName(sourceEntry.m_sourceName.c_str());
+            sourceEntry.m_scanFolderPK = scanFolderPK;
+            if (!m_data->m_dbConn->SetSource(sourceEntry))
+            {
+                return AZ::Failure(AZStd::string::format("Could not set source in the asset database for %s", sourceName.c_str()));
+            }
+
+            SourceAndProductInfo result;
+            result.m_uuid = sourceEntry.m_sourceGuid;
+
+            JobDatabaseEntry jobEntry;
+            jobEntry.m_sourcePK = sourceEntry.m_sourceID;
+            jobEntry.m_platform = platform;
+            jobEntry.m_jobRunKey = 1;
+            if(!m_data->m_dbConn->SetJob(jobEntry))
+            {
+                return AZ::Failure(AZStd::string::format("Could not set job in the asset database for %s", sourceName.c_str()));
+            }
+
+            ProductDatabaseEntry productEntry;
+            productEntry.m_jobPK = jobEntry.m_jobID;
+            productEntry.m_productName = AZStd::string::format("%s/%s", platform.c_str(), productName.c_str());
+            if(!m_data->m_dbConn->SetProduct(productEntry))
+            {
+                return AZ::Failure(AZStd::string::format("Could not set product in the asset database for %s", sourceName.c_str()));
+            }
+
+            result.m_productId = productEntry.m_productID;
+            return AZ::Success(result);
+        }
+
+        void CreateAndValidateMissingProductDependency(const AZStd::string& missingProductName)
+        {
+            using namespace AzToolsFramework::AssetDatabase;
+
+            QDir tempPath(m_data->m_tempDir.path());
+            QString testFilePath = tempPath.absoluteFilePath("subfolder1/assetProcessorManagerTest.txt");
+
+            AZStd::string testPlatform("pc");
+            AZStd::string missingProductPath(AZStd::string::format("test/%s", missingProductName.c_str()));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(testFilePath, missingProductName.c_str()));
+
+            // Create the referenced product
+            AZ::Outcome<AZ::s64, AZStd::string> scanResult = CreateScanFolder("Test", tempPath.absoluteFilePath("subfolder1").toUtf8().constData());
+            ASSERT_TRUE(scanResult.IsSuccess());
+            AZ::s64 scanFolderIndex(scanResult.GetValue());
+            AZ::Outcome<SourceAndProductInfo, AZStd::string> firstAsset = CreateSourceAndProductAsset(scanFolderIndex, "tests/1", testPlatform, missingProductPath);
+            ASSERT_TRUE(firstAsset.IsSuccess());
+            AZ::Uuid actualTestGuid(firstAsset.GetValue().m_uuid);
+
+            // Create the product that references the product above.  This represents the dummy file we created up above
+            AZ::Outcome<SourceAndProductInfo, AZStd::string> secondAsset = CreateSourceAndProductAsset(scanFolderIndex, "tests/2", testPlatform, "test/tests/2.product");
+            ASSERT_TRUE(secondAsset.IsSuccess());
+            AZ::s64 productId = secondAsset.GetValue().m_productId;
+
+            AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer container;
+
+            m_data->m_scanner.ScanFile(testFilePath.toUtf8().constData(), AssetProcessor::MissingDependencyScanner::DefaultMaxScanIteration, productId, container, m_data->m_dbConn, false, [](AZStd::string /*dependencyFile*/) {});
+
+            MissingProductDependencyDatabaseEntryContainer missingDeps;
+            ASSERT_TRUE(m_data->m_dbConn->GetMissingProductDependenciesByProductId(productId, missingDeps));
+
+            ASSERT_EQ(missingDeps.size(), 1);
+            ASSERT_EQ(missingDeps[0].m_productPK, productId);
+            ASSERT_EQ(missingDeps[0].m_dependencySourceGuid, actualTestGuid);
+        }
+
         struct StaticData
         {
             QTemporaryDir m_tempDir;
@@ -94,72 +185,12 @@ namespace AssetProcessor
 
     TEST_F(MissingDependencyScannerTest, ScanFile_FindsValidReferenceToProduct)
     {
-        using namespace AzToolsFramework::AssetDatabase;
+        CreateAndValidateMissingProductDependency("tests/1.product");
+    }
 
-        QDir tempPath(m_data->m_tempDir.path());
-        QString testFilePath = tempPath.absoluteFilePath("subfolder1/assetProcessorManagerTest.txt");
-
-        ASSERT_TRUE(UnitTestUtils::CreateDummyFile(testFilePath, "tests/1.product"));
-
-        AZ::Uuid actualTestGuid;
-
-        {
-            // Create the referenced product
-            ScanFolderDatabaseEntry scanFolder;
-            scanFolder.m_displayName = "Test";
-            scanFolder.m_portableKey = "Test";
-            scanFolder.m_scanFolder = tempPath.absoluteFilePath("subfolder1").toUtf8().constData();
-            ASSERT_TRUE(m_data->m_dbConn->SetScanFolder(scanFolder));
-
-            SourceDatabaseEntry sourceEntry;
-            sourceEntry.m_sourceName = "tests/1";
-            sourceEntry.m_sourceGuid = AssetUtilities::CreateSafeSourceUUIDFromName(sourceEntry.m_sourceName.c_str());
-            sourceEntry.m_scanFolderPK = 1;
-            ASSERT_TRUE(m_data->m_dbConn->SetSource(sourceEntry));
-
-            // Save off the guid for testing at the end
-            actualTestGuid = sourceEntry.m_sourceGuid;
-
-            JobDatabaseEntry jobEntry;
-            jobEntry.m_sourcePK = sourceEntry.m_sourceID;
-            jobEntry.m_platform = "pc";
-            jobEntry.m_jobRunKey = 1;
-            ASSERT_TRUE(m_data->m_dbConn->SetJob(jobEntry));
-
-            ProductDatabaseEntry productEntry;
-            productEntry.m_jobPK = jobEntry.m_jobID;
-            productEntry.m_productName = "pc/test/tests/1.product";
-            ASSERT_TRUE(m_data->m_dbConn->SetProduct(productEntry));
-        }
-
-        // Create the product that references the product above.  This represents the dummy file we created up above
-        SourceDatabaseEntry sourceEntry;
-        sourceEntry.m_sourceName = "tests/2";
-        sourceEntry.m_sourceGuid = AssetUtilities::CreateSafeSourceUUIDFromName(sourceEntry.m_sourceName.c_str());
-        sourceEntry.m_scanFolderPK = 1;
-        ASSERT_TRUE(m_data->m_dbConn->SetSource(sourceEntry));
-
-        JobDatabaseEntry jobEntry;
-        jobEntry.m_sourcePK = sourceEntry.m_sourceID;
-        jobEntry.m_platform = "pc";
-        jobEntry.m_jobRunKey = 2;
-        ASSERT_TRUE(m_data->m_dbConn->SetJob(jobEntry));
-
-        ProductDatabaseEntry productEntry;
-        productEntry.m_jobPK = jobEntry.m_jobID;
-        productEntry.m_productName = "pc/test/tests/2.product";
-        ASSERT_TRUE(m_data->m_dbConn->SetProduct(productEntry));
-
-        AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer container;
-
-        m_data->m_scanner.ScanFile(testFilePath.toUtf8().constData(), AssetProcessor::MissingDependencyScanner::DefaultMaxScanIteration, productEntry.m_productID, container, m_data->m_dbConn, false, [](AZStd::string /*dependencyFile*/){});
-
-        MissingProductDependencyDatabaseEntryContainer missingDeps;
-        ASSERT_TRUE(m_data->m_dbConn->GetMissingProductDependenciesByProductId(productEntry.m_productID, missingDeps));
-
-        ASSERT_EQ(missingDeps.size(), 1);
-        ASSERT_EQ(missingDeps[0].m_productPK, productEntry.m_productID);
-        ASSERT_EQ(missingDeps[0].m_dependencySourceGuid, actualTestGuid);
+    TEST_F(MissingDependencyScannerTest, ScanFile_ValidReferenceToFileWithDash_FindsMissingReference)
+    {
+        CreateAndValidateMissingProductDependency("tests/1-withdash.product");
     }
 
     TEST_F(MissingDependencyScannerTest, ScanFile_CPP_File_FindsValidReferenceToProduct)

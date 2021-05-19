@@ -35,6 +35,7 @@
         "@ROOT@/Tools/Python/3.7.10/windows/libs"
       ],
       "sharedlibpath_debug": [
+        "@ROOT@/Tools/Python/3.7.10/windows",
         "@ROOT@/Tools/Python/3.7.10/windows/DLLs"
       ],
       "import_debug": [

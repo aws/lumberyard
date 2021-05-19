@@ -672,7 +672,13 @@ class az_code_gen(Task.Task):
         if self.error_output_file_node:
             self.add_argument('-redirect-output-file "{}"'.format(clean_path(self.error_output_file_node.abspath())))
 
-        if 'CLANG_SEARCH_PATHS' in self.env:
+        # If the platform being built for is Android, then the host platform
+        # CLANG_SEARCH_PATHS shouldn't be used as the it's not the platform
+        # that the code generator task should build an AST for
+        # The resource-dir for the Android NDK clang is added later in this
+        # method
+        if 'CLANG_SEARCH_PATHS' in self.env and 'ANDROID' not in self.defines and \
+            isinstance(self.env['CLANG_SEARCH_PATHS']['libraries'], list):
             self.add_argument('-resource-dir "{}"'.format(self.env['CLANG_SEARCH_PATHS']['libraries'][0]))
 
         if 'ISYSROOT' in self.env:

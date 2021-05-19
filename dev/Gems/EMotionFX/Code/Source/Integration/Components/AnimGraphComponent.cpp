@@ -315,13 +315,14 @@ namespace EMotionFX
 
         void AnimGraphComponent::CreateSnapshot(bool isAuthoritative)
         {
-            AZ_Error("EMotionFX", m_animGraphInstance, "Call create snapshot function only when anim graph is ready in this component.");
-            m_animGraphInstance->CreateSnapshot(isAuthoritative);
-            m_animGraphInstance->OnNetworkConnected();
-
-            // This will stop the MCore Job schedule update the actor instance and anim graph for authoritative entity.
-            // After doing so, we will have to update this actor manuelly in the networking update.
-            m_animGraphInstance->GetActorInstance()->SetIsEnabled(!isAuthoritative);
+            if (m_animGraphInstance)
+            {
+                m_animGraphInstance->CreateSnapshot(isAuthoritative);
+                m_animGraphInstance->OnNetworkConnected();
+                // This will stop the MCore Job schedule update the actor instance and anim graph for authoritative entity.
+                // After doing so, we will have to update this actor manuelly in the networking update.
+                m_animGraphInstance->GetActorInstance()->SetIsEnabled(!isAuthoritative);
+            }
         }
 
         void AnimGraphComponent::SetActiveStates(const AZStd::vector<AZ::u32>& activeStates)
@@ -340,18 +341,36 @@ namespace EMotionFX
             }
         }
 
+        NodeIndexContainer AnimGraphComponent::s_emptyNodeIndexContainer = {};
         const NodeIndexContainer& AnimGraphComponent::GetActiveStates() const
         {
-            const AZStd::shared_ptr<AnimGraphSnapshot> snapshot = m_animGraphInstance->GetSnapshot();
-            AZ_Error("EMotionFX", snapshot, "Call GetActiveStates function but no snapshot is created for this instance.");
-            return snapshot->GetActiveNodes();
+            if (m_animGraphInstance)
+            {
+                const AZStd::shared_ptr<AnimGraphSnapshot> snapshot = m_animGraphInstance->GetSnapshot();
+                if (snapshot)
+                {
+                    AZ_Warning("EMotionFX", snapshot, "Call GetActiveStates function but no snapshot is created for this instance.");
+                    return snapshot->GetActiveNodes();
+                }
+            }
+
+            return s_emptyNodeIndexContainer;
         }
 
+        MotionNodePlaytimeContainer AnimGraphComponent::s_emptyMotionNodePlaytimeContainer = {};
         const MotionNodePlaytimeContainer& AnimGraphComponent::GetMotionPlaytimes() const
         {
-            const AZStd::shared_ptr<AnimGraphSnapshot> snapshot = m_animGraphInstance->GetSnapshot();
-            AZ_Error("EMotionFX", snapshot, "Call GetActiveStates function but no snapshot is created for this instance.");
-            return snapshot->GetMotionNodePlaytimes();
+            if (m_animGraphInstance)
+            {
+                const AZStd::shared_ptr<AnimGraphSnapshot> snapshot = m_animGraphInstance->GetSnapshot();
+                if (snapshot)
+                {
+                    AZ_Warning("EMotionFX", snapshot, "Call GetActiveStates function but no snapshot is created for this instance.");
+                    return snapshot->GetMotionNodePlaytimes();
+                }
+            }
+
+            return s_emptyMotionNodePlaytimeContainer;
         }
 
         void AnimGraphComponent::UpdateActorExternal(float deltatime)
@@ -514,17 +533,35 @@ namespace EMotionFX
             return m_animGraphInstance->GetAnimGraph()->FindParameter(parameterIndex)->GetName().c_str();
         }
 
-
-        //////////////////////////////////////////////////////////////////////////
-        void AnimGraphComponent::SetParameterFloat(AZ::u32 parameterIndex, float value)
+        bool AnimGraphComponent::IsParameterIndexValid(AZ::u32 parameterIndex) const
         {
             if (parameterIndex == MCORE_INVALIDINDEX32)
             {
-                AZ_Warning("EMotionFX", false, "Invalid anim graph parameter index: %u", parameterIndex);
-                return;
+                AZ_Warning("EMotionFX", false, "Cannot set anim graph parameter. Index is invalid.");
+                return false;
             }
 
             if (m_animGraphInstance)
+            {
+                const AnimGraph* animGraph = m_animGraphInstance->GetAnimGraph();
+                if (parameterIndex >= animGraph->GetNumParameters())
+                {
+                    AZ_Warning("EMotionFX", false, "Cannot set anim graph parameter. Parameter index %u out of range: [0, %u).", parameterIndex, animGraph->GetNumParameters());
+                    return false;
+                }
+            }
+            else
+            {
+                AZ_Warning("EMotionFX", false, "Cannot set anim graph parameter with index %u. Anim graph instance not valid.", parameterIndex);
+                return false;
+            }
+
+            return true;
+        }
+
+        void AnimGraphComponent::SetParameterFloat(AZ::u32 parameterIndex, float value)
+        {
+            if (IsParameterIndexValid(parameterIndex))
             {
                 MCore::Attribute* param = m_animGraphInstance->GetParameterValue(parameterIndex);
                 float previousValue;
@@ -573,13 +610,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void AnimGraphComponent::SetParameterBool(AZ::u32 parameterIndex, bool value)
         {
-            if (parameterIndex == MCORE_INVALIDINDEX32)
-            {
-                AZ_Warning("EMotionFX", false, "Invalid anim graph parameter index: %u", parameterIndex);
-                return;
-            }
-
-            if (m_animGraphInstance)
+            if (IsParameterIndexValid(parameterIndex))
             {
                 MCore::Attribute* param = m_animGraphInstance->GetParameterValue(parameterIndex);
                 bool previousValue;
@@ -628,13 +659,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void AnimGraphComponent::SetParameterString(AZ::u32 parameterIndex, const char* value)
         {
-            if (parameterIndex == MCORE_INVALIDINDEX32)
-            {
-                AZ_Warning("EMotionFX", false, "Invalid anim graph parameter index: %u", parameterIndex);
-                return;
-            }
-
-            if (m_animGraphInstance)
+            if (IsParameterIndexValid(parameterIndex))
             {
                 MCore::AttributeString* param = m_animGraphInstance->GetParameterValueChecked<MCore::AttributeString>(parameterIndex);
                 if (param)
@@ -665,13 +690,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void AnimGraphComponent::SetParameterVector2(AZ::u32 parameterIndex, const AZ::Vector2& value)
         {
-            if (parameterIndex == MCORE_INVALIDINDEX32)
-            {
-                AZ_Warning("EMotionFX", false, "Invalid anim graph parameter index: %u", parameterIndex);
-                return;
-            }
-
-            if (m_animGraphInstance)
+            if (IsParameterIndexValid(parameterIndex))
             {
                 MCore::AttributeVector2* param = m_animGraphInstance->GetParameterValueChecked<MCore::AttributeVector2>(parameterIndex);
                 if (param)
@@ -698,13 +717,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void AnimGraphComponent::SetParameterVector3(AZ::u32 parameterIndex, const AZ::Vector3& value)
         {
-            if (parameterIndex == MCORE_INVALIDINDEX32)
-            {
-                AZ_Warning("EMotionFX", false, "Invalid anim graph parameter index: %u", parameterIndex);
-                return;
-            }
-
-            if (m_animGraphInstance)
+            if (IsParameterIndexValid(parameterIndex))
             {
                 MCore::AttributeVector3* param = m_animGraphInstance->GetParameterValueChecked<MCore::AttributeVector3>(parameterIndex);
                 if (param)
@@ -731,13 +744,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void AnimGraphComponent::SetParameterRotationEuler(AZ::u32 parameterIndex, const AZ::Vector3& value)
         {
-            if (parameterIndex == MCORE_INVALIDINDEX32)
-            {
-                AZ_Warning("EMotionFX", false, "Invalid anim graph parameter index: %u", parameterIndex);
-                return;
-            }
-
-            if (m_animGraphInstance)
+            if (IsParameterIndexValid(parameterIndex))
             {
                 MCore::Attribute* param = m_animGraphInstance->GetParameterValue(parameterIndex);
                 AZ::Quaternion previousValue;
@@ -770,13 +777,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void AnimGraphComponent::SetParameterRotation(AZ::u32 parameterIndex, const AZ::Quaternion& value)
         {
-            if (parameterIndex == MCORE_INVALIDINDEX32)
-            {
-                AZ_Warning("EMotionFX", false, "Invalid anim graph parameter index: %u", parameterIndex);
-                return;
-            }
-
-            if (m_animGraphInstance)
+            if (IsParameterIndexValid(parameterIndex))
             {
                 MCore::Attribute* param = m_animGraphInstance->GetParameterValue(parameterIndex);
                 AZ::Quaternion previousValue;

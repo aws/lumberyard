@@ -68,6 +68,11 @@ namespace EMotionFX
         UpdateInterface();
     }
 
+    AnimGraphParameterPicker::~AnimGraphParameterPicker()
+    {
+        AZ::Data::AssetBus::Handler::BusDisconnect();
+    }
+
     void AnimGraphParameterPicker::OnResetClicked()
     {
         if (m_parameterNames.empty())
@@ -197,6 +202,17 @@ namespace EMotionFX
         return m_parameterNames[0];
     }
 
+    void AnimGraphParameterPicker::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    {
+        m_animGraphAsset = asset;
+        m_animGraph = m_animGraphAsset->GetAnimGraph();
+    }
+
+    void AnimGraphParameterPicker::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    {
+        m_animGraphAsset = asset;
+        m_animGraph = m_animGraphAsset->GetAnimGraph();
+    }
 
     void AnimGraphParameterPicker::OnPickClicked()
     {
@@ -234,12 +250,27 @@ namespace EMotionFX
         }
     }
 
+    void AnimGraphParameterPicker::SetAnimGraph(AnimGraph* animGraph)
+    {
+        m_animGraph = animGraph;
+        m_animGraphAsset.Reset();
+        AZ::Data::AssetBus::Handler::BusDisconnect();
+    }
+
+    void AnimGraphParameterPicker::SetAnimGraphAsset(const AZ::Data::Asset<Integration::AnimGraphAsset>& animGraphAsset)
+    {
+        m_animGraphAsset = animGraphAsset;
+        m_animGraph = animGraphAsset->GetAnimGraph();
+
+        AZ::Data::AssetBus::Handler::BusDisconnect();
+        AZ::Data::AssetBus::Handler::BusConnect(m_animGraphAsset.GetId());
+    }
+
     //---------------------------------------------------------------------------------------------------------------------------------------------------------
 
     AnimGraphSingleParameterHandler::AnimGraphSingleParameterHandler()
         : QObject()
         , AzToolsFramework::PropertyHandler<AZStd::string, AnimGraphParameterPicker>()
-        , m_animGraph(nullptr)
     {
     }
 
@@ -275,8 +306,19 @@ namespace EMotionFX
 
         if (attrib == AZ_CRC("AnimGraph", 0x0d53d4b3))
         {
-            attrValue->Read<AnimGraph*>(m_animGraph);
-            GUI->SetAnimGraph(m_animGraph);
+            AnimGraph* animGraph = nullptr;
+            attrValue->Read<AnimGraph*>(animGraph);
+            GUI->SetAnimGraph(animGraph);
+        }
+
+        if (attrib == AZ_CRC("AnimGraphAsset", 0x27aae8f2))
+        {
+            AZ::Data::Asset<Integration::AnimGraphAsset> animGraphAsset;
+            attrValue->Read<AZ::Data::Asset<Integration::AnimGraphAsset>>(animGraphAsset);
+            if (animGraphAsset)
+            {
+                GUI->SetAnimGraphAsset(animGraphAsset);
+            }
         }
     }
 

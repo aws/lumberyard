@@ -1,0 +1,29 @@
+{
+    "none": {
+        "Include": [
+            "Include/TwitchApi/TwitchApiRequestBus.h",
+            "Include/TwitchApi/TwitchApiNotifyBus.h",
+            "Include/TwitchApi/BaseTypes.h",
+            "Include/TwitchApi/RestTypes.h"
+        ]
+    },
+    "auto": {
+        "Source": [
+          "Source/TwitchApiModule.cpp",
+          "Source/TwitchApiSystemComponent.cpp",
+          "Source/TwitchApiSystemComponent.h"
+        ],
+        "Source/Reflection": [
+          "Source/TwitchApiSerializationReflection.cpp",
+          "Source/TwitchApiBehaviorReflection.cpp",
+          "Source/TwitchApiReflection.h"
+        ],
+        "Source/TwitchApiRest": [
+          "Source/ITwitchApiRest.h",
+          "Source/TwitchApiRest.cpp",
+          "Source/TwitchApiRest.h",
+          "Source/TwitchApiRestUtil.h",
+          "Source/TwitchApiRestUtil.cpp"
+        ]
+    }
+}

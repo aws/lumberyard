@@ -48,7 +48,7 @@ public slots:
     void OnSourceStatusChanged();
 
 protected:
-    // Override to provide specific validation criterea for a resource
+    // Override to provide specific validation criteria for a resource
     // Note that the dialog box with the specific error should be raised in this function
     virtual bool TypeSpecificValidateResource(const QString& resourceName) { return true; }
 

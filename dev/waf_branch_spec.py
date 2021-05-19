@@ -100,7 +100,7 @@ with open(os.path.join(SCRIPT_PATH, LUMBERYARD_ENGINE_VERSION_CONFIG_FILENAME)) 
 
 LUMBERYARD_VERSION = ENGINE_JSON_DATA.get('LumberyardVersion', '0.0.0.0')
 LUMBERYARD_COPYRIGHT_YEAR = ENGINE_JSON_DATA.get('LumberyardCopyrightYear', 2017)
-LUMBERYARD_BUILD = 1103071
+LUMBERYARD_BUILD = 1103598
 LUMBERYARD_ENGINE_PATH = os.path.abspath(ENGINE_JSON_DATA.get('ExternalEnginePath', '.'))
 
 # validate the Lumberyard version string above

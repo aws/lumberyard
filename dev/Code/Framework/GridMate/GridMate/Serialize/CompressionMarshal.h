@@ -108,6 +108,29 @@ namespace GridMate
     };
 
     /**
+    * Writes a compressed vector.
+    * Compressed values are compressed using \ref Float16Marshaler [rangeMin,rangeMax]
+    * Uses 6 bytes.
+    */
+    class Vec3CompRangeMarshaler
+    {
+    public:
+        AZ_TYPE_INFO(Vec3CompRangeMarshaler, "{F972DD2D-19A1-4D0C-A0A3-BC84A3C73341}");
+
+        Vec3CompRangeMarshaler(float rangeMin, float rangeMax);
+        typedef AZ::Vector3 DataType;
+
+        static constexpr AZStd::size_t MarshalSize = Float16Marshaler::MarshalSize * 3;
+
+        void Marshal(WriteBuffer& wb, const AZ::Vector3& vec) const;
+        void Unmarshal(AZ::Vector3& vec, ReadBuffer& rb) const;
+
+    private:
+        float m_min;
+        float m_max;
+    };
+
+    /**
     * Writes a compressed (float 16) normalized vector.
     * Uses 1 to 5 bytes, depending on the data.
     * Compressed values are compressed using \ref Float16Marshaler [-1.0f,1.0f]

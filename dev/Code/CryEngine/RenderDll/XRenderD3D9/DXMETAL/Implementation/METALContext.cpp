@@ -1355,28 +1355,31 @@ withRange: range];
             CRY_ASSERT(m_pInputLayout != NULL);
             CRY_ASSERT(m_CurrentEncoder);
 
-            for (uint32 uSlot = 0; uSlot < DXGL_ARRAY_SIZE(m_akInputAssemblerSlots); ++uSlot)
+            if (m_pInputLayout)
             {
-                SBuffer* vb = m_akInputAssemblerSlots[uSlot].m_pVertexBuffer;
-
-                if (vb != NULL)
+                for (uint32 uSlot = 0; uSlot < DXGL_ARRAY_SIZE(m_akInputAssemblerSlots); ++uSlot)
                 {
-                    uint32 VBIndex = (DXMETAL_MAX_ENTRIES_BUFFER_ARG_TABLE - 1) - uSlot;
+                    SBuffer* vb = m_akInputAssemblerSlots[uSlot].m_pVertexBuffer;
 
-                    if (((MTLVertexDescriptor*)m_pInputLayout->m_pVertexDescriptor).layouts[VBIndex].stride != m_akInputAssemblerSlots[uSlot].m_uStride)
+                    if (vb != NULL)
                     {
-                        m_bInputLayoutDirty = true;
+                        uint32 VBIndex = (DXMETAL_MAX_ENTRIES_BUFFER_ARG_TABLE - 1) - uSlot;
+
+                        if (((MTLVertexDescriptor*)m_pInputLayout->m_pVertexDescriptor).layouts[VBIndex].stride != m_akInputAssemblerSlots[uSlot].m_uStride)
+                        {
+                            m_bInputLayoutDirty = true;
+                        }
+
+                        uint32 offset = 0;
+                        id<MTLBuffer> tmpBuffer = nil;
+                        vb->GetBufferAndOffset(*this, m_akInputAssemblerSlots[uSlot].m_uOffset, m_uVertexOffset, m_akInputAssemblerSlots[uSlot].m_uStride, tmpBuffer, offset);
+
+                        [m_CurrentEncoder setVertexBuffer: tmpBuffer offset: offset atIndex: VBIndex];
+                        uMinVBSlot = VBIndex;
+                        MaxSlot = uSlot;
                     }
-
-                    uint32 offset = 0;
-                    id<MTLBuffer> tmpBuffer = nil;
-                    vb->GetBufferAndOffset(*this, m_akInputAssemblerSlots[uSlot].m_uOffset, m_uVertexOffset, m_akInputAssemblerSlots[uSlot].m_uStride, tmpBuffer, offset);
-
-                    [m_CurrentEncoder setVertexBuffer: tmpBuffer offset: offset atIndex: VBIndex];
-                    uMinVBSlot = VBIndex;
-                    MaxSlot = uSlot;
                 }
-            }
+            }   
 
             m_bInputAssemblerSlotsDirty = false;
 
@@ -2814,11 +2817,13 @@ threadsPerThreadgroup: threadsPerGroup];
         DXGL_SCOPED_PROFILE("CContext::Draw")
         SetVertexOffset(0); // No need to use uBaseVertexLocation for vertex offset as it is used to indicate which vertex is the starting vertex when calling drawPrimitives below
         
-        FlushDrawState();
-
-        [m_CurrentEncoder drawPrimitives: m_MetalPrimitiveType
-                             vertexStart: uBaseVertexLocation
-                             vertexCount: uVertexCount];
+        if (m_spPipeline)
+        {
+            FlushDrawState();
+            [m_CurrentEncoder drawPrimitives: m_MetalPrimitiveType
+                                 vertexStart: uBaseVertexLocation
+                                 vertexCount: uVertexCount];
+        }
     }
 
     void CContext::DrawIndexedInstanced(uint32 uIndexCountPerInstance, uint32 uInstanceCount, uint32 uStartIndexLocation, uint32 uBaseVertexLocation, uint32 uStartInstanceLocation)

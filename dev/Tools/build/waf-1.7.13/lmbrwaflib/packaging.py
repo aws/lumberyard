@@ -19,6 +19,7 @@ import subprocess
 import sys
 import time
 from contextlib import closing
+from threading import Lock
 
 # waflib imports
 from waflib import Build, Errors, Logs, Utils
@@ -43,6 +44,8 @@ ASSET_BUNDLER_RC_JOB = os.path.join('Code', 'Tools', 'RC', 'Config', 'rc', 'RCJo
 ASSET_PROCESSOR_BATCH = 'AssetProcessorBatch'
 ASSET_BUNDLER_BATCH = 'AssetBundlerBatch'
 ASSET_BUNDLER_CONFIG = 'AssetBundlerConfig.json'
+CODESIGN_LOCK = Lock()
+CODESIGN_COMPLETED_SET = set()
 #                                                              #
 ################################################################
 
@@ -707,13 +710,46 @@ class package_task(Task):
                         self.dependencies.update(get_dependencies_recursively_for_task_gen(ctx, gem_module_task_gen))
 
     def codesign_executable_file(self, path_to_executable):
+        with CODESIGN_LOCK:
+            if os.path.islink(path_to_executable):
+                path_to_executable = os.path.realpath(path_to_executable)
+
+            path_to_executable = os.path.normcase(path_to_executable)
+            if path_to_executable in CODESIGN_COMPLETED_SET:
+                return
+
+            CODESIGN_COMPLETED_SET.add(path_to_executable)
+        
         signing_identity = '-'
         if 'EXPANDED_CODE_SIGN_IDENTITY' in os.environ:
             signing_identity = os.environ['EXPANDED_CODE_SIGN_IDENTITY']
-        else:
-            Logs.warn('[WARN] No code signing identity found! Using ad hoc signing.')
-        run_subprocess(['codesign', '-f', '-s', signing_identity, path_to_executable], fail_on_error=True)
+        Logs.debug('Codesigning executable {}'.format(path_to_executable))
+        run_subprocess(['codesign', '-f', '--deep', '-s', signing_identity, path_to_executable], fail_on_error=True)
 
+    def codesign_executables_in_directory(self, path_to_directory, skip_list=[]):
+        executables = os.listdir(path_to_directory)
+        for executable in executables:
+            if executable in skip_list:
+                Logs.debug('Skipping codesign for file in skiplist {}'.format(executable))
+                continue
+            executable_path = os.path.join(path_to_directory, executable)
+            if os.path.isfile(executable_path):
+                self.codesign_executable_file(executable_path)
+            elif os.path.isdir(executable_path):
+                Logs.debug('Traversing directory: {}'.format(executable_path))
+                self.codesign_executables_in_directory(executable_path, skip_list)
+
+    def codesign_framework(self, dst_framework_node):
+        # The frameworks placed inside the .app package need to be codesigned.
+        # Apple's codesign tool does not like multiple versions inside the same
+        # framework. If multiple versions exist, codesign "Current" version.
+        versions = dst_framework_node.find_node('Versions')
+        if versions:
+            current = versions.find_node('Current')
+            if current:
+                self.codesign_executable_file(current.abspath())
+        else:
+            self.codesign_executable_file(dst_framework_node.abspath())
 
     def process_executable(self):
         source_root = self.source_exe.parent
@@ -729,6 +765,11 @@ class package_task(Task):
             self.bld.symlink_libraries(source_root, self.binaries_out.abspath())
         else:
             self.bld.symlink_dependencies(self.dependencies, source_dep_nodes, self.binaries_out.abspath())
+
+        # The app's main executable will be codesigned in the end by xcodebuild.
+        # All dependencies need to be codesigned first.
+        source_name = os.path.basename(self.source_exe.abspath())
+        self.codesign_executables_in_directory(self.binaries_out.abspath(), [source_name])
 
         self.finalize_func(self, self.binaries_out)
 
@@ -760,6 +801,7 @@ class package_task(Task):
             os.unlink(qt_plugins_dest_node.parent.abspath())
 
         self.bld.create_symlink_or_copy(qt_plugin_source_node, qt_plugins_dest_node.abspath(), postpone=False)
+        self.codesign_executables_in_directory(qt_plugins_dest_node.abspath())
 
         qt_libs_source_node = output_folder_node.make_node("qtlibs/lib")
 
@@ -819,6 +861,8 @@ class package_task(Task):
                 shutil.rmtree(dst)
             Logs.info('Copying Qt Framework {} to {}'.format(src, dst))
             self.bld.create_symlink_or_copy(src_node, dst)
+            self.codesign_framework(frameworks_node.make_node(framework_name))
+            
             if not os.path.islink(dst):
                 post_copy_cleanup(frameworks_node.make_node(framework_name))
 
@@ -870,6 +914,7 @@ class package_task(Task):
         for res_dir in self.dir_resources:
             Logs.debug('package: extra directory to link/copy into the package is: {}'.format(res_dir))
             self.bld.create_symlink_or_copy(self.source_exe.parent.make_node(res_dir), self.binaries_out.make_node(res_dir).abspath(), postpone=False)
+            self.codesign_executables_in_directory(self.binaries_out.find_node(res_dir).abspath())
 
     def process_assets(self):
         """

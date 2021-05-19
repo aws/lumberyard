@@ -1232,13 +1232,11 @@ namespace LandscapeCanvasEditor
 
         GraphCanvas::GraphId graphId = (*GraphModelIntegration::GraphControllerNotificationBus::GetCurrentBusId());
 
-        // If the connection was removed, the target will be set to an invalid EntityId
-        // If the connection was added, the target will be updated with the appropriate EntityId from the source
-        AZ::EntityId newEntityId;
-        if (added)
+        // Similarly as below, this protects against the edge case where this logic gets hit if the node and/or
+        // slot belonging to this connection got deleted before this was executed.
+        if (!connection->GetSourceNode() || !connection->GetTargetNode() || !connection->GetSourceSlot() || !connection->GetTargetSlot())
         {
-            auto sourceNode = static_cast<LandscapeCanvas::BaseNode*>(connection->GetSourceNode().get());
-            newEntityId = sourceNode->GetVegetationEntityId();
+            return;
         }
 
         // Figure out the element index we need to update based on the index of the
@@ -1247,7 +1245,22 @@ namespace LandscapeCanvasEditor
         GraphModel::SlotPtr targetSlot = connection->GetTargetSlot();
         GraphModel::DataTypePtr dataType = connection->GetSourceSlot()->GetDataType();
         int elementIndexToModify = GetInboundDataSlotIndex(targetNode, dataType, targetSlot);
-        AZ_Assert(elementIndexToModify != InvalidSlotIndex, "No corresponding element index for target slot");
+        if (elementIndexToModify == InvalidSlotIndex)
+        {
+            // Typically this shouldn't be reached, but there are cases where the slot index might
+            // be invalid, such as the target node being deleted before the connection is triggered
+            // to be removed, which could happen if the node was deleted while it was in a collapsed group.
+            return;
+        }
+
+        // If the connection was removed, the target will be set to an invalid EntityId
+        // If the connection was added, the target will be updated with the appropriate EntityId from the source
+        AZ::EntityId newEntityId;
+        if (added)
+        {
+            auto sourceNode = static_cast<LandscapeCanvas::BaseNode*>(connection->GetSourceNode().get());
+            newEntityId = sourceNode->GetVegetationEntityId();
+        }
 
         // Figure out the property path we are looking for based on the data type of the slot
         GraphModel::DataType::Enum dataTypeEnum = dataType->GetTypeEnum();
@@ -3097,6 +3110,11 @@ namespace LandscapeCanvasEditor
 
     int MainWindow::GetInboundDataSlotIndex(GraphModel::NodePtr node, GraphModel::DataTypePtr dataType, GraphModel::SlotPtr targetSlot)
     {
+        if (!node)
+        {
+            return InvalidSlotIndex;
+        }
+
         // Return the index of the specified targetSlot based on the input data slots that match the specified data type on the given node
         int index = 0;
         for (auto& it : node->GetSlots())

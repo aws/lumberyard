@@ -276,10 +276,15 @@ namespace AzToolsFramework
         /// @param maxRayLength
         /// @param pointOnPlane                  A point on the plane.
         /// @param planeNormal                   The normal vector of the plane.
-        /// @param[out] resultIntersectingPoint  This stores the result intersecting point. It will be left unchanged if there
-        ///                                      is no intersection between the ray and the plane.
+        /// @param[out] resultIntersectingPoint  This stores the result intersecting point. It will be left unchanged
+        ///                                      if there is no intersection between the ray and the plane.
         /// @return                              Was there an intersection
         bool CalculateRayPlaneIntersectingPoint(const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
             const AZ::Vector3& pointOnPlane, const AZ::Vector3& planeNormal, AZ::Vector3& resultIntersectingPoint);
+
+        /// Returns startLocalHitPosition if currentLocalHitPosition is further away than the camera's far clip plane.
+        AZ::Vector3 TryConstrainHitPositionToView(
+            const AZ::Vector3& currentLocalHitPosition, const AZ::Vector3& startLocalHitPosition,
+            const AZ::Transform& localFromWorld, const AzFramework::CameraState& cameraState);
     }
 } // namespace AzToolsFramework

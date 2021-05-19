@@ -56,7 +56,7 @@ namespace {
         }
         else
         {
-           // There is an issue with assigning std::numeric_limits<int>::max() to a float
+            // There is an issue with assigning std::numeric_limits<int>::max() to a float
             // A float can't actually represent the value of 2147483647 and clang
             // compilers actually warn on this fact.
             // A static_cast is used here to indicate explicit acceptance of the value change here
@@ -64,7 +64,7 @@ namespace {
               ../Code/Sandbox/Editor/Controls/ReflectedPropertyControl/ReflectedVarWrapper.cpp:59:38: error: implicit conversion from 'int' to 'float' changes value from 2147483647 to 2147483648 [-Werror,-Wimplicit-int-float-conversion]
               reflectedVar->m_maxVal = std::numeric_limits<int>::max();
             */
-            reflectedVar->m_maxVal = static_cast<float>(std::numeric_limits<int>::max());
+            reflectedVar->m_maxVal = static_cast<R>(std::numeric_limits<int>::max());
         }
         reflectedVar->m_stepSize = step;
     }

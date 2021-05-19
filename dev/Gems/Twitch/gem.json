@@ -2,7 +2,7 @@
     "GemFormatVersion": 3,
     "Uuid": "b63e64141fab40b791211ba257632e84",
     "Name": "Twitch",
-    "DisplayName": "Twitch",
+    "DisplayName": "Twitch v5",
     "Version": "1.0.0",
     "LinkType": "Dynamic",
     "Summary": "Provides access to the Twitch API v5 SDK including social functions, channels, and other APIs.",

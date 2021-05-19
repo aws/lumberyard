@@ -129,7 +129,7 @@ namespace EMStudio
 
             if (!modelIndexes.empty())
             {
-                m_animGraphModel.AboutToBeRemoved(modelIndexes);
+                m_animGraphModel.RemoveIndices(modelIndexes);
             }
         }
         return true;
@@ -144,8 +144,6 @@ namespace EMStudio
 
     bool AnimGraphModel::CommandDidRemoveAnimGraphCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
-        m_animGraphModel.RemovePending();
-
         return true;
     }
 
@@ -291,7 +289,7 @@ namespace EMStudio
             return true;
         }
 
-        m_animGraphModel.AboutToBeRemoved(m_animGraphModel.FindModelIndexes(node));
+        m_animGraphModel.RemoveIndices(m_animGraphModel.FindModelIndexes(node));
         
         return true;
     }
@@ -308,7 +306,6 @@ namespace EMStudio
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
         
-        m_animGraphModel.RemovePending();
         return true;
     }
 
@@ -461,7 +458,7 @@ namespace EMStudio
             EMotionFX::BlendTreeConnection* blendTreeConnection = targetNode->FindConnection(sourceNode, static_cast<uint16>(sourcePort), static_cast<uint16>(targetPort));
             if (blendTreeConnection)
             {
-                m_animGraphModel.AboutToBeRemoved(m_animGraphModel.FindModelIndexes(blendTreeConnection));
+                m_animGraphModel.RemoveIndices(m_animGraphModel.FindModelIndexes(blendTreeConnection));
             }
         }
         else
@@ -474,7 +471,7 @@ namespace EMStudio
                 EMotionFX::AnimGraphStateTransition* transition = parentStateMachine->FindTransitionById(connectionId);
                 if (transition)
                 {
-                    m_animGraphModel.AboutToBeRemoved(m_animGraphModel.FindModelIndexes(transition));
+                    m_animGraphModel.RemoveIndices(m_animGraphModel.FindModelIndexes(transition));
                 }
             }
             else
@@ -482,7 +479,7 @@ namespace EMStudio
                 EMotionFX::BlendTreeConnection* blendTreeConnection = targetNode->FindConnectionById(connectionId);
                 if (blendTreeConnection)
                 {
-                    m_animGraphModel.AboutToBeRemoved(m_animGraphModel.FindModelIndexes(blendTreeConnection));
+                    m_animGraphModel.RemoveIndices(m_animGraphModel.FindModelIndexes(blendTreeConnection));
                 }
             }
             
@@ -500,7 +497,6 @@ namespace EMStudio
 
     bool AnimGraphModel::CommandDidRemoveConnectionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
-        m_animGraphModel.RemovePending();
         return true;
     }
 

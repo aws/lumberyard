@@ -117,6 +117,8 @@ namespace AssetProcessor
         // This is a cached index of the SourceFile in the SourceFileRelocationContainer.
         // This is only used by the metadata file to determine the destination path if needed.
         int m_sourceFileIndex = AssetProcessor::SourceFileRelocationInvalidIndex;
+        // Cached metadata rule so we can properly handle renaming
+        QPair<QString, QString> m_metadataInfo;
     };
 
     using SourceFileRelocationContainer = AZStd::vector<SourceFileRelocationInfo>;
@@ -176,7 +178,7 @@ namespace AssetProcessor
         //! Deletes source files.  Source can be an absolute path or a scanfolder relative path.  Wildcards are supported.
         //! By default no changes are made to the disk.  Set previewOnly to false to actually delete files.
         //! If allowDependencyBreaking is false, the delete will fail if deleting any file breaks existing dependencies.  Set to true to ignore and delete anyway.
-        virtual AZ::Outcome<RelocationSuccess, AZStd::string> Delete(const AZStd::string& source, bool previewOnly = true, bool allowDependencyBreaking = false, bool removeEmptyFolders = true, bool excludeMetaDataFiles = false) = 0;
+        virtual AZ::Outcome<RelocationSuccess, MoveFailure> Delete(const AZStd::string& source, bool previewOnly = true, bool allowDependencyBreaking = false, bool removeEmptyFolders = true, bool excludeMetaDataFiles = false) = 0;
 
         //! Takes a relocation set and builds a string report to output the result of what files will change and what dependencies will break
         virtual AZStd::string BuildReport(const SourceFileRelocationContainer& relocationEntries, const FileUpdateTasks& updateTasks, bool isMove, bool updateReference) const = 0;
@@ -230,7 +232,7 @@ namespace AssetProcessor
 
         // ISourceFileRelocation implementation
         AZ::Outcome<RelocationSuccess, MoveFailure> Move(const AZStd::string& source, const AZStd::string& destination, bool previewOnly = true, bool allowDependencyBreaking = false, bool removeEmptyFolders = true, bool updateReferences = false, bool excludeMetaDataFiles = false) override;
-        AZ::Outcome<RelocationSuccess, AZStd::string> Delete(const AZStd::string& source, bool previewOnly = true, bool allowDependencyBreaking = false, bool removeEmptyFolders = true, bool excludeMetaDataFiles = false) override;
+        AZ::Outcome<RelocationSuccess, MoveFailure> Delete(const AZStd::string& source, bool previewOnly = true, bool allowDependencyBreaking = false, bool removeEmptyFolders = true, bool excludeMetaDataFiles = false) override;
         AZStd::string BuildReport(const SourceFileRelocationContainer& relocationEntries, const FileUpdateTasks& updateTasks, bool isMove, bool updateReference) const override;
 
     private:

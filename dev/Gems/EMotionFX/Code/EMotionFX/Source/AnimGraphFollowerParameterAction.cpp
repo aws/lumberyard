@@ -52,6 +52,7 @@ namespace EMotionFX
             return false;
         }
 
+        LoadAnimGraphAsset();
         InitInternalAttributesForAllInstances();
 
         return true;
@@ -147,6 +148,11 @@ namespace EMotionFX
         return nullptr;
     }
 
+    AZ::Data::Asset<Integration::AnimGraphAsset> AnimGraphFollowerParameterAction::GetRefAnimGraphAsset() const
+    {
+        return m_refAnimGraphAsset;
+    }
+
 
     void AnimGraphFollowerParameterAction::Reflect(AZ::ReflectContext* context)
     {
@@ -178,7 +184,7 @@ namespace EMotionFX
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ->DataElement(AZ_CRC("AnimGraphParameter", 0x778af55a), &AnimGraphFollowerParameterAction::m_parameterName, "Follower parameter", "The follower parameter that we want to sync to.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-                ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphFollowerParameterAction::GetRefAnimGraph)
+                ->Attribute(AZ_CRC("AnimGraphAsset", 0x27aae8f2), &AnimGraphFollowerParameterAction::GetRefAnimGraphAsset)
             ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphFollowerParameterAction::m_triggerValue, "Trigger value", "The value that the parameter will be override to.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ;
@@ -197,7 +203,6 @@ namespace EMotionFX
             OnAnimGraphAssetReady();
         }
     }
-
 
     void AnimGraphFollowerParameterAction::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {

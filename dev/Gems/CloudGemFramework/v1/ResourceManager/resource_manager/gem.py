@@ -15,19 +15,19 @@ from __future__ import print_function
 # Python modules...
 import json
 import os
-import stat
-import shutil
-import subprocess
-import uuid
-import sys
 import platform
-
+import shutil
+import stat
+import subprocess
+import sys
+import uuid
+from cgf_utils.version_utils import Version
 # Resource manager modules...
 from resource_manager_common import constant
+
 from . import file_util
 from . import util
 from .errors import HandledError
-from cgf_utils.version_utils import Version
 from .resource_group import ResourceGroup
 
 
@@ -45,17 +45,17 @@ class GemContext(object):
 
     def bootstrap(self, args):
         self.__verbose = args.verbose
-        self.__explicit_cloud_gems = args.only_cloud_gems 
+        self.__explicit_cloud_gems = args.only_cloud_gems
         gem_id = "CloudGemFramework"
         if self.__explicit_cloud_gems:
             self.__explicit_cloud_gems.append(gem_id)
-        
+
         # Reset the enabled gems as all gems are added on the init due to the local projects setting initialization
         # occurring before the bootstrap of the GemContext
         self.__enabled_gems = None
         # Initialize the resource groups based on the gems defined
-        for gem in self.enabled_gems:                        
-            self.__add_gem_to_resource_groups(gem)         
+        for gem in self.enabled_gems:
+            self.__add_gem_to_resource_groups(gem)
 
     @property
     def initial_content_list(self):
@@ -85,7 +85,8 @@ class GemContext(object):
             raise HandledError('The gem name is not valid for use as a Cloud Gem. {}.'.format(e))
 
         if initial_content not in self.initial_content_list:
-            raise HandledError('Invalid initial content: {}. Valid initial content values are {}.'.format(initial_content, ', '.join(self.initial_content_list)))
+            raise HandledError(
+                'Invalid initial content: {}. Valid initial content values are {}.'.format(initial_content, ', '.join(self.initial_content_list)))
 
         # Validate files are writable
 
@@ -109,9 +110,9 @@ class GemContext(object):
 
         # Set the c++ build configuration for the gem.
         if not asset_only:
-            self.__setup_cloud_gem_cpp_build(root_directory_path, gem_name, initial_content) 
+            self.__setup_cloud_gem_cpp_build(root_directory_path, gem_name, initial_content)
 
-        # Add gem to collections...
+            # Add gem to collections...
         self.__add_gem(root_directory_path, enable)
 
         # Tell them about it, then go on to enable if requested...
@@ -133,10 +134,10 @@ class GemContext(object):
             relative_directory_path = os.path.join(gem_name, 'v' + str(Version(version).major))
 
         full_directory_path = os.path.join(
-                self.__context.config.root_directory_path,
-                'Gems',
-                relative_directory_path)
-             
+            self.__context.config.root_directory_path,
+            'Gems',
+            relative_directory_path)
+
         lmbr_exe_path = self.__get_lmbr_exe_path(lmbr_exe_path_override)
         args = [lmbr_exe_path, 'gems', 'create', gem_name, '-version', version, '-out-folder', relative_directory_path]
         if asset_only:
@@ -174,34 +175,31 @@ class GemContext(object):
         dst_content_path = os.path.join(root_directory_path, 'AWS')
         relative_path = root_directory_path.replace(self.__context.config.gem_directory_path, '')
         relative_returns = ["../"] * (len(relative_path.split(os.path.sep)) + 2)
-        
+
         name_substitutions = content_substitutions = {
             '$-GEM-NAME-$': gem_name,
             '$-GEM-NAME-LOWER-CASE-$': gem_name.lower(),
             '$-PROJECT-GUID-$': str(uuid.uuid4()),
             '$-RELATIVE-RETURNS-$': ''.join(relative_returns)
         }
-        
-        if not no_sln_change:
-            self.__copy_project_to_solution(content_substitutions, src_content_path, os.path.join(self.__context.config.gem_directory_path, "CloudGemFramework",
-                                                                                                  "v1", "Website", "CloudGemPortal.sln"), '..\..\..{0}\AWS\cgp-resource-code\src'.format(relative_path), '.njsproj')
 
         file_util.copy_directory_content(
-            self.__context, 
-            dst_content_path, 
-            src_content_path, 
+            self.__context,
+            dst_content_path,
+            src_content_path,
             overwrite_existing=False,
             name_substitutions=name_substitutions,
             content_substitutions=content_substitutions
-            )
+        )
 
-    def __copy_project_to_solution(self, content_substitutions, src_content_path, src_sln, dest, ext):                
+    def __copy_project_to_solution(self, content_substitutions: dict, src_content_path: str, src_sln: str, dest: str, ext: str) -> None:
         for root, subdirs, files in os.walk(src_content_path):
-            for fname in os.listdir(root):                        
-                if fname.endswith(ext):         
+            for fname in os.listdir(root):
+                if fname.endswith(ext):
                     # do not modify the UUID's
-                    project_entry = '\nProject("{{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}}") = "{0}", "{2}\{0}{3}", "{1}"\nEndProject\n'.format(content_substitutions.get('$-GEM-NAME-$'), "{"+content_substitutions.get('$-PROJECT-GUID-$')+"}", dest, ext)                                        
-                    backup_sln = src_sln+".bak"
+                    project_entry = '\nProject("{{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}}") = "{0}", "{2}\{0}{3}", "{1}"\nEndProject\n'.format(content_substitutions.get('$-GEM-NAME-$'), "{"+content_substitutions.get('$-PROJECT-GUID-$')+"}", dest, ext)
+
+                    backup_sln = src_sln + ".bak"
                     # write the sln to a local backup
                     shutil.copyfile(src_sln, backup_sln)
                     # remove the readonly flag if it is set
@@ -219,17 +217,17 @@ class GemContext(object):
         if os.path.exists(swagger_file_path):
 
             args = [
-                self.__lmbr_aws_path, 
-                'cloud-gem-framework', 
-                'generate-service-api-code', 
-                '--gem', root_directory_path, 
+                self.__lmbr_aws_path,
+                'cloud-gem-framework',
+                'generate-service-api-code',
+                '--gem', root_directory_path,
                 '--update-waf-files']
 
             try:
                 self.__execute(args, use_shell=True)
             except Exception as e:
                 raise HandledError('Could not generate initial client code for service api. {}'.format(e))
-        
+
         # Use the initial-content option to determine what additional AWS SDK libs are needed.
         # We don't expect game clients to directly access most AWS services (TODO: game 
         # servers). 
@@ -334,10 +332,10 @@ class GemContext(object):
         self.__context.view.gem_disabled(gem_name)
         return True
 
-    def __add_gem_to_resource_groups(self, gem):        
-        if gem and gem.has_aws_file(constant.RESOURCE_GROUP_TEMPLATE_FILENAME):                 
-            gem_resource_group = ResourceGroup(self.__context, gem.name, gem.aws_directory_path, gem.cpp_base_directory_path, gem.cpp_aws_directory_path)        
-            self.__context.resource_groups.add_resource_group(gem_resource_group)        
+    def __add_gem_to_resource_groups(self, gem):
+        if gem and gem.has_aws_file(constant.RESOURCE_GROUP_TEMPLATE_FILENAME):
+            gem_resource_group = ResourceGroup(self.__context, gem.name, gem.aws_directory_path, gem.cpp_base_directory_path, gem.cpp_aws_directory_path)
+            self.__context.resource_groups.add_resource_group(gem_resource_group)
 
     def __execute(self, args, use_shell=False):
 
@@ -349,17 +347,17 @@ class GemContext(object):
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
         popen = subprocess.Popen(
-            args, 
-            stdout=subprocess.PIPE,    # Pipe stdout to the loop below
+            args,
+            stdout=subprocess.PIPE,  # Pipe stdout to the loop below
             stderr=subprocess.STDOUT,  # Redirect stderr to stdout
-            stdin=subprocess.PIPE,     # See below.
-            universal_newlines=True,   # Convert CR/LF to LF
+            stdin=subprocess.PIPE,  # See below.
+            universal_newlines=True,  # Convert CR/LF to LF
             shell=use_shell,
             startupinfo=startupinfo
         )
 
         # Piping stdin and closing it causes the process to exit if it attempts to read input.
-        popen.stdin.close() 
+        popen.stdin.close()
 
         # Read output from the process one line at a time. We echo this output and save it for
         # the error message should the command fail.
@@ -417,7 +415,7 @@ class GemContext(object):
         gem = self.__get_loaded_gem_by_root_directory_path(root_directory_path, is_enabled)
         # check to see if the user only wants to act against a specific set of cloud gems            
         is_cloud_gem_allowed = gem and gem.name in self.__explicit_cloud_gems if self.__explicit_cloud_gems else True
-        
+
         if gem is not None and is_enabled and gem not in self.__enabled_gems and is_cloud_gem_allowed:
             self.__enabled_gems.append(gem)
         return gem
@@ -534,7 +532,7 @@ class Gem(object):
         self.__cli_plugin_code_path = os.path.join(self.__aws_directory_path, 'cli-plugin-code')
         self.__cgp_resource_code_paths = os.path.join(self.__aws_directory_path, constant.GEM_CGP_DIRECTORY_NAME)
         self.__version = None
-    
+
     @property
     def __gem_file_object(self):
         if self.__gem_file_object_ is None:
@@ -619,7 +617,6 @@ class Gem(object):
 
 
 def add_gem_cli_commands(context, subparsers, add_common_args):
-
     subparser = subparsers.add_parser('cloud-gem', aliases=['gem'], help='Perform gem operations')
 
     subparsers = subparser.add_subparsers(dest='subparser_name', metavar='COMMAND')
@@ -627,7 +624,7 @@ def add_gem_cli_commands(context, subparsers, add_common_args):
     subparser = subparsers.add_parser('create', help='Create a new Cloud Gem.')
     subparser.add_argument('--gem', '-g', dest='gem_name', required=True, metavar='GEM',
                            help='The name of the gem to create.')
-    subparser.add_argument('--initial-content',  '-i', dest='initial_content', required=False, default='no-resources', metavar='CONTENT',
+    subparser.add_argument('--initial-content', '-i', dest='initial_content', required=False, default='no-resources', metavar='CONTENT',
                            help='Initialize the Cloud Gem with one the following configurations: {}. The default is "no-resources", which defines no AWS resources or plugins.'.format(
                                ', '.join(context.gem.initial_content_list)))
     subparser.add_argument('--enable', '-e', dest='enable', required=False, default=None, action='store_true',

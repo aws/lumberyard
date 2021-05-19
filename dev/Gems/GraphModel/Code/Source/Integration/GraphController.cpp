@@ -869,6 +869,13 @@ namespace GraphModelIntegration
             // The ThumbnailItem will be deleted by the Node layout itself
             m_nodeThumbnails.erase(node->GetId());
 
+            // When a node gets removed, we need to remove all of its slots
+            // from our m_elementMap as well
+            for (const auto& it : node->GetSlots())
+            {
+                m_elementMap.Remove(it.second);
+            }
+
             m_graph->RemoveNode(node);
             m_elementMap.Remove(node);
 

@@ -1,0 +1,22 @@
+{
+    "GemFormatVersion": 4,
+    "Uuid": "233dc957161341aa99dd496968a1b94b",
+    "Name": "TwitchApi",
+    "DisplayName": "TwitchApi",
+    "Version": "0.1.0",
+    "Summary": "Provides access to the Twitch API SDK Helix Endpoint including social functions, channels, and other APIs.",
+    "Tags": ["Twitch", "SDK", "Social"],
+    "IconPath": "preview.png",
+    "Modules": [
+        {
+            "Type": "GameModule"
+        }
+    ],
+    "Dependencies": [
+        {
+            "Uuid": "28479e255bde466e91fc34eec808d9c7",
+            "VersionConstraints": [ "~>1.0" ],
+            "_comment": "HttpRequestor"
+        }
+    ]
+}

@@ -169,7 +169,7 @@ AZ_POP_DISABLE_OVERRIDE_WARNING
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
         // AzFramework::AssetCatalogEventBus
-        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& assetInfo) override;
 
         // EditorComponentSelectionRequestsBus
         AZ::Aabb GetEditorSelectionBoundsViewport(

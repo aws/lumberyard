@@ -68,6 +68,8 @@ namespace Blast
         {
         }
 
+        virtual ~FakeExtPxAsset() = default;
+
         NvBlastActorDesc& getDefaultActorDesc() override
         {
             return m_desc;
@@ -112,6 +114,8 @@ namespace Blast
     class MockBlastMeshData : public BlastMeshData
     {
     public:
+        virtual ~MockBlastMeshData() = default;
+
         MOCK_CONST_METHOD1(GetMeshAsset, const AZ::Data::Asset<LmbrCentral::MeshAsset>&(size_t));
         MOCK_CONST_METHOD0(GetMeshAssets, const AZStd::vector<AZ::Data::Asset<LmbrCentral::MeshAsset>>&());
     };
@@ -280,6 +284,8 @@ namespace Blast
     class MockBlastListener : public BlastListener
     {
     public:
+        virtual ~MockBlastListener() = default;
+
         MOCK_METHOD2(OnActorCreated, void(const BlastFamily&, const BlastActor&));
         MOCK_METHOD2(OnActorDestroyed, void(const BlastFamily&, const BlastActor&));
     };
@@ -586,7 +592,7 @@ namespace Blast
 
         ~FakeActorFactory()
         {
-            for (uint32_t i = m_index; i < m_mockActors.size(); ++i)
+            for (uint32_t i = 0; i < m_mockActors.size(); ++i)
             {
                 delete m_mockActors[i];
             }

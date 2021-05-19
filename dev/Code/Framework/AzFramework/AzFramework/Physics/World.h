@@ -73,6 +73,14 @@ namespace Physics
         float GetFixedTimeStepMax() const;
     };
 
+    //! Callback for unbounded world queries. These are queries which don't require
+    //! building the entire result vector, and so saves memory for very large numbers of hits.
+    //! Called with '{ hit }' repeatedly until there are no more hits, then called with '{}', then never called again.
+    //! Returns 'true' to continue processing more hits, or 'false' otherwise. If the function ever returns
+    //! 'false', it is unspecified if the finalizing call '{}' occurs.
+    template<class HitType>
+    using HitCallback = AZStd::function<bool(AZStd::optional<HitType>&&)>;
+
     //! Physics world.
     class World
         : public AZ::EBusTraits
@@ -152,6 +160,9 @@ namespace Physics
 
         //! Perform an overlap query returning all objects that overlapped.
         virtual AZStd::vector<OverlapHit> Overlap(const OverlapRequest& request) = 0;
+
+        //! Perform an unbounded overlap query, calling the provided callback for each
+        virtual void OverlapUnbounded(const OverlapRequest& request, const HitCallback<OverlapHit>& cb) = 0;
 
         //! Perform an overlap sphere query returning all objects that overlapped.
         AZStd::vector<OverlapHit> OverlapSphere(float radius, const AZ::Transform& pose, OverlapFilterCallback filterCallback = nullptr);

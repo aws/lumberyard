@@ -135,6 +135,7 @@ protected slots:
 
 protected:
     CUiAnimViewKeyHandle m_keyHandle;
+    CUiAnimViewKeyBundle m_selectedKeys;
     QScopedPointer<Ui::CUiAnimViewTrackPropsDlg> ui;
 };
 

@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
 #include "native/AssetManager/AssetCatalog.h"
 #include "native/AssetManager/assetProcessorManager.h"
 #include "native/utilities/assetUtils.h"
@@ -29,6 +28,8 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzFramework/FileTag/FileTagBus.h>
+#include <AzFramework/FileTag/FileTag.h>
 
 #include <QElapsedTimer>
 #include <QMutexLocker>
@@ -120,6 +121,28 @@ namespace AssetProcessor
                 }
 
                 m_registries[assetPlatform].SetAssetDependencies(message.m_assetId, message.m_dependencies);
+
+                using namespace AzFramework::FileTag;
+
+                // We are checking preload Dependency only for runtime assets
+                AZStd::vector<AZStd::string> excludedTagsList = { FileTags[static_cast<unsigned int>(FileTagsIndex::EditorOnly)] };
+
+                bool editorOnlyAsset = false;
+                QueryFileTagsEventBus::EventResult(editorOnlyAsset, FileTagType::Exclude,
+                    &QueryFileTagsEventBus::Events::Match, message.m_data.c_str(), excludedTagsList);
+
+                if (!editorOnlyAsset)
+                {
+                    for (auto& productDependency : message.m_dependencies)
+                    {
+                        auto loadBehavior = AZ::Data::ProductDependencyInfo::LoadBehaviorFromFlags(productDependency.m_flags);
+                        if (loadBehavior == AZ::Data::AssetLoadBehavior::PreLoad)
+                        {
+                            m_preloadAssetList.emplace_back(AZStd::make_pair(message.m_assetId, message.m_platform.c_str()));
+                            break;
+                        }
+                    }
+                }
             }
 
             if (m_registryBuiltOnce)
@@ -156,6 +179,135 @@ namespace AssetProcessor
                 }
             }
         }
+    }
+
+    bool AssetCatalog::CheckValidatedAssets(AZ::Data::AssetId assetId, const QString& platform)
+    {
+        auto found = m_cachedNoPreloadDependenyAssetList.equal_range(assetId);
+
+        for (auto platformIter = found.first; platformIter != found.second; ++platformIter)
+        {
+            if (platformIter->second == platform)
+            {
+                // we have already verified this asset for this run and it does not have any preload dependency for the specified platform, therefore we can safely skip it
+                return false;
+            }
+        }
+
+        return true;
+
+    }
+
+    void AssetCatalog::ValidatePreLoadDependency()
+    {
+        if (m_currentlyValidatingPreloadDependency)
+        {
+            return;
+        }
+        m_currentlyValidatingPreloadDependency = true;
+
+        for (auto iter = m_preloadAssetList.begin(); iter != m_preloadAssetList.end(); iter++)
+        {
+            if (!CheckValidatedAssets(iter->first, iter->second))
+            {
+                continue;
+            }
+
+            AZStd::stack<AZStd::pair<AZ::Data::AssetId, AZ::Data::AssetId>> assetStack;
+            AZStd::vector<AZ::Data::AssetId> currentAssetTree; // this is used to determine the hieracrhy of asset loads.
+            AZStd::unordered_set<AZ::Data::AssetId> currentVisitedAssetsTree;
+            AZStd::unordered_set<AZ::Data::AssetId> allVisitedAssets;
+
+            assetStack.push(AZStd::make_pair(iter->first, AZ::Data::AssetId()));
+
+            bool cyclicDependencyFound = false;
+
+            AZStd::lock_guard<AZStd::mutex> lock(m_databaseMutex);
+            while (!assetStack.empty())
+            {
+                AZ::Data::AssetId assetId = assetStack.top().first;
+                AZ::Data::AssetId parentAssetId = assetStack.top().second;
+                assetStack.pop();
+                allVisitedAssets.insert(assetId);
+
+                while (currentAssetTree.size() && parentAssetId != currentAssetTree.back())
+                {
+                    currentVisitedAssetsTree.erase(currentAssetTree.back());
+                    currentAssetTree.pop_back();
+                };
+
+                currentVisitedAssetsTree.insert(assetId);
+                currentAssetTree.emplace_back(assetId);
+
+                m_db->QueryProductDependencyBySourceGuidSubId(assetId.m_guid, assetId.m_subId, iter->second.toUtf8().constData(), [&](const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry)
+                    {
+                        auto loadBehavior = AZ::Data::ProductDependencyInfo::LoadBehaviorFromFlags(entry.m_dependencyFlags);
+                        if (loadBehavior == AZ::Data::AssetLoadBehavior::PreLoad)
+                        {
+                            AZ::Data::AssetId dependentAssetId(entry.m_dependencySourceGuid, entry.m_dependencySubID);
+                            if (currentVisitedAssetsTree.find(dependentAssetId) == currentVisitedAssetsTree.end())
+                            {
+                                if (!CheckValidatedAssets(dependentAssetId, iter->second))
+                                {
+                                    // we have already verified that this asset does not have any preload dependency
+                                    return true;
+                                }
+
+                                assetStack.push(AZStd::make_pair(dependentAssetId, assetId));
+                            }
+                            else
+                            {
+                                cyclicDependencyFound = true;
+
+                                AZStd::string cyclicPreloadDependencyTreeString;
+                                for (const auto& assetIdEntry : currentAssetTree)
+                                {
+                                    AzToolsFramework::AssetDatabase::ProductDatabaseEntry productDatabaseEntry;
+                                    m_db->GetProductBySourceGuidSubId(assetIdEntry.m_guid, assetIdEntry.m_subId, productDatabaseEntry);
+                                    cyclicPreloadDependencyTreeString = cyclicPreloadDependencyTreeString + AZStd::string::format("%s ->", productDatabaseEntry.m_productName.c_str());
+                                };
+
+                                AzToolsFramework::AssetDatabase::ProductDatabaseEntry productDatabaseEntry;
+                                m_db->GetProductBySourceGuidSubId(dependentAssetId.m_guid, dependentAssetId.m_subId, productDatabaseEntry);
+
+                                cyclicPreloadDependencyTreeString = cyclicPreloadDependencyTreeString + AZStd::string::format(" %s ", productDatabaseEntry.m_productName.c_str());
+
+                                AzToolsFramework::AssetDatabase::ProductDatabaseEntry productDatabaseRootEntry;
+                                m_db->GetProductBySourceGuidSubId(iter->first.m_guid, iter->first.m_subId, productDatabaseRootEntry);
+
+                                AZ_Error(AssetProcessor::ConsoleChannel, false, "Preload circular dependency detected while processing asset (%s).\n Preload hierarchy is %s .",
+                                    productDatabaseRootEntry.m_productName.c_str(), cyclicPreloadDependencyTreeString.c_str());
+
+                                return  false;
+
+                            }
+                        }
+
+                        return true;
+                    });
+
+
+                if (cyclicDependencyFound)
+                {
+                    currentVisitedAssetsTree.clear();
+                    currentAssetTree.clear();
+                    AZStd::stack<AZStd::pair<AZ::Data::AssetId, AZ::Data::AssetId>> emptyAssetStack;
+                    assetStack.swap(emptyAssetStack);
+                }
+            };
+
+            if (!cyclicDependencyFound)
+            {
+                for (const auto& assetId : allVisitedAssets)
+                {
+                    m_cachedNoPreloadDependenyAssetList.emplace(AZStd::make_pair(assetId, iter->second)); // assetid, platform
+                }
+            }
+        }
+
+        m_preloadAssetList.clear();
+        m_cachedNoPreloadDependenyAssetList.clear();
+        m_currentlyValidatingPreloadDependency = false;
     }
 
     void AssetCatalog::SaveRegistry_Impl()

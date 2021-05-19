@@ -19,23 +19,6 @@ namespace AZ
 {
     namespace Test
     {
-        /// An application designed to be used in a GemTestEnvironment.
-        /// In order to facilitate testing components which are part of a gem, the GemTestApplication can be used to
-        /// load only the modules, components etc. which are required to test that gem.
-        class GemTestApplication
-            : public AZ::ComponentApplication
-        {
-        public:
-            /// Sets the component descriptors to be registered during the creation of the application.
-            /// @param componentDescriptors The component descriptors to be used.
-            void SetComponentDescriptors(const AZStd::vector<AZ::ComponentDescriptor*>& componentDescriptors);
-
-            // ComponentApplication
-            void CreateReflectionManager() override;
-        protected:
-            AZStd::vector<AZ::ComponentDescriptor*> m_componentDescriptors;
-        };
-
         /// A test environment which is intended to facilitate writing unit tests which require components from a gem.
         class GemTestEnvironment
             : public UnitTest::TraceBusHook
@@ -64,20 +47,27 @@ namespace AZ
             /// @param requiredComponents Components to be appended to the existing collection of required components.
             void AddRequiredComponents(const AZStd::vector<AZ::TypeId>& requiredComponents);
 
-            /// Allows derived environments to override to set up which gems, components etc the environment should load.
+            /// Allows derived environments to set up which gems, components etc the environment should load.
             virtual void AddGemsAndComponents() {}
 
-            /// Allows derived environments to override to perform additional steps prior to creating the application.
+            /// Allows derived environments to perform additional steps prior to creating the application.
             virtual void PreCreateApplication() {}
 
-            /// Allows derived environments to override to perform additional steps after creating the application.
+            /// Allows derived environments to perform additional steps after creating the application.
             virtual void PostCreateApplication() {}
+
+            /// Allows derived environments to perform additional steps after activating the system entity.
+            virtual void PostSystemEntityActivate() {}
 
             /// Allows derived environments to override to perform additional steps prior to destroying the application.
             virtual void PreDestroyApplication() {}
 
             /// Allows derived environments to override to perform additional steps after destroying the application.
             virtual void PostDestroyApplication() {}
+
+            /// Allows derived environments to create a desired instance of the application (for example ToolsApplication).
+            virtual AZ::ComponentApplication* CreateApplicationInstance();
+
         protected:
             class Parameters
             {
@@ -99,13 +89,7 @@ namespace AZ
             void SetupEnvironment() override;
             void TeardownEnvironment() override;
 
-            //! Destroys system allocator and tears down trace bus.
-            //! Invoked by TearDownEnvironment.
-            //! For gems with custom allocators that need to be destroyed before the system allocator, override this function to customize allocator destroy order.
-            virtual void TeardownAllocatorAndTraceBus();
-
-        private:
-            GemTestApplication* m_application;
+            AZ::ComponentApplication* m_application;
             AZ::Entity* m_systemEntity;
             GemTestEntity* m_gemEntity;
             Parameters* m_parameters;

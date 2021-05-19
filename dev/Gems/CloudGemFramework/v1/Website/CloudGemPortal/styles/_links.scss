@@ -1,9 +1,0 @@
-﻿
-a {
-	color: $primary-color;
-	cursor: pointer;
-	&:hover, &:active, &.active, &:focus {
-		text-decoration: none;
-		color: $primary-active-color;
-	}
-}

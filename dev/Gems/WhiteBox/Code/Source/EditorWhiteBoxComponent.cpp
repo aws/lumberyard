@@ -125,13 +125,48 @@ namespace WhiteBox
         return renderData;
     }
 
-    // callback for when default shape field is changed
+    static bool MeshAssetValid(AZ::Data::Asset<Pipeline::WhiteBoxMeshAsset> meshAsset)
+    {
+        return meshAsset.GetId().IsValid();
+    }
+
+    static bool MeshAssetLoaded(AZ::Data::Asset<Pipeline::WhiteBoxMeshAsset> meshAsset)
+    {
+        return MeshAssetValid(meshAsset) && meshAsset.IsReady();
+    }
+
+    static bool IsCustomAsset(const DefaultShapeType defaultShapeType)
+    {
+        return defaultShapeType == DefaultShapeType::Custom;
+    }
+
+    // if the shape type has just changed and it is not a custom shape type, check if a mesh asset is in
+    // use and clear it if so (switch back to using the component serialized WhiteBoxMesh)
+    bool TryDestroyMeshAsset(
+        const DefaultShapeType defaultShapeType, AZ::Data::Asset<Pipeline::WhiteBoxMeshAsset>& meshAsset)
+    {
+        if (!IsCustomAsset(defaultShapeType) && MeshAssetValid(meshAsset))
+        {
+            meshAsset = AZ::Data::Asset<Pipeline::WhiteBoxMeshAsset>{};
+            return true;
+        }
+
+        return false;
+    }
+
+    // callback for when the default shape field is changed
     void EditorWhiteBoxComponent::OnChangeDefaultShape()
     {
         const AZStd::string entityIdStr = AZStd::string::format("%llu", static_cast<AZ::u64>(GetEntityId()));
         const AZStd::string componentIdStr = AZStd::string::format("%llu", GetId());
         const AZStd::string shapeTypeStr = AZStd::string::format("%d", aznumeric_cast<int>(m_defaultShape));
         const AZStd::vector<AZStd::string_view> scriptArgs{entityIdStr, componentIdStr, shapeTypeStr};
+
+        if (TryDestroyMeshAsset(m_defaultShape, m_meshAsset))
+        {
+            AZ::Data::AssetBus::Handler::BusDisconnect();
+            MeshAssetNotificationBus::Handler::BusDisconnect();
+        }
 
         AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(
             &AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByFilenameWithArgs,
@@ -213,10 +248,10 @@ namespace WhiteBox
         RebuildRenderMesh();
     }
 
-    // checks if the default shape is set to a custom asset
     bool EditorWhiteBoxComponent::IsCustomAsset() const
     {
-        return m_defaultShape == DefaultShapeType::Custom;
+        // checks if the default shape is set to a custom asset
+        return WhiteBox::IsCustomAsset(m_defaultShape);
     }
 
     void EditorWhiteBoxComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -296,9 +331,9 @@ namespace WhiteBox
         Api::WriteMesh(*GetWhiteBoxMesh(), m_whiteBoxData);
     }
 
-    bool EditorWhiteBoxComponent::IsUsingAsset()
+    bool EditorWhiteBoxComponent::IsUsingAsset() const
     {
-        return m_meshAsset.GetId().IsValid();
+        return MeshAssetValid(m_meshAsset);
     }
 
     void EditorWhiteBoxComponent::LoadMesh()
@@ -360,7 +395,7 @@ namespace WhiteBox
 
     WhiteBoxMesh* EditorWhiteBoxComponent::GetWhiteBoxMesh()
     {
-        if (IsUsingAsset() && m_meshAsset.Get())
+        if (MeshAssetLoaded(m_meshAsset))
         {
             // it is possible that we've switched to use an asset but
             // it isn't ready yet, in this case continue to return a
@@ -428,7 +463,7 @@ namespace WhiteBox
 
     void EditorWhiteBoxComponent::SerializeWhiteBox()
     {
-        if (IsUsingAsset())
+        if (MeshAssetLoaded(m_meshAsset))
         {
             AzToolsFramework::ScopedUndoBatch undoBatch(AssetModifiedUndoRedoDesc);
 
@@ -448,7 +483,7 @@ namespace WhiteBox
         }
     }
 
-    void EditorWhiteBoxComponent::SetDefaultShape(DefaultShapeType defaultShape)
+    void EditorWhiteBoxComponent::SetDefaultShape(const DefaultShapeType defaultShape)
     {
         m_defaultShape = defaultShape;
         OnChangeDefaultShape();
@@ -519,15 +554,15 @@ namespace WhiteBox
         AZ::Data::AssetCatalogRequestBus::BroadcastResult(
             generatedAssetId, &AZ::Data::AssetCatalogRequests::GenerateAssetIdTEMP, assetPath.c_str());
 
-        AZ::Data::Asset<Pipeline::WhiteBoxMeshAsset> asset =
+        AZ::Data::Asset<Pipeline::WhiteBoxMeshAsset> meshAsset =
             AZ::Data::AssetManager::Instance().FindAsset(generatedAssetId);
 
-        if (!asset.GetId().IsValid())
+        if (!MeshAssetValid(meshAsset))
         {
-            asset = AZ::Data::AssetManager::Instance().CreateAsset<Pipeline::WhiteBoxMeshAsset>(generatedAssetId);
+            meshAsset = AZ::Data::AssetManager::Instance().CreateAsset<Pipeline::WhiteBoxMeshAsset>(generatedAssetId);
         }
 
-        return asset;
+        return meshAsset;
     }
 
     void EditorWhiteBoxComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
@@ -696,6 +731,7 @@ namespace WhiteBox
             {
                 m_meshAsset = CreateOrFindMeshAsset(relativeAssetPath);
                 m_meshAsset->SetMesh(AZStd::move(m_whiteBox));
+                m_whiteBox = Api::CreateWhiteBoxMesh();
             }
 
             // change default shape to custom
@@ -804,7 +840,7 @@ namespace WhiteBox
 
         bool intersection = false;
         distance = AZ::VectorFloat(std::numeric_limits<float>::max());
-        for (const auto face : m_faces.value())
+        for (const auto& face : m_faces.value())
         {
             AZ::VectorFloat t;
             AZ::Vector3 normal;

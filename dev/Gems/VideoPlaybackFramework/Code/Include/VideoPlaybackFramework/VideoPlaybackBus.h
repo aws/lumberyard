@@ -111,6 +111,18 @@ namespace VideoPlaybackFramework
         */
         virtual void SetPlaybackSpeed(float speedFactor) = 0;
 
+        /* Sets current volume of the sound
+        *
+        * @param volume The volume of the sound between 0 and 1
+        */
+        virtual void SetSoundVolume(float volume) = 0;
+
+        /* Get the current volume of the sound
+        *
+        * @return Returns the volume as a float between 0 and 1
+        */
+        virtual float GetSoundVolume() = 0;
+
         /*
         * Get the source location of the video
         * @return Returns the source location of the video

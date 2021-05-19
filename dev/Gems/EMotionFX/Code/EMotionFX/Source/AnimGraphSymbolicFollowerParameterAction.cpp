@@ -127,7 +127,6 @@ namespace EMotionFX
         *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.c_str(), m_leaderParameterName.c_str());
     }
 
-
     AnimGraph* AnimGraphSymbolicFollowerParameterAction::GetRefAnimGraph() const
     {
         if (m_refAnimGraphAsset.GetId().IsValid() && m_refAnimGraphAsset.IsReady())
@@ -137,6 +136,10 @@ namespace EMotionFX
         return nullptr;
     }
 
+    AZ::Data::Asset<Integration::AnimGraphAsset> AnimGraphSymbolicFollowerParameterAction::GetRefAnimGraphAsset() const
+    {
+        return m_refAnimGraphAsset;
+    }
 
     bool AnimGraphSymbolicFollowerParameterAction::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
     {
@@ -206,13 +209,12 @@ namespace EMotionFX
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ->DataElement(AZ_CRC("AnimGraphParameter", 0x778af55a), &AnimGraphSymbolicFollowerParameterAction::m_followerParameterName, "Follower parameter", "The follower parameter that we want to sync to.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-                ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphSymbolicFollowerParameterAction::GetRefAnimGraph)
+                ->Attribute(AZ_CRC("AnimGraphAsset", 0x27aae8f2), &AnimGraphSymbolicFollowerParameterAction::GetRefAnimGraphAsset)
             ->DataElement(AZ_CRC("AnimGraphParameter", 0x778af55a), &AnimGraphSymbolicFollowerParameterAction::m_leaderParameterName, "Leader parameter", "The leader parameter that we want to sync from.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-                ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphSymbolicFollowerParameterAction::GetAnimGraph)
+                ->Attribute(AZ_CRC("AnimGraphAsset", 0x27aae8f2), &AnimGraphSymbolicFollowerParameterAction::GetRefAnimGraphAsset)
             ;
     }
-
 
     void AnimGraphSymbolicFollowerParameterAction::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {

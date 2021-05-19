@@ -47,6 +47,7 @@ static const char* g_spinBoxValueIncreasingName = "SpinBoxValueIncreasing";
 static const char* g_spinBoxValueDecreasingName = "SpinBoxValueDecreasing";
 static const char* g_spinBoxScrollIncreasingName = "SpinBoxScrollIncreasing";
 static const char* g_spinBoxScrollDecreasingName = "SpinBoxScrollDecreasing";
+static const char* g_spinBoxScrollTimerName = "SpinBoxScrollTimer";
 static const char* g_spinBoxIntializedValueName = "SpinBoxInitializedValue";
 static const char* g_spinBoxMinReachedName = "SpinBoxMinReached";
 static const char* g_spinBoxMaxReachedName = "SpinBoxMaxReached";
@@ -86,6 +87,8 @@ private:
     bool filterLineEditEvents(QLineEdit* lineEdit, QEvent* event);
     bool handleMouseDragStepping(QAbstractSpinBox* spinBox, QEvent* event);
     void setInializeSpinboxValue(QAbstractSpinBox* spinBox, bool clearText = false);
+
+    QTimer* SpinBoxScrollTimer(QAbstractSpinBox* spinBox);
 
     void initStyleOption(QAbstractSpinBox* spinBox, QStyleOptionSpinBox* styleOption);
     QAbstractSpinBox::StepEnabled stepEnabled(QAbstractSpinBox* spinBox);
@@ -374,24 +377,23 @@ bool SpinBoxWatcher::filterSpinBoxEvents(QAbstractSpinBox* spinBox, QEvent* even
             auto wheelEvent = static_cast<QWheelEvent*>(event);
 
             // Emulates Qt::ScrollEnd
-            static QMap<QWidget*, QTimer*> wheelTimeout;
-
             if (wheelEvent->source() != Qt::MouseEventSynthesizedBySystem)
             {
-                if (!wheelTimeout.contains(spinBox))
+                QTimer* timer = SpinBoxScrollTimer(spinBox);
+                if (!timer)
                 {
-                    auto timer = new QTimer();
+                    timer = new QTimer(spinBox);
+                    timer->setObjectName(g_spinBoxScrollTimerName);
                     timer->setSingleShot(true);
                     timer->setInterval(100);
-                    timer->callOnTimeout([this, timer, spinBox](){
+                    timer->callOnTimeout([this, timer, spinBox]() {
                         emitValueChangeEnded(spinBox);
-                        wheelTimeout.remove(spinBox);
+                        timer->setParent(nullptr);
                         timer->deleteLater();
                     });
-                    wheelTimeout.insert(spinBox, timer);
                 }
 
-                wheelTimeout[spinBox]->start();
+                timer->start();
             }
 
             setInializeSpinboxValue(spinBox, true);
@@ -562,6 +564,18 @@ void SpinBoxWatcher::setInializeSpinboxValue(QAbstractSpinBox* spinBox, bool cle
             }
         }
     }
+}
+
+QTimer* SpinBoxWatcher::SpinBoxScrollTimer(QAbstractSpinBox* spinBox)
+{
+    QTimer* timer = nullptr;
+
+    if (spinBox)
+    {
+        timer = spinBox->findChild<QTimer*>(g_spinBoxScrollTimerName, Qt::FindDirectChildrenOnly);
+    }
+
+    return timer;
 }
 
 bool SpinBoxWatcher::handleMouseDragStepping(QAbstractSpinBox* spinBox, QEvent* event)

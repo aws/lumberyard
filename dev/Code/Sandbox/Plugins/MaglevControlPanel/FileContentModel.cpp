@@ -22,7 +22,7 @@
 #include <QDateTime>
 #include <QDebug>
 
-// QStandardItem's implemeantion of setData doesn't
+// QStandardItem's implementation of setData doesn't
 // forward the role when calling dataChanged and
 // doesn't give the extending class any notification
 // that data has changed.

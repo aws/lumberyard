@@ -35,21 +35,8 @@ namespace SliceBuilder
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
         AZ_Assert(serializeContext, "SerializeContext not found");
 
-        AzToolsFramework::Fingerprinting::TypeCollection types;
-
-        serializeContext->EnumerateDerived(
-            [&types]
-                (const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& /*knownType*/)
-                {
-                    if (!classData->m_azRtti->IsAbstract())
-                    {
-                        types.insert(classData->m_typeId);
-                    }
-                    return true;
-                },
-            azrtti_typeid<AZ::Component>(), azrtti_typeid<AZ::Component>());
-
         AzToolsFramework::Fingerprinting::TypeFingerprinter fingerprinter(*serializeContext);
+        AzToolsFramework::Fingerprinting::TypeCollection types = fingerprinter.GatherAllTypesForComponents();
         AzToolsFramework::Fingerprinting::TypeFingerprint allComponents = fingerprinter.GenerateFingerprintForAllTypes(types);
         AZStd::string builderAnalysisFingerprint = AZStd::string::format("%zu", allComponents);
 

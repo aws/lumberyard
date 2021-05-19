@@ -471,7 +471,7 @@ void AWSResourceManager::ProcessOutputError(AWSResourceManager::RequestId reques
 QString AWSResourceManager::GetErrorString() const
 {
     AZ_Assert(!m_failedRequestMap.isEmpty(), "GetErrorString called when there are no failed requests.");
-    return m_failedRequestMap.first().errorMessage; // arbitary, but doesn't matter
+    return m_failedRequestMap.first().errorMessage; // arbitrary, but doesn't matter
 }
 
 void AWSResourceManager::RetryLoading()
@@ -509,7 +509,7 @@ void AWSResourceManager::ProcessOutputSuccess(AWSResourceManager::RequestId requ
             if (m_failedRequestMap.isEmpty() && (m_initializationState == InitializationState::UnknownState || m_initializationState == InitializationState::ErrorLoadingState))
             {
                 // All failed requests have succeeded but we are still in an
-                // unkown or error state. Refreshing the project description will
+                // unknown or error state. Refreshing the project description will
                 // cause the initialization state to be updated.
                 qDebug() << "AWSResourceManager::ProcessOutputSuccess - refreshing project description";
                 RefreshProjectDescription();
@@ -951,7 +951,7 @@ void AWSResourceManager::OnFileChanged(FileChangeMonitor::MonitoredFileType file
         RefreshProjectDescription(); // project may have been initialized
         RefreshMappingsList(); // project may have been initialized
         RefreshDeploymentList(); // default deployment may have changed; deployments may be added or removed
-        RefreshResourceGroupList(); // resource groups may have been enbabled/disabled
+        RefreshResourceGroupList(); // resource groups may have been enabled/disabled
         break;
 
     case FileChangeMonitor::MonitoredFileType::UserSettings:
@@ -1336,23 +1336,6 @@ void AWSResourceManager::RefreshHasResourceGroupsStatus()
     {
         m_hasResourceGroups = false;
     }
-}
-
-void AWSResourceManager::OpenCGP()
-{
-
-    auto callback = [](const QString& key, const QVariant& value)
-    {
-        if (key == "error")
-        {
-            QMessageBox::critical(GetIEditor()->GetEditorMainWindow(), "Cloud Gem Portal", value.toString());
-        }
-    };
-
-    bool failOnLoadError = true;
-    QVariantMap args;
-    ExecuteAsync(callback, "cloud-gem-portal", args, failOnLoadError);
-
 }
 
 void AWSResourceManager::RefreshProjectDescription()

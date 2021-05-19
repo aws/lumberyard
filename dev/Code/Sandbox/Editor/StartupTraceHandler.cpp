@@ -144,14 +144,18 @@ namespace SandboxEditor
                     mainWindow,
                     &AzToolsFramework::EditorRequests::Bus::Events::GetMainWindow);
 
-                ErrorDialog errorDialog(mainWindow);
-                errorDialog.AddMessages(
+                ErrorDialog* errorDialog = new ErrorDialog(mainWindow);
+                errorDialog->AddMessages(
                     SandboxEditor::ErrorDialog::MessageType::Warning,
                     cachedWarnings);
-                errorDialog.AddMessages(
+                errorDialog->AddMessages(
                     SandboxEditor::ErrorDialog::MessageType::Error,
                     cachedErrors);
-                errorDialog.exec();
+
+                // Use open() instead of exec() here so that we still achieve the modal dialog functionality without
+                // blocking the event queue
+                errorDialog->setAttribute(Qt::WA_DeleteOnClose, true);
+                errorDialog->open();
             });
         }
     }
@@ -167,14 +171,18 @@ namespace SandboxEditor
                 mainWindow,
                 &AzToolsFramework::EditorRequests::Bus::Events::GetMainWindow);
 
-            QMessageBox msg(
+            QMessageBox* msg = new QMessageBox(
                 QMessageBox::Critical, 
                 QObject::tr("Error"), 
                 message, 
                 QMessageBox::Ok,
                 mainWindow);
-            msg.setTextInteractionFlags(Qt::TextSelectableByMouse);
-            msg.exec();
+            msg->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+            // Use open() instead of exec() here so that we still achieve the modal dialog functionality without
+            // blocking the event queue
+            msg->setAttribute(Qt::WA_DeleteOnClose, true);
+            msg->open();
         });
     }
 

@@ -117,7 +117,7 @@ namespace AzToolsFramework
             void SealUndoStack() override {};
 
             void OnCatalogAssetAdded(const AZ::Data::AssetId& assetId) override;
-            void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+            void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& assetInfo) override;
 
         private:
             void DirtyAsset();

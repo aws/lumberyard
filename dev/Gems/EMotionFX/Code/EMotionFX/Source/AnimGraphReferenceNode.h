@@ -24,6 +24,7 @@
 
 namespace EMotionFX
 {
+    class AnimGraphModelFixture;
 
     class EMFX_API AnimGraphReferenceNode
         : public AnimGraphNode
@@ -151,6 +152,8 @@ namespace EMotionFX
         
         AZ::Data::Asset<Integration::MotionSetAsset>* GetMotionSetAsset() { return &m_motionSetAsset; }
         bool HasMotionSetAsset() const { return static_cast<bool>(m_motionSetAsset); }
+
+        void ReleaseAnimGraphInstances();
 
         // Callbacks from the Reflected Property Editor
         void OnAnimGraphAssetChanged();

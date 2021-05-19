@@ -290,7 +290,7 @@ namespace AZ
         /// TypeInfo enumeration callback. Return true to continue enumeration, otherwise false.
         typedef AZStd::function< bool(const ClassData* /*class data*/, const Uuid& /* typeId used only when RTTI is triggered, 0 the rest of the time */) > TypeInfoCB;
         /// Enumerate all derived classes of classId type in addition we use the typeId to check any rtti possible match.
-        void EnumerateDerived(const TypeInfoCB& callback, const Uuid& classId = Uuid::CreateNull(), const Uuid& typeId = Uuid::CreateNull());
+        void EnumerateDerived(const TypeInfoCB& callback, const Uuid& classId = Uuid::CreateNull(), const Uuid& typeId = Uuid::CreateNull()) const;
         /// Enumerate all base classes of classId type.
         void EnumerateBase(const TypeInfoCB& callback, const Uuid& classId);
         template<class T>

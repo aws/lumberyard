@@ -20,6 +20,9 @@ namespace NvCloth
 {
     //! Interface that provides a set of functions to
     //! calculate tangent space information for cloth's particles.
+    //!
+    //! @note Use AZ::Interface<ITangentSpaceHelper>::Get() to call the interface, which
+    //!       is available at both runtime and asset processing time (asset builders).
     class ITangentSpaceHelper
     {
     public:

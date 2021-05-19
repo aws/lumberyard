@@ -437,5 +437,17 @@ namespace AzToolsFramework
 
             return false;
         }
+
+        AZ::Vector3 TryConstrainHitPositionToView(
+            const AZ::Vector3& currentLocalHitPosition, const AZ::Vector3& startLocalHitPosition,
+            const AZ::Transform& localFromWorld, const AzFramework::CameraState& cameraState)
+        {
+            if (currentLocalHitPosition.GetDistance(localFromWorld * cameraState.m_position) > cameraState.m_farClip)
+            {
+                return startLocalHitPosition;
+            }
+
+            return currentLocalHitPosition;
+        }
     } // namespace Internal
 } // namespace AzToolsFramework

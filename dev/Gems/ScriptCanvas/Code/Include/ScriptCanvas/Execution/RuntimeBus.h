@@ -105,4 +105,19 @@ namespace ScriptCanvas
     };
 
     using RuntimeRequestBus = AZ::EBus<RuntimeRequests>;
+
+    class RuntimeNotifications : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        //! BusIdType represents a unique id for the execution component
+        //! Because multiple Script Canvas graphs can execute on the same entity
+        //! this is not an "EntityId" in the sense that it uniquely identifies an entity.
+        using BusIdType = ScriptCanvasId;
+
+        virtual void OnRuntimeStopped() {}
+        virtual void OnRuntimeReset() {}
+    };
+
+    using RuntimeNotificationBus = AZ::EBus<RuntimeNotifications>;
 }

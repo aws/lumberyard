@@ -1,0 +1,8 @@
+{
+    "auto": {
+      "Tests": [
+        "Tests/Editor/EditorBlastSliceAssetHandlerTest.cpp",
+        "Tests/Editor/EditorTestMain.cpp"
+      ]
+    }
+}

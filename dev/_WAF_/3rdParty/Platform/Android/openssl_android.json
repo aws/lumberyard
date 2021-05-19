@@ -2,10 +2,10 @@
     "platform": {
         "android_armv8_clang": {
             "libpath_debug": [
-                "lib/android_ndk_r15c/android-21/arm64-v8a/clang-3.8/debug"
+                "lib/android_ndk_r21e/android-21/arm64/debug"
             ],
             "libpath_release": [
-                "lib/android_ndk_r15c/android-21/arm64-v8a/clang-3.8/release"
+                "lib/android_ndk_r21e/android-21/arm64/release"
             ],
             "lib": [
                 "libssl.a",

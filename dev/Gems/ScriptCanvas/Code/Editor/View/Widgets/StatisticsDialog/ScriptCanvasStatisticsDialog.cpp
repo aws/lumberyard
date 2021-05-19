@@ -205,7 +205,7 @@ namespace ScriptCanvasEditor
         OnCatalogAssetChanged(assetId);
     }
     
-    void StatisticsDialog::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
+    void StatisticsDialog::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& /*assetInfo*/)
     {
         // at this point, the asset is gone.  You can't search for it in the catalog.
         if (m_scriptCanvasAssetTreeRoot)

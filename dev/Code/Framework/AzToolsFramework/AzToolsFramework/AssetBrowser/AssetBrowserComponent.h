@@ -89,7 +89,7 @@ namespace AzToolsFramework
             //////////////////////////////////////////////////////////////////////////
             void OnCatalogAssetAdded(const AZ::Data::AssetId& assetId) override;
             void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
-            void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+            void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& assetInfo) override;
 
             //////////////////////////////////////////////////////////////////////////
             // TickBus

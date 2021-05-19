@@ -182,7 +182,7 @@ namespace SurfaceData
         }
     }
 
-    void EditorSurfaceDataSystemComponent::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
+    void EditorSurfaceDataSystemComponent::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& /*assetInfo*/)
     {
         m_surfaceTagNameAssets.erase(assetId);
     }

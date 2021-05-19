@@ -225,7 +225,8 @@
                         "Runtime"
                     ]
                 },
-                "Timeout": 10
+                "Timeout": 10,
+                "MemorySize": 256
             },
             "Type": "AWS::Lambda::Function"
         },

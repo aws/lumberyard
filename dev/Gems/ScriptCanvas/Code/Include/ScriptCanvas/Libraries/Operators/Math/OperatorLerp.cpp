@@ -64,13 +64,17 @@ namespace ScriptCanvas
 
         void LerpBetween::OnDeactivate()
         {
-            AZ::SystemTickBus::Handler::BusDisconnect();
-            AZ::TickBus::Handler::BusDisconnect();
+            CancelLerp();
         }
 
         void LerpBetween::OnConfigured()
         {
             SetupInternalSlotReferences();
+        }
+
+        void LerpBetween::OnRuntimeStopped()
+        {
+            CancelLerp();
         }
         
         void LerpBetween::OnSystemTick()
@@ -204,7 +208,7 @@ namespace ScriptCanvas
         void LerpBetween::CancelLerp()
         {
             AZ::SystemTickBus::Handler::BusDisconnect();
-            AZ::TickBus::Handler::BusDisconnect();            
+            AZ::TickBus::Handler::BusDisconnect();
         }
         
         void LerpBetween::SignalLerpStep(float percent)

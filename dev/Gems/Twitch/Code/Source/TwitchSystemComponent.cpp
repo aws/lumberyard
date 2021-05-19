@@ -38,6 +38,8 @@ namespace Twitch
             serialize->Class<TwitchSystemComponent, AZ::Component>()
                 ->Version(1);
 
+            Internal::ReflectSerialization(*serialize);
+
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
                 ec->Class<TwitchSystemComponent>("Twitch", "Provides access to Twitch \"Friends\", \"Rich Presence\" APIs")

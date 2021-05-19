@@ -36,6 +36,7 @@ namespace ScriptCanvas
                 ScriptCanvas_Node(Duration,
                     ScriptCanvas_Node::Uuid("{D93538FF-3553-4C65-AB81-9089C5270214}")
                     ScriptCanvas_Node::Description("Triggers a signal every frame during the specified duration.")
+                    ScriptCanvas_Node::RequiresStateNotifications(true)
                     ScriptCanvas_Node::Version(2, DurationNodeVersionConverter)
                 );
 
@@ -76,7 +77,11 @@ namespace ScriptCanvas
                 float m_currentTime;
 
                 void OnInputSignal(const SlotId&) override;
-            
+
+                // RuntimeNotificationBus
+                void OnRuntimeStopped();
+                ////
+
             protected:
 
                 void OnDeactivate() override;

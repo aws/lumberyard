@@ -279,7 +279,7 @@ namespace ScriptCanvasEditor
         }
     }
 
-    void EditorScriptCanvasComponent::OnCatalogAssetRemoved(const AZ::Data::AssetId& removedAssetId)
+    void EditorScriptCanvasComponent::OnCatalogAssetRemoved(const AZ::Data::AssetId& removedAssetId, const AZ::Data::AssetInfo& /*assetInfo*/)
     {
         AZ::Data::AssetId assetId = m_scriptCanvasAssetHolder.GetAssetId();
 

@@ -43,6 +43,7 @@ namespace PhysX
         AZStd::vector<Physics::RayCastHit> RayCastMultiple(const Physics::RayCastRequest& request);
         AZStd::vector<Physics::RayCastHit> ShapeCastMultiple(const Physics::ShapeCastRequest& request) override;
         AZStd::vector<Physics::OverlapHit> Overlap(const Physics::OverlapRequest& request) override;
+        void OverlapUnbounded(const Physics::OverlapRequest& request, const Physics::HitCallback<Physics::OverlapHit>& cb) override;
         void RegisterSuppressedCollision(const Physics::WorldBody& body0,
             const Physics::WorldBody& body1) override;
         void UnregisterSuppressedCollision(const Physics::WorldBody& body0,

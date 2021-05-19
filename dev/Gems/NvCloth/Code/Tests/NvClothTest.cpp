@@ -9,84 +9,55 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
  */
-#include "NvClothTest.h"
+
+#include <AzTest/AzTest.h>
 
 #include <AzCore/Interface/Interface.h>
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Component/TickBus.h>
+
 #include <NvCloth/IClothSystem.h>
+#include <NvCloth/ICloth.h>
+#include <NvCloth/IClothConfigurator.h>
+#include <NvCloth/IFabricCooker.h>
 
-#include <Components/ClothComponent.h>
-#include <System/FabricCooker.h>
-#include <System/SystemComponent.h>
+#include <TriangleInputHelper.h>
 
-using ::testing::NiceMock;
-
-namespace NvCloth
+namespace UnitTest
 {
-    void CrySystemMock::BroadcastCrySystemInitialized()
+    //! Sets up a cloth and colliders for each test case.
+    class NvClothTestFixture
+        : public ::testing::Test
     {
-        SSystemInitParams defaultSystemInitParams;
-        CrySystemEventBus::Broadcast(&CrySystemEvents::OnCrySystemInitialized,
-            *this,
-            defaultSystemInitParams);
-    }
+    protected:
+        // ::testing::Test overrides ...
+        void SetUp() override;
+        void TearDown() override;
 
-    void NvClothTestEnvironment::SetupEnvironment()
-    {
-        AZ::Test::GemTestEnvironment::SetupEnvironment();
-    }
+        //! Sends tick events to make cloth simulation happen.
+        //! Returns the position of cloth particles at tickBefore, continues ticking till tickAfter.
+        void TickClothSimulation(const AZ::u32 tickBefore,
+            const AZ::u32 tickAfter,
+            AZStd::vector<NvCloth::SimParticleFormat>& particlesBefore);
 
-    void NvClothTestEnvironment::AddGemsAndComponents()
-    {
-        AddComponentDescriptors({
-            SystemComponent::CreateDescriptor(),
-            ClothComponent::CreateDescriptor()
-            });
-        AddRequiredComponents({ SystemComponent::TYPEINFO_Uuid() });
-    }
+        NvCloth::ICloth* m_cloth = nullptr;
+        NvCloth::ICloth::PreSimulationEvent::Handler m_preSimulationEventHandler;
+        NvCloth::ICloth::PostSimulationEvent::Handler m_postSimulationEventHandler;
+        bool m_postSimulationEventInvoked = false;
 
-    void NvClothTestEnvironment::TeardownEnvironment()
-    {
-        GemTestEnvironment::TeardownEnvironment();
-        m_fabricCooker.reset();
-        NvCloth::SystemComponent::TearDownNvClothLibrary(); // This call destroys AzClothAllocator. SystemAllocator destroy must come after this call.
-        GemTestEnvironment::TeardownAllocatorAndTraceBus(); // SystemAllocator, OSAllocator, and AllocatorManager destroyed here.
-    }
+    private:
+        bool CreateCloth();
+        void DestroyCloth();
 
-    void NvClothTestEnvironment::PostCreateApplication()
-    {
-        NvCloth::SystemComponent::InitializeNvClothLibrary(); // Must be called after environment setup.
-        m_fabricCooker = AZStd::make_unique<FabricCooker>();
-    }
+        // ICloth notifications
+        void OnPreSimulation(NvCloth::ClothId clothId, float deltaTime);
+        void OnPostSimulation(NvCloth::ClothId clothId,
+            float deltaTime,
+            const AZStd::vector<NvCloth::SimParticleFormat>& updatedParticles);
 
-    void NvClothTestFixture::SetUpTestCase()
-    {
-        if (!AZ::Interface<NvCloth::IClothSystem>::Get())
-        {
-            NiceMock<CrySystemMock> crySystemMock;
-            crySystemMock.BroadcastCrySystemInitialized();
-
-            using milliseconds = AZStd::chrono::milliseconds;
-            const milliseconds waitInterval = AZStd::chrono::milliseconds(100);
-            const milliseconds timeOut = AZStd::chrono::milliseconds(5000);
-
-            // Wait for cloth system component to initialize.
-            for (milliseconds timePassedMs = AZStd::chrono::milliseconds(0); timePassedMs < timeOut; timePassedMs += waitInterval)
-            {
-                if (AZ::Interface<NvCloth::IClothSystem>::Get())
-                {
-                    return;
-                }
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(waitInterval));
-            }
-
-            // Timed out initializing cloth, try again to assert that cloth is initialized, otherwise error.
-            ASSERT_TRUE(AZ::Interface<NvCloth::IClothSystem>::Get());
-        }
-    }
-
-    void NvClothTestFixture::TearDownTestCase()
-    {
-    }
+        AZ::Transform m_clothTransform = AZ::Transform::CreateIdentity();
+        AZStd::vector<AZ::Vector4> m_sphereColliders;
+    };
 
     void NvClothTestFixture::SetUp()
     {
@@ -110,6 +81,25 @@ namespace NvCloth
         DestroyCloth();
     }
 
+    void NvClothTestFixture::TickClothSimulation(const AZ::u32 tickBefore,
+        const AZ::u32 tickAfter,
+        AZStd::vector<NvCloth::SimParticleFormat>& particlesBefore)
+    {
+        const float timeOneFrameSeconds = 0.016f; //approx 60 fps
+
+        for (AZ::u32 tickCount = 0; tickCount < tickAfter; ++tickCount)
+        {
+            AZ::TickBus::Broadcast(&AZ::TickEvents::OnTick,
+                timeOneFrameSeconds,
+                AZ::ScriptTimePoint(AZStd::chrono::system_clock::now()));
+
+            if (tickCount == tickBefore)
+            {
+                particlesBefore = m_cloth->GetParticles();
+            }
+        }
+    }
+
     bool NvClothTestFixture::CreateCloth()
     {
         const float width = 2.0f;
@@ -117,7 +107,7 @@ namespace NvCloth
         const AZ::u32 segmentsX = 10;
         const AZ::u32 segmentsY = 10;
 
-        const TriangleInputPlane planeXY = TriangleInputPlane::CreatePlane(width, height, segmentsX, segmentsY);
+        const TriangleInput planeXY = CreatePlane(width, height, segmentsX, segmentsY);
 
         // Cook Fabric
         AZStd::optional<NvCloth::FabricCookedData> cookedData = AZ::Interface<NvCloth::IFabricCooker>::Get()->CookFabric(planeXY.m_vertices, planeXY.m_indices);
@@ -154,7 +144,7 @@ namespace NvCloth
         }
     }
 
-    void NvClothTestFixture::OnPreSimulation(NvCloth::ClothId clothId, float deltaTime)
+    void NvClothTestFixture::OnPreSimulation([[maybe_unused]] NvCloth::ClothId clothId, float deltaTime)
     {
         m_cloth->GetClothConfigurator()->SetTransform(m_clothTransform);
 
@@ -187,65 +177,6 @@ namespace NvCloth
         m_postSimulationEventInvoked = true;
     }
 
-    TriangleInputPlane TriangleInputPlane::CreatePlane(float width, float height, AZ::u32 segmentsX, AZ::u32 segmentsY)
-    {
-        TriangleInputPlane plane;
-
-        plane.m_vertices.resize((segmentsX + 1) * (segmentsY + 1));
-        plane.m_uvs.resize((segmentsX + 1) * (segmentsY + 1));
-        plane.m_indices.resize((segmentsX * segmentsY * 2) * 3);
-
-        const NvCloth::SimParticleFormat topLeft(
-            -width * 0.5f,
-            -height * 0.5f,
-            0.0f,
-            0.0f);
-
-        // Vertices and UVs
-        for (AZ::u32 y = 0; y < segmentsY + 1; ++y)
-        {
-            for (AZ::u32 x = 0; x < segmentsX + 1; ++x)
-            {
-                const AZ::u32 segmentIndex = x + y * (segmentsX + 1);
-                const float fractionX = ((float)x / (float)segmentsX);
-                const float fractionY = ((float)y / (float)segmentsY);
-
-                NvCloth::SimParticleFormat position(
-                    fractionX * width,
-                    fractionY * height,
-                    0.0f,
-                    (y > 0) ? 1.0f : 0.0f);
-
-                plane.m_vertices[segmentIndex] = topLeft + position;
-                plane.m_uvs[segmentIndex] = NvCloth::SimUVType(fractionX, fractionY);
-            }
-        }
-
-        // Triangles indices
-        for (AZ::u32 y = 0; y < segmentsY; ++y)
-        {
-            for (AZ::u32 x = 0; x < segmentsX; ++x)
-            {
-                const AZ::u32 segmentIndex = (x + y * segmentsX) * 2 * 3;
-
-                const AZ::u32 firstTriangleStartIndex = segmentIndex;
-                const AZ::u32 secondTriangleStartIndex = segmentIndex + 3;
-
-                //Top left to bottom right
-
-                plane.m_indices[firstTriangleStartIndex + 0] = static_cast<NvCloth::SimIndexType>((x + 0) + (y + 0) * (segmentsX + 1));
-                plane.m_indices[firstTriangleStartIndex + 1] = static_cast<NvCloth::SimIndexType>((x + 1) + (y + 0) * (segmentsX + 1));
-                plane.m_indices[firstTriangleStartIndex + 2] = static_cast<NvCloth::SimIndexType>((x + 1) + (y + 1) * (segmentsX + 1));
-
-                plane.m_indices[secondTriangleStartIndex + 0] = static_cast<NvCloth::SimIndexType>((x + 0) + (y + 0) * (segmentsX + 1));
-                plane.m_indices[secondTriangleStartIndex + 1] = static_cast<NvCloth::SimIndexType>((x + 1) + (y + 1) * (segmentsX + 1));
-                plane.m_indices[secondTriangleStartIndex + 2] = static_cast<NvCloth::SimIndexType>((x + 0) + (y + 1) * (segmentsX + 1));
-            }
-        }
-
-        return plane;
-    }
-
     //! Smallest Z and largest Y coordinates for a list of particles before, and a list of particles after simulation for some time.
     struct ParticleBounds
     {
@@ -256,7 +187,7 @@ namespace NvCloth
         float m_afterLargestY = -std::numeric_limits<float>::max();
     };
 
-    ParticleBounds GetBeforeAndAfterParticleBounds(const AZStd::vector<NvCloth::SimParticleFormat>& particlesBefore,
+    static ParticleBounds GetBeforeAndAfterParticleBounds(const AZStd::vector<NvCloth::SimParticleFormat>& particlesBefore,
         const AZStd::vector<NvCloth::SimParticleFormat>& particlesAfter)
     {
         assert(particlesBefore.size() == particlesAfter.size());
@@ -285,25 +216,6 @@ namespace NvCloth
         }
 
         return beforeAndAfterParticleBounds;
-    }
-
-    void NvClothTestFixture::TickClothSimulation(const AZ::u32 tickBefore,
-        const AZ::u32 tickAfter,
-        AZStd::vector<NvCloth::SimParticleFormat>& particlesBefore)
-    {
-        const float timeOneFrameSeconds = 0.016f; //approx 60 fps
-
-        for (AZ::u32 tickCount = 0; tickCount < tickAfter; ++tickCount)
-        {
-            AZ::TickBus::Broadcast(&AZ::TickEvents::OnTick,
-                timeOneFrameSeconds,
-                AZ::ScriptTimePoint(AZStd::chrono::system_clock::now()));
-
-            if (tickCount == tickBefore)
-            {
-                particlesBefore = m_cloth->GetParticles();
-            }
-        }
     }
 
     //! Tests that basic cloth simulation works.
@@ -355,6 +267,4 @@ namespace NvCloth
         m_preSimulationEventHandler.Disconnect();
         m_postSimulationEventHandler.Disconnect();
     }
-
-    AZ_UNIT_TEST_HOOK(new NvClothTestEnvironment);
-}
+} // namespace UnitTest

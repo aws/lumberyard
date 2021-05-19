@@ -14,7 +14,7 @@
 #include <Actor/EntityProvider.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/std/containers/vector.h>
-#include <Azcore/Math/Vector3.h>
+#include <AzCore/Math/Vector3.h>
 
 namespace LmbrCentral
 {

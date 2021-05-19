@@ -449,7 +449,22 @@ namespace PhysX
         return hits;
     }
 
-    AZStd::vector<Physics::OverlapHit> World::Overlap(const Physics::OverlapRequest& request)
+    AZStd::optional<Physics::OverlapHit> PxHitToLyHit(const physx::PxOverlapHit& hit)
+    {
+        if (auto userData = Utils::GetUserData(hit.actor))
+        {
+            Physics::OverlapHit resultHit;
+            resultHit.m_body = userData->GetWorldBody();
+            resultHit.m_shape = static_cast<PhysX::Shape*>(hit.shape->userData);
+            return resultHit;
+        }
+        else
+        {
+            return {};
+        }
+    }
+
+    bool OverlapGeneric(physx::PxScene* world, const Physics::OverlapRequest& request, physx::PxOverlapCallback& overlapCallback)
     {
         // Prepare overlap data
         const physx::PxTransform pose = PxMathConvert(request.m_pose);
@@ -460,6 +475,16 @@ namespace PhysX
         const physx::PxQueryFilterData defaultFilterData(queryFlags);
         PhysXQueryFilterCallback filterCallback(request.m_collisionGroup, GetFilterCallbackFromOverlap(request.m_filterCallback), physx::PxQueryHitType::eTOUCH);
 
+        bool status = false;
+        {
+            PHYSX_SCENE_READ_LOCK(*world);
+            status = world->overlap(pxGeometry.any(), pose, overlapCallback, defaultFilterData, &filterCallback);
+        }
+        return status;
+    }
+
+    AZStd::vector<Physics::OverlapHit> World::Overlap(const Physics::OverlapRequest& request)
+    {
         //resize if needed
         const AZ::u64 maxResults = AZ::GetMin(m_maxOverlapBufferSize, request.m_maxResults);
         AZ_Warning("World", request.m_maxResults == maxResults, "Overlap request exceeded maximum set in PhysX Configuration. Max[%u] Requested[%u]", m_maxOverlapBufferSize, request.m_maxResults);
@@ -467,31 +492,71 @@ namespace PhysX
         {
             s_overlapBuffer.resize(maxResults);
         }
+
         // Buffer to store results
         physx::PxOverlapBuffer queryHits(s_overlapBuffer.begin(), aznumeric_cast<physx::PxU32>(maxResults));
-        bool status = false;
-        {
-            PHYSX_SCENE_READ_LOCK(*m_world);
-            status = m_world->overlap(pxGeometry.any(), pose, queryHits, defaultFilterData, &filterCallback);
-        }
+        const bool status = OverlapGeneric(m_world, request, queryHits);
+
         AZStd::vector<Physics::OverlapHit> hits;
         if (status)
         {
             // Process results
             AZ::u32 hitNum = queryHits.getNbAnyHits();
+            hits.reserve(hitNum);
             for (AZ::u32 i = 0; i < hitNum; ++i)
             {
-                const physx::PxOverlapHit& hit = queryHits.getAnyHit(i);
-                if (auto userData = Utils::GetUserData(hit.actor))
+                if (auto hit = PxHitToLyHit(queryHits.getAnyHit(i)))
                 {
-                    Physics::OverlapHit resultHit;
-                    resultHit.m_body = userData->GetWorldBody();
-                    resultHit.m_shape = static_cast<PhysX::Shape*>(hit.shape->userData);
-                    hits.push_back(resultHit);
+                    hits.push_back(AZStd::move(*hit));
                 }
             }
+            hits.shrink_to_fit();
         }
         return hits;
+    }
+
+    template<class LyHitType, class PhysXHitType>
+    struct LyHitCallback : public physx::PxHitCallback<PhysXHitType>
+    {
+        const Physics::HitCallback<LyHitType>& m_hitCallback;
+
+        LyHitCallback(const Physics::HitCallback<LyHitType>& hitCallback, AZStd::vector<PhysXHitType>& hitBuffer)
+            : m_hitCallback(hitCallback)
+            , physx::PxHitCallback<PhysXHitType>(hitBuffer.begin(), static_cast<physx::PxU32>(hitBuffer.size()))
+        {}
+
+        physx::PxAgain processTouches(const PhysXHitType* buffer, physx::PxU32 numHits) override
+        {
+            for (auto it = buffer; it != buffer+numHits; ++it)
+            {
+                if (auto hit = PxHitToLyHit(*it))
+                {
+                    if (!m_hitCallback(AZStd::optional<LyHitType>(hit)))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        };
+
+        void finalizeQuery() override
+        {
+            m_hitCallback({});
+        }
+    };
+
+    void World::OverlapUnbounded(const Physics::OverlapRequest& request, const Physics::HitCallback<Physics::OverlapHit>& hitCallback)
+    {
+        //resize if needed
+        const AZ::u64 maxResults = AZ::GetMin(m_maxOverlapBufferSize, request.m_maxResults);
+        if (s_overlapBuffer.size() < maxResults)
+        {
+            s_overlapBuffer.resize(maxResults);
+        }
+        LyHitCallback<Physics::OverlapHit, physx::PxOverlapHit> callback(hitCallback, s_overlapBuffer);
+        OverlapGeneric(m_world, request, callback);
     }
 
     physx::PxActor* GetPxActor(const Physics::WorldBody& worldBody)

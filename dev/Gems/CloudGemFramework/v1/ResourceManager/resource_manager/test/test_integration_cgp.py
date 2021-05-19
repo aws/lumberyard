@@ -13,16 +13,22 @@ import json
 import os
 import time
 import warnings
+import random
+from typing import Tuple
+
+from botocore.exceptions import ClientError
 
 import resource_manager_common.constant as constant
-import requests
-from botocore.exceptions import ClientError
+from resource_manager.test import lmbr_aws_test_support
 from . import base_stack_test
 from . import test_constant
 
 
-# TODO: split the service api tests out into a separate class
 class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStackTestCase):
+    """
+    Note: This tests now confirm the absence of CloudGemPortal resources as CGP
+    has been deprecated.
+    """
     CGP_CONTENT_FILE_NAME = "Foo.js"
 
     def __init__(self, *args, **kwargs):
@@ -35,6 +41,8 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
         # Needs to be set per tests as its reset between integration tests
         warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
 
+        self.set_deployment_name(lmbr_aws_test_support.unique_name())
+        self.set_resource_group_name(lmbr_aws_test_support.unique_name('rg'))
         self.prepare_test_environment("cloud_gem_framework_test")
         self.register_for_shared_resources()
 
@@ -42,19 +50,20 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
         self.run_all_tests()
 
     def __000_create_stacks(self):
-        self.lmbr_aws('cloud-gem', 'create', '--gem', self.TEST_RESOURCE_GROUP_NAME,
-                      '--initial-content', 'no-resources', '--enable', '--no-cpp-code', '--no-sln-change', ignore_failure=True)
+        self.lmbr_aws('cloud-gem', 'create', '--gem', self.TEST_RESOURCE_GROUP_NAME, '--initial-content', 'no-resources', '--enable', '--no-cpp-code',
+                      ignore_failure=True)
         self.enable_shared_gem(self.TEST_RESOURCE_GROUP_NAME, 'v1', path=os.path.join(self.context[test_constant.ATTR_ROOT_DIR],
-                                                                                      os.path.join(test_constant.DIR_GEMS, self.TEST_RESOURCE_GROUP_NAME)))
-        self.setup_base_stack()
+                                                                                      os.path.join(test_constant.DIR_GEMS,  self.TEST_RESOURCE_GROUP_NAME)))
+        self.base_create_project_stack()
+        self.base_create_deployment_stack()
 
-    def __100_verify_cgp_content(self):
+    def __100_verify_cgp_content_not_deployed(self):
         cgp_bucket_name = self.get_stack_resource_physical_id(self.get_project_stack_arn(), 'CloudGemPortal')
-        self.verify_s3_object_exists(cgp_bucket_name, 'www/index.html')
-        self.verify_s3_object_exists(cgp_bucket_name, 'www/bundles/app.bundle.js')
-        self.verify_s3_object_exists(cgp_bucket_name, 'www/bundles/dependencies.bundle.js')
+        self.verify_s3_object_missing(cgp_bucket_name, 'www/index.html')
+        self.verify_s3_object_missing(cgp_bucket_name, 'www/bundles/app.bundle.js')
+        self.verify_s3_object_missing(cgp_bucket_name, 'www/bundles/dependencies.bundle.js')
 
-    def __120_add_cgp_resources(self):
+    def __120_create_cgp_resources(self):
         cgp_file_path = self.__get_cgp_content_file_path()
         with open(cgp_file_path, 'w') as f:
             f.write('test file content')
@@ -63,46 +72,28 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
         self.lmbr_aws('resource-group', 'upload-resources', '--resource-group', self.TEST_RESOURCE_GROUP_NAME, '--deployment', self.TEST_DEPLOYMENT_NAME,
                       '--confirm-aws-usage', '--confirm-security-change', '--only-cloud-gems', self.TEST_RESOURCE_GROUP_NAME)
 
-    def __219_verify_cgp_admin_account(self):
-        self.lmbr_aws('cloud-gem-framework', 'create-admin', '-d', self.TEST_DEPLOYMENT_NAME, ignore_failure=True)
+    def __219_verify_cgp_admin_account_not_created(self):
+        self.lmbr_aws('cloud-gem-framework', 'create-admin', ignore_failure=True)
 
         user_pool_id = json.loads(self.get_stack_resource_physical_id(self.get_project_stack_arn(), "ProjectUserPool"))["id"]
-        response = self.aws_cognito_idp.admin_get_user(
-            UserPoolId=user_pool_id,
-            Username='administrator'
-        )
-        self.assertTrue(response, 'The administrator account already exists.')
+        user_not_created = False
+        try:
+            self.aws_cognito_idp.admin_get_user(
+                UserPoolId=user_pool_id,
+                Username='administrator'
+            )
+        except ClientError as ex:
+            if ex.response['Error']['Code'] == 'UserNotFoundException':
+                user_not_created = True
+
+        self.assertTrue(user_not_created, 'The administrator account exists.')
 
     def __220_verify_cgp_resources(self):
         (bucket, key) = self.__get_cgp_content_location()
-        self.verify_s3_object_exists(bucket, key)
+        self.verify_s3_object_missing(bucket, key)
 
-    def __230_verify_cgp_default_url(self):
-        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-url-only')
-
-        url = self.lmbr_aws_stdout
-        self.assertTrue(url, "The Cloud Gem Portal URL was not generated.")
-
-        host, querystring = self.__parse_url_into_parts(url)
-
-        self.assertIsNone(querystring, "The URL querystring was not empty.")
-
-        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-bootstrap-configuration')
-        s_object = str(self.lmbr_aws_stdout)
-
-        # Strip anything in the console output up to the start of what is hoped is a json blob
-        s_object = s_object[s_object.index('{'):]
-        bootstrap_config = json.loads(s_object)
-
-        self.__validate_bootstrap_config(bootstrap_config)
-
-        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-url-only')
-
-        url2 = self.lmbr_aws_stdout
-        self.assertTrue(url2, "The Cloud Gem Portal URL was not generated.")
-
-        request = requests.get(str(url2).strip())
-        self.assertEqual(request.status_code, 200, "The pre-signed url response code was not 200 but instead it was " + str(request.status_code))
+    def __230_verify_cgp_default_url_not_available(self):
+        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-url-only', expect_failure=True)
 
     def __600_verify_cgp_user_pool(self):
         self.__verify_only_administrator_can_signup_user_for_cgp()
@@ -111,7 +102,7 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
 
     def __860_verify_cgp_user_pool_after_project_update(self):
         self.base_update_project_stack()
-        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-url-only')
+        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-url-only', expect_failure=True)
         time.sleep(20)  # Give the cloud gem framework a few seconds to populate cgp_bootstrap
         self.__verify_only_administrator_can_signup_user_for_cgp()
         self.__verify_cgp_user_pool_groups()
@@ -122,16 +113,6 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
 
     def __999_cleanup(self):
         self.teardown_base_stack()
-
-    def __parse_url_into_parts(self, url):
-        if "?" not in url:
-            return url, None
-
-        parts = url.split('?')
-
-        self.assertEqual(len(parts), 2, 'The Cloud Gem Portal URL is malformed.')
-
-        return parts[0], parts[1]
 
     def __verify_only_administrator_can_signup_user_for_cgp(self):
         time.sleep(20)  # allow time for IAM to reach a consistent state
@@ -159,7 +140,7 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
 
     def __verify_cgp_user_pool_groups(self):
         user_pool_id = json.loads(self.get_stack_resource_physical_id(self.get_project_stack_arn(), "ProjectUserPool"))["id"]
-        user_name = "test_user2"
+        user_name = f'test_user_{random.randrange(100)}'
 
         response = self.aws_cognito_idp.admin_create_user(
             UserPoolId=user_pool_id,
@@ -190,7 +171,7 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
 
     def __verify_cgp_user_pool_permissions(self):
         user_pool_id = json.loads(self.get_stack_resource_physical_id(self.get_project_stack_arn(), "ProjectUserPool"))["id"]
-        user_name = "test_user3"
+        user_name = f'test_user_{random.randrange(100)}'
 
         response = self.aws_cognito_idp.admin_create_user(
             UserPoolId=user_pool_id,
@@ -231,7 +212,7 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
             GroupName='administrator'
         )
         self.assertTrue(response['ResponseMetadata']['HTTPStatusCode'] == 200, 'Unable to list the users in the group administrator.')
-        self.assertTrue(len(response['Users']) > 0, 'Unable to list the users in the group administrator.')
+        self.assertTrue(len(response['Users']) == 0, 'Able to list the users in the group administrator.')
 
         response = self.aws_cognito_idp.admin_delete_user(
             UserPoolId=user_pool_id,
@@ -239,26 +220,7 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
         )
         self.assertTrue(response['ResponseMetadata']['HTTPStatusCode'] == 200, 'Unable to delete the user.')
 
-    def __validate_bootstrap_config(self, config):
-
-        self.assertTrue(config, "The Cloud Gem Portal configuration was not found.")
-
-        client_id = config["clientId"]
-        user_pool_id = config["userPoolId"]
-        identity_pool_id = config["identityPoolId"]
-        project_config_bucket = config["projectConfigBucketId"]
-        region = config["region"]
-
-        self.assertTrue(client_id, "The Cognito User Pool Client Id is missing in the AES payload.")
-        self.assertTrue(user_pool_id, "The Cognito User Pool Id is missing in the AES payload.")
-        self.assertTrue(identity_pool_id, "The Identity Pool Id is missing in the AES payload.")
-        self.assertTrue(project_config_bucket, "The project configuration bucket is missing in the AES payload.")
-        self.assertTrue(region, "The region is missing in the AES payload.")
-
-        return project_config_bucket, region
-
-    def __get_cgp_content_file_path(self):
-
+    def __get_cgp_content_file_path(self) -> str:
         cgp_dir_path = self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME, constant.GEM_CGP_DIRECTORY_NAME)
         if not os.path.exists(cgp_dir_path):
             os.mkdir(cgp_dir_path)
@@ -271,8 +233,8 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
 
         return cgp_file_path
 
-    def __get_cgp_content_location(self):
+    def __get_cgp_content_location(self) -> Tuple[str, str]:
         configuration_bucket = self.get_stack_resource_physical_id(self.get_project_stack_arn(), 'Configuration')
-        object_key = constant.GEM_CGP_DIRECTORY_NAME + '/deployment/' + self.TEST_DEPLOYMENT_NAME + '/resource-group/' + \
-                     self.TEST_RESOURCE_GROUP_NAME + '/dist/' + self.CGP_CONTENT_FILE_NAME
+        object_key = f'{constant.GEM_CGP_DIRECTORY_NAME}/deployment/{self.TEST_DEPLOYMENT_NAME}/resource-group/' \
+                     f'{self.TEST_RESOURCE_GROUP_NAME}/dist/{self.CGP_CONTENT_FILE_NAME}'
         return configuration_bucket, object_key

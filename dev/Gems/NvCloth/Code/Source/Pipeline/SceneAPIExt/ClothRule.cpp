@@ -54,10 +54,10 @@ namespace NvCloth
 
             using GetterFunction = AZStd::function<float(size_t index)>;
 
-            GetterFunction getInverseMass = [defaultInverseMass](size_t index) { return defaultInverseMass; };
-            GetterFunction getMotionConstraint = [defaultMotionConstraint](size_t index) { return defaultMotionConstraint; };
-            GetterFunction getBackstopOffset = [defaultBackstopOffset](size_t index) { return defaultBackstopOffset; };
-            GetterFunction getBackstopRadius = [defaultBackstopRadius](size_t index) { return defaultBackstopRadius; };
+            GetterFunction getInverseMass = [defaultInverseMass]([[maybe_unused]] size_t index) { return defaultInverseMass; };
+            GetterFunction getMotionConstraint = [defaultMotionConstraint]([[maybe_unused]] size_t index) { return defaultMotionConstraint; };
+            GetterFunction getBackstopOffset = [defaultBackstopOffset]([[maybe_unused]] size_t index) { return defaultBackstopOffset; };
+            GetterFunction getBackstopRadius = [defaultBackstopRadius]([[maybe_unused]] size_t index) { return defaultBackstopRadius; };
 
             auto getColorChannelSafe = [](
                 const AZ::SceneAPI::DataTypes::IMeshVertexColorData* data,
@@ -173,6 +173,46 @@ namespace NvCloth
         bool ClothRule::IsBackstopStreamDisabled() const
         {
             return m_backstopStreamName == DefaultBackstopString;
+        }
+
+        AZ::SceneAPI::DataTypes::ColorChannel ClothRule::GetInverseMassesStreamChannel() const
+        {
+            return m_inverseMassesChannel;
+        }
+
+        AZ::SceneAPI::DataTypes::ColorChannel ClothRule::GetMotionConstraintsStreamChannel() const
+        {
+            return m_motionConstraintsChannel;
+        }
+
+        AZ::SceneAPI::DataTypes::ColorChannel ClothRule::GetBackstopOffsetStreamChannel() const
+        {
+            return m_backstopOffsetChannel;
+        }
+
+        AZ::SceneAPI::DataTypes::ColorChannel ClothRule::GetBackstopRadiusStreamChannel() const
+        {
+            return m_backstopRadiusChannel;
+        }
+
+        void ClothRule::SetInverseMassesStreamChannel(AZ::SceneAPI::DataTypes::ColorChannel channel)
+        {
+            m_inverseMassesChannel = channel;
+        }
+
+        void ClothRule::SetMotionConstraintsStreamChannel(AZ::SceneAPI::DataTypes::ColorChannel channel)
+        {
+            m_motionConstraintsChannel = channel;
+        }
+
+        void ClothRule::SetBackstopOffsetStreamChannel(AZ::SceneAPI::DataTypes::ColorChannel channel)
+        {
+            m_backstopOffsetChannel = channel;
+        }
+
+        void ClothRule::SetBackstopRadiusStreamChannel(AZ::SceneAPI::DataTypes::ColorChannel channel)
+        {
+            m_backstopRadiusChannel = channel;
         }
 
         AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IMeshVertexColorData> ClothRule::FindVertexColorData(

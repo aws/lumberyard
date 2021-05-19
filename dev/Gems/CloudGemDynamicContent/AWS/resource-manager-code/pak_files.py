@@ -10,23 +10,26 @@
 #
 
 from __future__ import print_function
-import subprocess
-import tempfile
-import shutil
+
+import errno
+import hashlib
 import os
 import os.path
-import platform
 import posixpath
-import errno
+import shutil
 import stat
+import subprocess
 import sys
+import tempfile
 import zipfile
+
 from path_utils import ensure_posix_path
-import hashlib
 
 # For Debugging, flip this on to get verbose output
 vprint = lambda *a: None
-#vprint = lambda *args: print("\n".join(args))
+
+
+# vprint = lambda *args: print("\n".join(args))
 
 
 class PakFileArchiver:
@@ -64,7 +67,7 @@ class PakFileArchiver:
                 for file_name in file_names:
                     file_path = os.path.join(dir_path, file_name)
                     arcname = file_path.replace(src_dir_name + os.path.sep, '')
-                    myzip.write(file_path, arcname)        
+                    myzip.write(file_path, arcname)
 
     def archive_files(self, src_file_list, dest_pak_path):
         """ create a pak file with directory preserved
@@ -110,7 +113,7 @@ class PakFileArchiver:
                 # clear read only flags in case this came from source control environment so the temp folder
                 # can be removed when done
                 os.chmod(temp_path, stat.S_IWUSR | stat.S_IRUSR | stat.S_IWGRP | stat.S_IRGRP |
-                          stat.S_IWOTH | stat.S_IROTH)
+                         stat.S_IWOTH | stat.S_IROTH)
 
         # create a pak archive from the files in the temporary folder
         self.archive_folder(temp_dir, dest_pak_path)
@@ -118,14 +121,16 @@ class PakFileArchiver:
         # delete the temporary files and folder
         shutil.rmtree(temp_dir)
 
+
 def extract_from_pak_object(pak_object, file_path, output):
-     with zipfile.ZipFile(pak_object) as manifest_pak:                
+    with zipfile.ZipFile(pak_object) as manifest_pak:
         file_to_extract = manifest_pak.open(file_path)
         with open(output, 'wb') as outfile:
             shutil.copyfileobj(file_to_extract, outfile)
 
+
 def calculate_pak_content_hash(pak_path: str) -> str:
-    """ Caculate hash of all of the individual file hash inside the pak 
+    """ Calculate hash of all of the individual file hash inside the pak
     
     Arguments
         pak_path -- path to the pak file
@@ -141,6 +146,7 @@ def calculate_pak_content_hash(pak_path: str) -> str:
                 content_hash.update(file_hash.encode())
 
     return content_hash.hexdigest()
+
 
 def main():
     """This code is here to make it easy to archive without needing to run the lmbr_aws utility"""
@@ -188,6 +194,7 @@ def main():
             class Config:
                 def __init__(self):
                     self.root_directory_path = dev_root
+
             self.config = Config()
 
     context = Context()
@@ -212,5 +219,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

@@ -1,8 +1,0 @@
-{
-    "name": "@cloud-gems/cloudgemdynamiccontent",
-    "version": "1.0.0",
-    "description": "Cloud Gem - Dynamic Content",
-    "private": true,
-    "dependencies": {
-    }
-}

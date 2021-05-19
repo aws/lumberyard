@@ -62,13 +62,14 @@ namespace PhysX
             AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
             if (editor)
             {
-                
-                char projectPath[AZ_MAX_PATH_LEN];
-                AZ::IO::FileIOBase::GetInstance()->ResolvePath("@devassets@", projectPath, AZ_MAX_PATH_LEN);
-                AZStd::string absoluteFolderPath = editor->Get3DEngine()->GetLevelFilePath("");
-
-                AZStd::string levelFolder = GetRelativePath(absoluteFolderPath, projectPath);
-                return levelFolder;
+                const AZStd::string fullPath = editor->GetLevelFolder().toStdString().c_str();
+                AZStd::string relativePath;
+                bool foundRelativePath = false;
+                AzToolsFramework::AssetSystemRequestBus::BroadcastResult(
+                    foundRelativePath,
+                    &AzToolsFramework::AssetSystem::AssetSystemRequest::GetRelativeProductPathFromFullSourceOrProductPath,
+                    fullPath, relativePath);
+                return relativePath;
             }
             else
             {

@@ -80,18 +80,18 @@ public:
     void RetryLoading() override;
 
     // The ExecuteAsync and ExecuteAsyncWithRetry methods can be used to submit
-    // commands to the resource manager's Python implemeantion.
+    // commands to the resource manager's Python implementation.
     //
-    // There are two ways to get output. The prefered (and newer) way is to provide an
+    // There are two ways to get output. The preferred (and newer) way is to provide an
     // ExecuteAsyncCallback function when submitting the request.
     //
-    // Alturnatively you can provide a requestId produce by calling AllocateRequestId and
+    // Alternatively you can provide a requestId produce by calling AllocateRequestId and
     // wire up a handler to the CommandOutput signal. In this case YOU MUST IGNORE
     // all invocations where the resourceId is not the one provided when submitting the
     // request.
     //
     // The callback or signal function will be called once for each output produced by the
-    // operation. This may include output data with a key value unqiue to the command. It
+    // operation. This may include output data with a key value unique to the command. It
     // may also include progress messages where key is "message". If the operation succeeds,
     // the function will be called for a final time with key == "success". If the
     // operation fails, the function will be called for a final time with key == "error".
@@ -138,8 +138,6 @@ public:
 
     void OperationStarted();
     void OperationFinished();
-
-    void OpenCGP() override;
 
     /// Returns true if resource groups have been created locally. If not, it's likely that the stack contains no deployments.
     bool HasResourcGroups()
@@ -223,7 +221,7 @@ private:
     void SetProjectInitialized(bool isInitialized, bool isInitializing, const QString& defaultAWSProfile);
     InitializationState m_initializationState;
 
-    // File Montoring and Refresh
+    // File Monitoring and Refresh
 
     QSharedPointer<FileChangeMonitor> m_fileMonitor;
 

@@ -292,10 +292,16 @@ namespace Projects
         virtual ~ProjectManagerNotifications() = default;
 
         /// Called when a new project instance is created or loaded.
-        virtual void OnProjectLoaded(ProjectId project) = 0;
+        virtual void OnProjectLoaded(ProjectId /*project*/) {};
 
         /// Called when a new project creation process fails
-        virtual void OnProjectUnloaded(ProjectId project) = 0;
+        virtual void OnProjectUnloaded(ProjectId /*project*/) {};
+
+        /// Called whenever there is new output from a build
+        virtual void OnNewBuildOutput(const AZStd::string& /*string*/) {};
+
+        /// Called whenever output from an active build job is acquired
+        virtual void OnBuildProgressUpdated(unsigned int jobNumber, unsigned int /*jobCount*/) {};
     };
 
     using ProjectManagerNotificationBus = AZ::EBus<ProjectManagerNotifications>;

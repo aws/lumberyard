@@ -103,6 +103,8 @@ class Path(object):
             not set, then 'cgf_service_client' is used.
 
             - verbose: enables logging of requests and responses.
+
+            - repack: if provided, will pack non-dict service API changes in a generic Result dict
         """
 
         # TODO: add support for a "spec" configuration item. A spec is a description 
@@ -432,6 +434,13 @@ class Path(object):
                 return RuntimeError('Service response did not include the stupid result property.')
             #
             # END TODO
+
+            # Data assumes the result is a dict, for responses that don't return a dict
+            # try packing into dict
+            if not isinstance(result, dict) and self.__config.repack:
+                result = {'Result': result}
+                if self.__config.verbose:
+                    print(f'  --> Repacked response as {result}')
 
             return Data(result, read_only=True, PATH=self, RESPONSE=response)
 

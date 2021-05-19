@@ -786,7 +786,7 @@ namespace AZ
         using RequireHook = AZStd::function<int(lua_State* lua, ScriptContext* context, const char* module)>;
 
         /// Stack temporary memory
-        typedef AZStd::static_buffer_allocator<256, 16> StackVariableAllocator;
+        typedef AZStd::static_buffer_allocator<512, 16> StackVariableAllocator;
 
         /**
          * Class that provides custom reader/write to the Lua VM

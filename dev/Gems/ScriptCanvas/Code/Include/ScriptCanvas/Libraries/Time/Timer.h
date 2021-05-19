@@ -36,6 +36,7 @@ namespace ScriptCanvas
                 ScriptCanvas_Node(Timer,
                     ScriptCanvas_Node::Uuid("{60CF8540-E51A-434D-A32C-461C41D68AF9}")
                     ScriptCanvas_Node::Description("Provides a time value.")
+                    ScriptCanvas_Node::RequiresStateNotifications(true)
                     ScriptCanvas_Node::Version(2)
                 );
 
@@ -71,6 +72,10 @@ namespace ScriptCanvas
                 // Temps
                 float m_seconds;
                 float m_milliseconds;
+
+                // RuntimeNotificationBus
+                void OnRuntimeStopped();
+                ////
             
             protected:
 

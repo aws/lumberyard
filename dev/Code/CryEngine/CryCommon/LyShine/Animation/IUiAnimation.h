@@ -53,7 +53,7 @@ typedef AZStd::vector<AZStd::string> UiTrackEvents;
 // You need to register new types in UiAnimationSystem.cpp/RegisterNodeTypes for serialization.
 // Note: Enums are serialized by string now, there is no need for specific IDs
 // anymore for new parameters. Values are for backward compatibility.
-enum EUiAnimNodeType
+enum EUiAnimNodeType : int
 {
     eUiAnimNodeType_Invalid                 = 0x00,
     eUiAnimNodeType_Entity                  = 0x01,

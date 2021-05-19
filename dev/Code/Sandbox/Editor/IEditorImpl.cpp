@@ -1938,26 +1938,33 @@ CShaderEnum* CEditorImpl::GetShaderEnum()
     return m_pShaderEnum;
 }
 
-bool CEditorImpl::ExecuteConsoleApp(const QString& CommandLine, QString& OutputText, bool bNoTimeOut, bool bShowWindow)
+bool CEditorImpl::ExecuteConsoleApp(const QString& program, const QStringList& arguments, QString& outputText, bool noTimeOut, bool showWindow)
 {
-    CLogFile::FormatLine("Executing console application '%s'", CommandLine.toUtf8().data());
+    // Create full space seperated command
+    QString commandLine = program;
+    for (const QString& argument : arguments)
+    {
+        commandLine += ' ' + argument;
+    }
+
+    CLogFile::FormatLine("Executing console application '%s'", commandLine.toUtf8().data());
 
     QProcess process;
-    if (bShowWindow)
+    if (showWindow)
     {
 #if defined(AZ_PLATFORM_WINDOWS)
-        process.start("cmd.exe", { QString("/C %1").arg(CommandLine) });
+        process.start("cmd.exe", QStringList { "/C", program } + arguments);
 #elif defined(AZ_PLATFORM_LINUX)
        //KDAB_TODO
 #elif defined(AZ_PLATFORM_MAC)
-        process.start("/usr/bin/osascript", { QString("-e 'tell application \"Terminal\" to do script \"%1\"'").arg(QString(CommandLine).replace("\"", "\\\"")) });
+        process.start("/usr/bin/osascript", { QString("-e 'tell application \"Terminal\" to do script \"%1\"'").arg(commandLine.replace("\"", "\\\"")) });
 #else
-        process.start("/usr/bin/csh", { QString("-c \"%1\"'").arg(QString(CommandLine).replace("\"", "\\\"")) } );
+        process.start("/usr/bin/csh", QStringList{ "-c", program.replace("\"", "\\\"") } + arguments.replace("\"", "\\\""));
 #endif
     }
     else
     {
-        process.start(CommandLine, QStringList());
+        process.start(program, arguments);
     }
 
     if (!process.waitForStarted())
@@ -1967,9 +1974,9 @@ bool CEditorImpl::ExecuteConsoleApp(const QString& CommandLine, QString& OutputT
 
     // Wait for the process to finish
     process.waitForFinished();
-    if (!bShowWindow)
+    if (!showWindow)
     {
-        OutputText = process.readAllStandardOutput();
+        outputText = process.readAllStandardOutput();
     }
 
     return true;

@@ -47,9 +47,9 @@ namespace CloudCanvas
             void RemoveAsset(const AZ::Data::AssetId& sanitizedPath) override;
 
             //AssetCatalogEventBus
-            void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId);
-            void OnCatalogAssetAdded(const AZ::Data::AssetId& assetId);
-            void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId);
+            void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
+            void OnCatalogAssetAdded(const AZ::Data::AssetId& assetId) override;
+            void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& assetInfo) override;
 
             // AssetDatabaseBus
             void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
@@ -61,10 +61,12 @@ namespace CloudCanvas
         private:
 
             bool IsMonitored(const AZ::Data::AssetId& assetId);
+            bool IsMonitored(const AZ::Data::AssetInfo& assetInfo);
             void OnFileChanged(const AZStd::string& filePath);
 
             AZStd::string GetSanitizedName(const char* pathName) const override; // Do any sort of path sanitizing so output events line up
             static AZStd::string GetAssetFilenameFromAssetId(const AZ::Data::AssetId& assetId);
+            static AZStd::string GetAssetFilenameFromAssetInfo(const AZ::Data::AssetInfo& assetInfo);
 
             AZStd::unordered_set<AZ::Data::AssetId> m_monitoredAssets;
             AZStd::unordered_set<AZStd::string> m_monitoredPaths;

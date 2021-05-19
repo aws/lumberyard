@@ -184,6 +184,7 @@ namespace EMotionFX
     {
         if (asset == m_animGraphAsset)
         {
+            AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnReferenceAnimGraphAboutToBeChanged, this);
             m_animGraphAsset = asset;
 
             // TODO: remove once "owned by runtime" is gone
@@ -208,7 +209,9 @@ namespace EMotionFX
     {
         if (asset == m_animGraphAsset)
         {
+            AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnReferenceAnimGraphAboutToBeChanged, this);
             m_animGraphAsset = asset;
+            ReleaseAnimGraphInstances();
 
             // TODO: remove once "owned by runtime" is gone
             asset.GetAs<Integration::AnimGraphAsset>()->GetAnimGraph()->SetIsOwnedByRuntime(false);
@@ -625,7 +628,7 @@ namespace EMotionFX
             ;
     }
     
-    void AnimGraphReferenceNode::OnAnimGraphAssetChanged()
+    void AnimGraphReferenceNode::ReleaseAnimGraphInstances()
     {
         // Inform the unique datas as well as other systems about the changed anim graph asset, destroy and nullptr the reference
         // anim graph instances so that we don't try to update an anim graph instance or while the asset already got destructed.
@@ -639,6 +642,12 @@ namespace EMotionFX
                 uniqueData->OnReferenceAnimGraphAssetChanged();
             }
         }
+    }
+
+    void AnimGraphReferenceNode::OnAnimGraphAssetChanged()
+    {
+        ReleaseAnimGraphInstances();
+
         AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnReferenceAnimGraphChanged, this);
 
         m_reinitMaskedParameters = true;

@@ -229,7 +229,7 @@ namespace EMotionFX
         const AZStd::vector<AZ::TypeId> conditionTypeIds = GetConditionTypeIds();
         EXPECT_TRUE(conditionTypeIds.size() > 0) << "There are no transition conditions registered in the object factory.";
 
-        for (const AZ::TypeId conditionTypeId : conditionTypeIds)
+        for (AZ::TypeId conditionTypeId : conditionTypeIds)
         {
             CommandSystem::CommandAddTransitionCondition* addConditionCommand = aznew CommandSystem::CommandAddTransitionCondition(
                 m_motionNodeAnimGraph->GetID(), m_transition->GetId(), conditionTypeId);

@@ -117,11 +117,6 @@ namespace EMotionFX
             m_app.Start(AZ::ComponentApplication::Descriptor{}, startupParameters);
 
             GetSerializeContext()->CreateEditContext();
-
-            if (HasComponentType<AzFramework::AssetCatalogComponent>())
-            {
-                AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::LoadCatalog, "@assets@/assetcatalog.xml");
-            }
         }
 
         void TearDown() override

@@ -147,11 +147,7 @@ namespace LyShine
             gEnv->pLyShine->Update(deltaTimeInSeconds);
 
             // Render.
-            gEnv->pRenderer->SetViewport(0, 0, gEnv->pRenderer->GetOverlayWidth(), gEnv->pRenderer->GetOverlayHeight());
-
-            gEnv->pRenderer->BeginFrame();
             gEnv->pLyShine->Render();
-            gEnv->pRenderer->EndFrame();
         }
     }
 

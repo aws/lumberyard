@@ -646,8 +646,12 @@ namespace AzFramework
     {
         if (assetId.IsValid())
         {
-            // Must notify listeners first, in case they need lookups based on this assetId
-            EBUS_EVENT(AzFramework::AssetCatalogEventBus, OnCatalogAssetRemoved, assetId);
+            AZ::Data::AssetInfo assetInfo = GetAssetInfoById(assetId);
+
+            AZ::TickBus::QueueFunction([assetId, assetInfo = AZStd::move(assetInfo)]()
+            {
+                AzFramework::AssetCatalogEventBus::Broadcast(&AzFramework::AssetCatalogEventBus::Events::OnCatalogAssetRemoved, assetId, assetInfo);
+            });
 
             AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
             m_registry->UnregisterAsset(assetId);

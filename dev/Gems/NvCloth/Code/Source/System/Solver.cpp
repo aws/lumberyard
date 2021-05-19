@@ -75,6 +75,11 @@ namespace NvCloth
         }
     }
 
+    size_t Solver::GetNumCloths() const
+    {
+        return m_cloths.size();
+    }
+
     const AZStd::string& Solver::GetName() const
     {
         return m_name;

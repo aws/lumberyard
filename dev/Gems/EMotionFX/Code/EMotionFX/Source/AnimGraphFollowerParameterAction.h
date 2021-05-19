@@ -50,6 +50,7 @@ namespace EMotionFX
         static void Reflect(AZ::ReflectContext* context);
 
         AnimGraph* GetRefAnimGraph() const;
+        AZ::Data::Asset<Integration::AnimGraphAsset> GetRefAnimGraphAsset() const;
 
         // AZ::Data::AssetBus::MultiHandler
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;

@@ -292,6 +292,8 @@ namespace PhysX
         LmbrCentral::MeshComponentNotificationBus::Handler::BusConnect(GetEntityId());
         EditorColliderComponentRequestBus::Handler::BusConnect(AZ::EntityComponentIdPair(GetEntityId(), GetId()));
 
+        AZ::TransformBus::EventResult(m_cachedWorldTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
+
         // Debug drawing
         m_colliderDebugDraw.Connect(GetEntityId());
         m_colliderDebugDraw.SetDisplayCallback(this);
@@ -819,8 +821,14 @@ namespace PhysX
         return GetWorldTM().RetrieveScale();
     }
 
-    void EditorColliderComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
+    void EditorColliderComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
+        if (world.IsClose(m_cachedWorldTransform))
+        {
+            return;
+        }
+        m_cachedWorldTransform = world;
+
         UpdateShapeConfigurationScale();
         CreateStaticEditorCollider();
         Physics::EditorWorldBus::Broadcast(&Physics::EditorWorldRequests::MarkEditorWorldDirty);

@@ -63,7 +63,7 @@ public:
     MOCK_METHOD1(GetMasterCDFolder, QString(EEditorPathName));
     MOCK_METHOD0(GetResolvedUserFolder, QString());
     MOCK_METHOD0(GetProjectName, QString());
-    MOCK_METHOD4(ExecuteConsoleApp, bool(const QString&,QString&,bool,bool));
+    MOCK_METHOD5(ExecuteConsoleApp, bool(const QString&,const QStringList&,QString&,bool,bool));
     MOCK_METHOD0(SetDataModified, void());
     MOCK_CONST_METHOD0(IsInitialized, bool());
     MOCK_METHOD0(IsInGameMode, bool());

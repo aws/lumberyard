@@ -26,7 +26,7 @@
 
 namespace NvCloth
 {
-    namespace
+    namespace Internal
     {
         bool ObtainSkinningData(
             AZ::EntityId entityId, 
@@ -237,7 +237,7 @@ namespace NvCloth
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Cloth);
 
-        m_skinningMatrices = ObtainSkinningMatrices(m_entityId);
+        m_skinningMatrices = Internal::ObtainSkinningMatrices(m_entityId);
     }
 
     void ActorClothSkinningLinear::ApplySkinning(
@@ -320,7 +320,7 @@ namespace NvCloth
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Cloth);
 
-        m_skinningDualQuaternions = ObtainSkinningDualQuaternions(m_entityId, m_jointIndices);
+        m_skinningDualQuaternions = Internal::ObtainSkinningDualQuaternions(m_entityId, m_jointIndices);
     }
 
     void ActorClothSkinningDualQuaternion::ApplySkinning(
@@ -376,7 +376,7 @@ namespace NvCloth
         const AZStd::vector<int>& meshRemappedVertices)
     {
         AZStd::vector<SkinningInfo> skinningData;
-        if (!ObtainSkinningData(entityId, meshNode, numSimParticles, meshRemappedVertices, skinningData))
+        if (!Internal::ObtainSkinningData(entityId, meshNode, numSimParticles, meshRemappedVertices, skinningData))
         {
             return nullptr;
         }
@@ -390,7 +390,7 @@ namespace NvCloth
         }
 
         AZStd::unique_ptr<ActorClothSkinning> actorClothSkinning;
-        const auto skinningMethod = ObtainSkinningMethod(entityId);
+        const auto skinningMethod = Internal::ObtainSkinningMethod(entityId);
         switch (skinningMethod)
         {
         case EMotionFX::Integration::SkinningMethod::DualQuat:

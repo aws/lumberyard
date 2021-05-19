@@ -193,6 +193,7 @@ namespace AzToolsFramework
         void OnEntityActivated(const AZ::EntityId& entityId) override;
         void OnEntityDeactivated(const AZ::EntityId& entityId) override;
         void OnEntityNameChanged(const AZ::EntityId& entityId, const AZStd::string& name) override;
+        void OnEntityStartStatusChanged(const AZ::EntityId& entityId) override;
         //////////////////////////////////////////////////////////////////////////
 
         // EditorComponentModeNotificationBus

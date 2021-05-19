@@ -19,7 +19,7 @@ def build(bld):
             bld.ThirdPartyPath('civetweb', 'include')
         ],
         disable_pch = True,
-        
+        vs_filter   = 'Gems/Twitch',
         # Platform Roots
         platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)],
     

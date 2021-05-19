@@ -25,6 +25,7 @@ from . import cognito_pools
 from cgf_utils import aws_utils
 from cgf_utils import custom_resource_utils
 from cgf_utils import lambda_utils
+from cgf_utils.version_utils import Version
 from .errors import HandledError
 from .uploader import ProjectUploader
 from resource_manager_common import constant
@@ -59,6 +60,10 @@ def create_stack(context, args):
 
     # Check whether the custom domain for API Gateway is specified
     context.config.set_custom_domain_name(args.custom_domain_name if args.custom_domain_name else '')
+
+    # Check if framework should try to deploy the CloudGemPortal
+    portal_supported = context.config.framework_version < Version('1.1.5')
+    context.config.set_deploy_cloud_gem_portal(args.deploy_cfp if args.deploycgp is not None else portal_supported)
 
     # Is it ok to do this?
     pending_resource_status = __get_pending_resource_status(context)

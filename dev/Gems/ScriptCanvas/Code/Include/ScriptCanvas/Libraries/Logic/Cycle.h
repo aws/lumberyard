@@ -32,6 +32,7 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Name("Cycle")
                     ScriptCanvas_Node::Uuid("{974258F5-EE1B-4AEE-B956-C7B303801847}"),
                     ScriptCanvas_Node::Description("")
+                    ScriptCanvas_Node::RequiresStateNotifications(true)
                     ScriptCanvas_Node::Version(0)
                     ScriptCanvas_Node::Category("Logic")
                 );
@@ -49,6 +50,10 @@ namespace ScriptCanvas
                 bool CanDeleteSlot(const SlotId& slotId) const;
 
                 SlotId HandleExtension(AZ::Crc32 extensionId);
+
+                // RuntimeNotificationBus
+                void OnRuntimeReset() override;
+                ////
 
             protected:
 

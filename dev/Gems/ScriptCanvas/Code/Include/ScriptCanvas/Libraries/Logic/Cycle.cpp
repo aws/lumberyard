@@ -95,6 +95,11 @@ namespace ScriptCanvas
                 return AddSlot(executionConfiguration);
             }
 
+            void Cycle::OnRuntimeReset()
+            {
+                m_executionSlot = 0;
+            }
+
             void  Cycle::OnInputSignal(const SlotId& slot)
             {
                 if (slot != CycleProperty::GetInSlotId(this))

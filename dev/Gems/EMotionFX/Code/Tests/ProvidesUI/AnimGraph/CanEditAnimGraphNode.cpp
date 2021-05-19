@@ -105,7 +105,7 @@ namespace EMotionFX
 
         // Look for PropertyRowWidget for "Name"
         PropertyRowWidget* propertyRow = nullptr;
-        for (const WidgetListItem item : list)
+        for (const WidgetListItem& item : list)
         {
             if (item.second->objectName() == "Name")
             {

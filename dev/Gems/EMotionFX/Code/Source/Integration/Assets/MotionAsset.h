@@ -29,7 +29,8 @@ namespace EMotionFX
             AZ_RTTI(MotionAsset, "{00494B8E-7578-4BA2-8B28-272E90680787}", EMotionFXAsset)
             AZ_CLASS_ALLOCATOR_DECL
 
-            MotionAsset();
+            MotionAsset(AZ::Data::AssetId id = AZ::Data::AssetId());
+
             void SetData(EMotionFX::SkeletalMotion* motion);  // Only Used for testing
             EMotionFXPtr<EMotionFX::SkeletalMotion> m_emfxMotion;
         };

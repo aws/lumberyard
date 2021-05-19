@@ -587,6 +587,9 @@ namespace LmbrCentral
 
     void LmbrCentralSystemComponent::Deactivate()
     {
+        // AssetTypeInfo's destructor calls Unregister()
+        m_unhandledAssetInfo.clear();
+
         AZ::Data::AssetManagerNotificationBus::Handler::BusDisconnect();
         CrySystemEventBus::Handler::BusDisconnect();
 

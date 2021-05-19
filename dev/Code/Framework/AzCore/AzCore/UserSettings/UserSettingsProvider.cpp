@@ -120,7 +120,8 @@ namespace AZ
             if (writtenOk && streamOk && bytesWritten == saveBuffer.size())
             {
                 settingsSaved = IO::SystemFile::Rename(tmpFullPath.c_str(), settingsPath, true);
-                AZ_Error("UserSettings", settingsSaved, "UserSettingsProvider cannot write to settings file %s. Settings were not saved!", settingsPath);
+
+                AZ_Error("UserSettings", settingsSaved, "UserSettingsProvider cannot write to settings file %s. Settings were saved to temporary file %s.", settingsPath, tmpFullPath.c_str());
             }
         }
         return settingsSaved;

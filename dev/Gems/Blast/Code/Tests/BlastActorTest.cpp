@@ -14,10 +14,10 @@
 
 #include <gmock/gmock.h>
 
+#include <NvBlastExtPxAsset.h>
 #include <Actor/BlastActorImpl.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
-#include <BlastMocks.h>
-#include <NvBlastExtPxAsset.h>
+#include <Tests/Mocks/BlastMocks.h>
 
 using testing::_;
 using testing::Eq;
@@ -110,5 +110,6 @@ namespace Blast
         EXPECT_CALL(*m_mockRigidBodyRequestBusHandler, GetRigidBody()).Times(1).WillOnce(Return(rigidBody.get()));
 
         m_blastActor.reset(aznew TestableBlastActor(actorDesc));
+        Physics::WorldBodyNotificationBus::Event(entity->GetId(), &Physics::WorldBodyNotifications::OnPhysicsEnabled);
     }
 } // namespace Blast

@@ -78,6 +78,7 @@ namespace AzFramework
         AttributePathDependencyType GetPathDependencyType() const;
         bool IsRelativeToSourceAssetFolder() const;
         bool IsOptional() const;
+        bool CacheRelativePath() const;
 
     private:
         AZ::Crc32 GetVisibilityProperty() const;
@@ -91,6 +92,7 @@ namespace AzFramework
         AttributePathDependencyType m_pathDependencyType;
         bool m_relativeToSourceAssetFolder;
         bool m_optional;
+        bool m_cacheRelativePath;
     };
 
     class XmlSchemaElement

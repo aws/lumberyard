@@ -804,13 +804,15 @@ namespace AssetProcessor
             }
             QDir rooted(scanFolderInfo.ScanPath());
             QString absolutePath = rooted.absoluteFilePath(tempRelativeName);
-            // do not call UpdateToCorrectCase here, this is an extreme hotspot in terms of how often this function is called.
-            // the only time its generally necessary to update case is when an override is found, which is generally very rare,
-            // so we save UpdateToCorrectCase for the override related functions instead of this hot path.
-            auto* fileStateInterface = AZ::Interface<IFileStateRequests>::Get();
-            if (fileStateInterface && fileStateInterface->Exists(absolutePath))
+
+            AssetProcessor::FileStateInfo fileStateInfo;
+            auto* fileStateInterface = AZ::Interface<AssetProcessor::IFileStateRequests>::Get();
+            if (fileStateInterface)
             {
-                return AssetUtilities::NormalizeFilePath(absolutePath);
+                if (fileStateInterface->GetFileInfo(absolutePath, &fileStateInfo))
+                {
+                    return AssetUtilities::NormalizeFilePath(fileStateInfo.m_absolutePath);
+                }
             }
         }
         return QString();

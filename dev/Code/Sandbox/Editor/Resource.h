@@ -476,7 +476,6 @@
 #define ID_AWS_GAMELIFT_TRIALWIZARD                  36066
 #define ID_CONVERTSELECTION_TOCOMPONENTENTITY        36068
 #define ID_IMPORT_ASSET                              36069
-#define ID_CGP_CONSOLE                               36200
 #define ID_CONVERT_LEGACY_ENTITIES                   36202
 #define ID_EDIT_PIVOT                                36203
 #define ID_EDIT_RESET                                36204

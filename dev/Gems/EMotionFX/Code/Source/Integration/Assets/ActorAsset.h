@@ -47,6 +47,8 @@ namespace EMotionFX
             AZ_RTTI(ActorAsset, "{F67CC648-EA51-464C-9F5D-4A9CE41A7F86}", EMotionFXAsset)
             AZ_CLASS_ALLOCATOR_DECL
 
+            ActorAsset(AZ::Data::AssetId id = AZ::Data::AssetId());
+
             using MaterialList = AZStd::vector<AzFramework::SimpleAssetReference<LmbrCentral::MaterialAsset> >;
 
             using ActorInstancePtr = EMotionFXPtr<EMotionFX::ActorInstance>;

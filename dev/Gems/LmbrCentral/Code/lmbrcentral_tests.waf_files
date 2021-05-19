@@ -8,6 +8,7 @@
             "Tests/BoxShapeTest.cpp",
             "Tests/BundlingSystemComponentTests.cpp",
             "Tests/SphereShapeTest.cpp",
+            "Tests/ClipVolumeTests.cpp",
             "Tests/CylinderShapeTest.cpp",
             "Tests/CapsuleShapeTest.cpp",
             "Tests/PolygonPrismShapeTest.cpp",

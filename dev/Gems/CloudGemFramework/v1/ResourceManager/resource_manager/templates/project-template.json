@@ -708,7 +708,8 @@
                                     "Sid": "CreateCognitoIdentity",
                                     "Effect": "Allow",
                                     "Action": [
-                                        "cognito-identity:CreateIdentityPool"
+                                        "cognito-identity:CreateIdentityPool",
+                                        "cognito-identity:TagResource"
                                     ],
                                     "Resource": "*",
                                     "Condition": {

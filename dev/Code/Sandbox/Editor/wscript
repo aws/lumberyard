@@ -274,6 +274,7 @@ def build(bld):
                                                'QT5CONCURRENT',
                                                'QT5XML',
                                                'QTMAIN',
+                                               'QT5DBUS',
                                                'AWS_CPP_SDK_STS',
                                                'AWS_CPP_SDK_CORE',
                                                'AWS_CPP_SDK_COGNITO_IDENTITY',

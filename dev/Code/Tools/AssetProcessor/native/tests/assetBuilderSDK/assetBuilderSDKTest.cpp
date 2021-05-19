@@ -101,9 +101,8 @@ namespace AssetProcessor
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(0), AssetBuilderSDK::Platform_PC);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(1), AssetBuilderSDK::Platform_ES3);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(2), AssetBuilderSDK::Platform_NONE);
-
         // using a deprecated API should have generated warnings.
-        ASSERT_GT(absorb.m_numWarningsAbsorbed, 0);
+        // but we can't test for it because these warnings are WarningOnce and some other unit test might have already triggered it
     }
 
     TEST_F(AssetBuilderSDKTest, IsPlatformEnabledUnitTest)
@@ -134,9 +133,8 @@ namespace AssetProcessor
         };
         ASSERT_TRUE(createJobsRequest.IsPlatformEnabled(AssetBuilderSDK::Platform_PC));
         ASSERT_TRUE(createJobsRequest.IsPlatformEnabled(AssetBuilderSDK::Platform_ES3));
-
         // using a deprecated API should have generated warnings.
-        ASSERT_GT(absorb.m_numWarningsAbsorbed, 0);
+        // but we can't test for it because these warnings are WarningOnce and some other unit test might have already triggered it
     }
 
     TEST_F(AssetBuilderSDKTest, IsPlatformValidUnitTest)
@@ -155,7 +153,7 @@ namespace AssetProcessor
         //we will have to update this failure unit test
         ASSERT_FALSE(createJobsRequest.IsPlatformValid(static_cast<AssetBuilderSDK::Platform>(128)));
         // using a deprecated API should have generated warnings.
-        ASSERT_GT(absorb.m_numWarningsAbsorbed, 0);
+        // but we can't test for it because these warnings are WarningOnce and some other unit test might have already triggered it
     }
 #endif // defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
 };

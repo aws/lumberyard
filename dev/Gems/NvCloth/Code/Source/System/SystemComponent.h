@@ -35,7 +35,7 @@ namespace NvCloth
     //! It's also the responsible for updating (on Physics Tick) all the solvers that are not flagged as "user simulated".
     class SystemComponent
         : public AZ::Component
-        , protected CrySystemEventBus::Handler
+        , public CrySystemEventBus::Handler
         , protected IClothSystem
         , protected AZ::TickBus::Handler
     {

@@ -69,6 +69,8 @@ namespace AZ
             void SetVideoPathname(const AZStd::string& videoPath) final;
             AZStd::string GetDestinationTextureName() const final;
             void SetDestinationTextureName(const AZStd::string& destinationTextureName) final;
+            void SetSoundVolume(float volume) final {} // This gem currently does not support sound
+            float GetSoundVolume() final { return 0.0f; }
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////

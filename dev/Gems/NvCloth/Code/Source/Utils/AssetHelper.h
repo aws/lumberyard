@@ -92,6 +92,8 @@ namespace NvCloth
         virtual bool DoesSupportSkinnedAnimation() const = 0;
 
     protected:
+        static float ConvertBackstopOffset(float backstopOffset);
+
         AZ::EntityId m_entityId;
     };
 } // namespace NvCloth

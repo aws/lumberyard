@@ -1092,7 +1092,14 @@ void BatchApplicationManager::HandleFileRelocation() const
             }
             else
             {
-                AZ_Printf(AssetProcessor::ConsoleChannel, result.TakeError().c_str());
+                AssetProcessor::MoveFailure failure = result.TakeError();
+
+                AZ_Printf(AssetProcessor::ConsoleChannel, "Error: %s\n", failure.m_reason.c_str());
+
+                if (failure.m_dependencyFailure)
+                {
+                    AZ_Printf(AssetProcessor::ConsoleChannel, "To ignore and continue anyway, re-run this command with the --%s option\n", AllowBrokenDependenciesCommand);
+                }
             }
         }
         else
@@ -1169,6 +1176,8 @@ void BatchApplicationManager::CheckForIdle()
                         AssetProcessor::AssetRegistryRequestBus::Broadcast(&AssetProcessor::AssetRegistryRequests::SaveRegistry);
                     }
 
+                    AssetProcessor::AssetRegistryRequestBus::Broadcast(&AssetProcessor::AssetRegistryRequests::ValidatePreLoadDependency);
+
                     QuitRequested();
                 }, Qt::UniqueConnection);
 
@@ -1178,6 +1187,7 @@ void BatchApplicationManager::CheckForIdle()
         {
             // we save the registry when we become idle, but we stay running.
             AssetProcessor::AssetRegistryRequestBus::Broadcast(&AssetProcessor::AssetRegistryRequests::SaveRegistry);
+            AssetProcessor::AssetRegistryRequestBus::Broadcast(&AssetProcessor::AssetRegistryRequests::ValidatePreLoadDependency);
         }
     }
 }

@@ -29,6 +29,8 @@ namespace Blast
         {
         }
 
+        virtual ~BlastActorData() = default;
+
         static void Reflect(AZ::ReflectContext* context)
         {
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))

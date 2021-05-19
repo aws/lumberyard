@@ -40,6 +40,7 @@ namespace AssetProcessor
         m_qApp.reset(new QCoreApplication(m_argc,m_argv));
         qRegisterMetaType<QSet<QString> >("QSet<QString>");
         qRegisterMetaType<AssetProcessor::AssetScanningStatus>("AssetScanningStatus");
+        qRegisterMetaType<QSet<AssetFileInfo>>("QSet<AssetFileInfo>");
     }
 
     bool AssetScannerTest::BlockUntilScanComplete(int millisecondsMax)

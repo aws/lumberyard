@@ -36,6 +36,7 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Uuid("{BAD6C904-6078-49E8-B461-CA4410B785A4}")
                     ScriptCanvas_Node::Icon("Editor/Icons/ScriptCanvas/Placeholder.png")
                     ScriptCanvas_Node::Category("Utilities")
+                    ScriptCanvas_Node::RequiresStateNotifications(true)
                     ScriptCanvas_Node::Version(0)
                 );
 
@@ -69,6 +70,10 @@ namespace ScriptCanvas
                 // TickBus
                 void OnTick(float delta, AZ::ScriptTimePoint timePoint) override;
                 int GetTickOrder() override;
+                ////
+
+                // RuntimeNotificationBus
+                void OnRuntimeStopped() override;
                 ////
                 
                 // Method that will handle displaying and viewing of the time slot

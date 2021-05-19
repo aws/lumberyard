@@ -839,6 +839,11 @@ namespace EMotionFX
 
         void CryRenderActorInstance::DebugDraw(const DebugOptions& debugOptions)
         {
+            if (!gEnv || !gEnv->pRenderer)
+            {
+                return;
+            }
+
             if (debugOptions.m_drawSkeleton)
             {
                 DrawSkeleton();

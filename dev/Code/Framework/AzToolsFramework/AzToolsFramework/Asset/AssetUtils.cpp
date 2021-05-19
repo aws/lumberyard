@@ -15,6 +15,7 @@
 #include <AzCore/Module/ModuleManagerBus.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
 #include <AzFramework/API/ApplicationAPI.h>
+#include <AzFramework/IO/LocalFileIO.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
@@ -332,6 +333,80 @@ namespace AzToolsFramework
             registryDestroyerFunc(registry);
 
             return true;
+        }
+
+        bool UpdateFilePathToCorrectCase(const QString& root, QString& relativePathFromRoot)
+        {
+            AZStd::string rootPath(root.toUtf8().data());
+            AZStd::string relPathFromRoot(relativePathFromRoot.toUtf8().data());
+            AZ::StringFunc::Path::Normalize(relPathFromRoot);
+            AZStd::vector<AZStd::string> tokens;
+            AZ::StringFunc::Tokenize(relPathFromRoot.c_str(), tokens, AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING);
+
+            AZStd::string validatedPath;
+            if (rootPath.empty())
+            {
+                const char* appRoot = nullptr;
+                AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
+                validatedPath = AZStd::string(appRoot);
+            }
+            else
+            {
+                validatedPath = rootPath;
+            }
+
+            bool success = true;
+
+            for (int idx = 0; idx < tokens.size(); idx++)
+            {
+                AZStd::string element = tokens[idx];
+                bool foundAMatch = false;
+                AZ::IO::FileIOBase::GetInstance()->FindFiles(validatedPath.c_str(), "", [&](const char* file)
+                    {
+                        if ( idx != tokens.size() - 1 && !AZ::IO::FileIOBase::GetInstance()->IsDirectory(file))
+                        {
+                            // only the last token is supposed to be a filename, we can skip filenames before that
+                            return true;
+                        }
+
+                        AZStd::string absFilePath(file);
+                        AZ::StringFunc::Path::Normalize(absFilePath);
+                        auto found = absFilePath.rfind(AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING);
+                        size_t startingPos = found + 1;
+                        if (found != AZStd::string::npos && absFilePath.size() > startingPos)
+                        {
+                            AZStd::string componentName = AZStd::string(absFilePath.begin() + startingPos, absFilePath.end());
+                            if (AZ::StringFunc::Equal(componentName.c_str(), tokens[idx].c_str()))
+                            {
+                                tokens[idx] = componentName;
+                                foundAMatch = true;
+                                return false;
+                            }
+                        }
+
+                        return true;
+                    });
+
+                if (!foundAMatch)
+                {
+                    success = false;
+                    break;
+                }
+
+                AZStd::string absoluteFilePath;
+                AZ::StringFunc::Path::ConstructFull(validatedPath.c_str(), element.c_str(), absoluteFilePath);
+
+                validatedPath = absoluteFilePath; // go one step deeper.
+            }
+
+            if (success)
+            {
+                relPathFromRoot.clear();
+                AZ::StringFunc::Join(relPathFromRoot, tokens.begin(), tokens.end(), AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING);
+                relativePathFromRoot = relPathFromRoot.c_str();
+            }
+
+            return success;
         }
     } //namespace AssetUtils
 } //namespace AzToolsFramework

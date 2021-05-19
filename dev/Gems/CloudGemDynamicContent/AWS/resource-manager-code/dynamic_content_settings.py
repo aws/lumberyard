@@ -11,11 +11,13 @@
 # $Revision: #1 $
 
 import os.path
+
 from path_utils import ensure_posix_path
 
 
 def get_default_staging_table_name():
     return 'StagingSettingsTable'
+
 
 def get_default_versioned_staging_table_name():
     return 'VersionedStagingSettingsTable'
@@ -59,6 +61,7 @@ def get_manifest_pak_extension():
 
 def get_pak_folder():
     return 'DynamicContent/Paks/'
+
 
 def get_backup_folder():
     return 'DynamicContent/Backups/'

@@ -25,11 +25,11 @@
 
 namespace NvCloth
 {
-    namespace
+    namespace Internal
     {
-        const char* const StatusMessageSelectNode = "Select a node";
-        const char* const StatusMessageNoAsset = "<No asset>";
-        const char* const StatusMessageNoClothNodes = "<No cloth modifiers>";
+        extern const char* const StatusMessageSelectNode = "Select a node";
+        extern const char* const StatusMessageNoAsset = "<No asset>";
+        extern const char* const StatusMessageNoClothNodes = "<No cloth modifiers>";
 
         const char* const AttributeSuffixMetersUnit = " m";
     }
@@ -101,7 +101,7 @@ namespace NvCloth
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_motionConstraintsMaxDistance, "Max Distance",
                         "Maximum distance for motion constraints to limit particles movement during simulation.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                        ->Attribute(AZ::Edit::Attributes::Suffix, AttributeSuffixMetersUnit)
+                        ->Attribute(AZ::Edit::Attributes::Suffix, Internal::AttributeSuffixMetersUnit)
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &ClothConfiguration::m_motionConstraintsScale, "Scale",
                         "Scale value applied to all motion constraints.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
@@ -110,7 +110,7 @@ namespace NvCloth
                         ->Attribute(AZ::Edit::Attributes::Decimals, 6)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_motionConstraintsBias, "Bias",
                         "Bias value added to all motion constraints.")
-                        ->Attribute(AZ::Edit::Attributes::Suffix, AttributeSuffixMetersUnit)
+                        ->Attribute(AZ::Edit::Attributes::Suffix, Internal::AttributeSuffixMetersUnit)
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &ClothConfiguration::m_motionConstraintsStiffness, "Stiffness",
                         "Stiffness for motion constraints.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
@@ -124,15 +124,15 @@ namespace NvCloth
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_backstopRadius, "Radius",
                         "Maximum radius that will prevent the associated cloth particle from moving into that area.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
-                        ->Attribute(AZ::Edit::Attributes::Suffix, AttributeSuffixMetersUnit)
+                        ->Attribute(AZ::Edit::Attributes::Suffix, Internal::AttributeSuffixMetersUnit)
                         ->Attribute(AZ::Edit::Attributes::Visibility, &ClothConfiguration::HasBackstopData)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_backstopBackOffset, "Back offset",
                         "Maximum offset for backstop spheres behind the cloth.")
-                        ->Attribute(AZ::Edit::Attributes::Suffix, AttributeSuffixMetersUnit)
+                        ->Attribute(AZ::Edit::Attributes::Suffix, Internal::AttributeSuffixMetersUnit)
                         ->Attribute(AZ::Edit::Attributes::Visibility, &ClothConfiguration::HasBackstopData)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_backstopFrontOffset, "Front offset",
                         "Maximum offset for backstop spheres in front of the cloth.")
-                        ->Attribute(AZ::Edit::Attributes::Suffix, AttributeSuffixMetersUnit)
+                        ->Attribute(AZ::Edit::Attributes::Suffix, Internal::AttributeSuffixMetersUnit)
                         ->Attribute(AZ::Edit::Attributes::Visibility, &ClothConfiguration::HasBackstopData)
 
                     // Damping
@@ -387,7 +387,7 @@ namespace NvCloth
 
     EditorClothComponent::EditorClothComponent()
     {
-        m_meshNodeList = { {StatusMessageNoAsset} };
+        m_meshNodeList = { {Internal::StatusMessageNoAsset} };
         m_config.m_populateMeshNodeListCallback = [this]()
             {
                 return m_meshNodeList;
@@ -413,6 +413,16 @@ namespace NvCloth
     void EditorClothComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
         required.push_back(AZ_CRC("MeshService", 0x71d8a455));
+    }
+
+    const MeshNodeList& EditorClothComponent::GetMeshNodeList() const
+    {
+        return m_meshNodeList;
+    }
+
+    const AZStd::unordered_set<AZStd::string>& EditorClothComponent::GetMeshNodesWithBackstopData() const
+    {
+        return m_meshNodesWithBackstopData;
     }
 
     void EditorClothComponent::BuildGameEntity(AZ::Entity* gameEntity)
@@ -463,8 +473,8 @@ namespace NvCloth
 
         if (m_meshNodeList.empty())
         {
-            m_meshNodeList.emplace_back(StatusMessageNoClothNodes);
-            m_config.m_meshNode = StatusMessageNoClothNodes;
+            m_meshNodeList.emplace_back(Internal::StatusMessageNoClothNodes);
+            m_config.m_meshNode = Internal::StatusMessageNoClothNodes;
         }
         else
         {
@@ -485,8 +495,8 @@ namespace NvCloth
             // that tells the user to select the node.
             if (!foundNode)
             {
-                m_meshNodeList.insert(m_meshNodeList.begin(), StatusMessageSelectNode);
-                m_config.m_meshNode = StatusMessageSelectNode;
+                m_meshNodeList.insert(m_meshNodeList.begin(), Internal::StatusMessageSelectNode);
+                m_config.m_meshNode = Internal::StatusMessageSelectNode;
             }
         }
 
@@ -507,8 +517,8 @@ namespace NvCloth
     {
         m_previousMeshNode = m_config.m_meshNode;
 
-        m_meshNodeList = { {StatusMessageNoAsset} };
-        m_config.m_meshNode = StatusMessageNoAsset;
+        m_meshNodeList = { {Internal::StatusMessageNoAsset} };
+        m_config.m_meshNode = Internal::StatusMessageNoAsset;
 
         m_clothComponentMesh.reset();
 
@@ -538,7 +548,7 @@ namespace NvCloth
         else
         {
             // Force MeshComponent to reload current mesh asset in order to restore original mesh
-            AZ::Data::Asset<AZ::Data::AssetData> meshAsset = nullptr;
+            AZ::Data::Asset<AZ::Data::AssetData> meshAsset;
             LmbrCentral::MeshComponentRequestBus::EventResult(meshAsset, GetEntityId(), &LmbrCentral::MeshComponentRequests::GetMeshAsset);
 
             LmbrCentral::MeshComponentRequestBus::Event(GetEntityId(), &LmbrCentral::MeshComponentRequests::SetMeshAsset, meshAsset.GetId());

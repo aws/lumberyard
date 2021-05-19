@@ -59,12 +59,22 @@ namespace GraphModel
 
     NodePtr Connection::GetSourceNode() const
     {
-        return GetSourceSlot()->GetParentNode();
+        if (GetSourceSlot())
+        {
+            return GetSourceSlot()->GetParentNode();
+        }
+
+        return nullptr;
     }
 
     NodePtr Connection::GetTargetNode() const
     {
-        return GetTargetSlot()->GetParentNode();
+        if (GetTargetSlot())
+        {
+            return GetTargetSlot()->GetParentNode();
+        }
+
+        return nullptr;
     }
 
     SlotPtr Connection::GetSourceSlot() const

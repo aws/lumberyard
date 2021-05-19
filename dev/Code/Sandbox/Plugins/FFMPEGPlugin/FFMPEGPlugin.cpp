@@ -63,11 +63,50 @@ bool CFFMPEGPlugin::CanExitNow()
 static void Command_FFMPEGEncode(const char* input, const char* output, const char* codec, int bitRateinKb, int fps, const char* etc)
 {
     QString ffmpegExectablePath = CFFMPEGPlugin::GetFFMPEGExectablePath();
-    QString ffmpegCmdLine = QStringLiteral("\"%1\" -r %2 -i \"%3\" -vcodec %4 -b %5k -r %6 %7 -strict experimental -y \"%8\"")
-        .arg(ffmpegExectablePath, QString::number(fps), input, codec, QString::number(bitRateinKb), QString::number(fps), etc, output);
-    GetIEditor()->GetSystem()->GetILog()->Log("Executing \"%s\" from FFMPEGPlugin...", ffmpegCmdLine.toUtf8().data());
+    QString fpsStr = QString::number(fps);
+
+    QStringList ffmpegArguments
+    {
+        "-r",
+        fpsStr,
+        "-i",
+        input,
+        "-vcodec",
+        codec,
+        "-b",
+        QStringLiteral("%1k").arg(QString::number(bitRateinKb)),
+        "-r",
+        fpsStr,
+        // Insert tokens from etc parameter here
+        "-strict",
+        "experimental",
+        "-y",
+        output
+    };
+
+    // etc can have multiple space seperated arguments so they need to be tokenized for QProcess
+    QStringList etcTokens = QString(etc).split(QLatin1Char(' '), Qt::SkipEmptyParts);
+
+    // Insert etc tokens into ffmpeg arguments list
+    auto etcIter = ffmpegArguments.begin();
+    etcIter += ffmpegArguments.lastIndexOf("-strict");
+    for (const QString& token : etcTokens)
+    {
+        etcIter = ffmpegArguments.insert(etcIter, token);
+        ++etcIter;
+    }
+
+    // Create full space seperated command
+    QString ffmpegCommandLine = ffmpegExectablePath;
+    for (const QString& argument : ffmpegArguments)
+    {
+        ffmpegCommandLine += " " + argument;
+    }
+
+    GetIEditor()->GetSystem()->GetILog()->Log("Executing \"%s\" from FFMPEGPlugin...", ffmpegCommandLine.toUtf8().data());
+
     QString outTxt;
-    GetIEditor()->ExecuteConsoleApp(ffmpegCmdLine, outTxt, true, true);
+    GetIEditor()->ExecuteConsoleApp(ffmpegExectablePath, ffmpegArguments, outTxt, true, false);
     GetIEditor()->GetSystem()->GetILog()->Log("FFMPEG execution done.");
 }
 

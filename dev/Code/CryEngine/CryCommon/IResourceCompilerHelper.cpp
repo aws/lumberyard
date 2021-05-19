@@ -65,9 +65,8 @@ namespace RCPathUtil
 
 
     //! Replace extension for given file.
-    std::string RemoveExtension(const char* filepath)
+    void RemoveExtension(std::string& filepathstr)
     {
-        std::string filepathstr = filepath;
         const char* str = filepathstr.c_str();
         for (const char* p = str + filepathstr.length() - 1; p >= str; --p)
         {
@@ -77,15 +76,13 @@ namespace RCPathUtil
             case '/':
             case '\\':
                 // we've reached a path separator - it means there's no extension in this name
-                return filepathstr;
+                return;
             case '.':
                 // there's an extension in this file name
-                filepathstr = filepathstr.substr(0, p - str);
-                return filepathstr;
+                filepathstr.erase(p - str);
+                return;
             }
         }
-        // it seems the file name is a pure name, without path or extension
-        return filepathstr;
     }
 
     std::string ReplaceExtension(const char* filepath, const char* ext)
@@ -93,7 +90,7 @@ namespace RCPathUtil
         std::string str = filepath;
         if (ext != 0)
         {
-            str = RemoveExtension(str.c_str());
+            RemoveExtension(str);
             if (ext[0] != 0 && ext[0] != '.')
             {
                 str += ".";

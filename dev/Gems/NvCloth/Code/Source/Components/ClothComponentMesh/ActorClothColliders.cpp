@@ -16,8 +16,11 @@
 
 namespace NvCloth
 {
-    namespace
+    namespace Internal
     {
+        extern const size_t NvClothMaxNumSphereColliders = 32;
+        extern const size_t NvClothMaxNumCapsuleColliders = 32;
+
         SphereCollider CreateSphereCollider(
             const Physics::ColliderConfiguration* colliderConfig,
             const Physics::SphereShapeConfiguration* sphereShapeConfig,
@@ -71,10 +74,8 @@ namespace NvCloth
         const Physics::CharacterColliderConfiguration& clothConfig = actorPhysicsConfig->m_clothConfig;
 
         // Maximum number of spheres and capsules is imposed by NvCloth library
-        const int maxSphereCount = 32;
-        const int maxCapsuleCount = 32;
-        int sphereCount = 0;
-        int capsuleCount = 0;
+        size_t sphereCount = 0;
+        size_t capsuleCount = 0;
         bool maxSphereCountReachedWarned = false;
         bool maxCapsuleCountReachedWarned = false;
 
@@ -102,20 +103,20 @@ namespace NvCloth
                 {
                 case Physics::ShapeType::Sphere:
                 {
-                    if (sphereCount >= maxSphereCount)
+                    if (sphereCount >= Internal::NvClothMaxNumSphereColliders)
                     {
                         AZ_Warning("ActorAssetHelper", maxSphereCountReachedWarned,
-                            "Maximum number of cloth sphere colliders (%d) reached",
-                            maxSphereCount);
+                            "Maximum number of cloth sphere colliders (%zu) reached",
+                            Internal::NvClothMaxNumSphereColliders);
                         maxSphereCountReachedWarned = true;
                         continue;
                     }
 
-                    SphereCollider sphereCollider = CreateSphereCollider(
+                    SphereCollider sphereCollider = Internal::CreateSphereCollider(
                         colliderConfig.get(),
                         static_cast<const Physics::SphereShapeConfiguration*>(shapeConfigPair.second.get()),
-                        static_cast<int>(jointIndex),
-                        sphereCount);
+                        aznumeric_cast<int>(jointIndex),
+                        aznumeric_cast<int>(sphereCount));
 
                     sphereColliders.push_back(sphereCollider);
                     ++sphereCount;
@@ -124,18 +125,18 @@ namespace NvCloth
 
                 case Physics::ShapeType::Capsule:
                 {
-                    if (capsuleCount >= maxCapsuleCount)
+                    if (capsuleCount >= Internal::NvClothMaxNumCapsuleColliders)
                     {
                         AZ_Warning("ActorAssetHelper", maxCapsuleCountReachedWarned,
-                            "Maximum number of cloth capsule colliders (%d) reached",
-                            maxSphereCount);
+                            "Maximum number of cloth capsule colliders (%zu) reached",
+                            Internal::NvClothMaxNumCapsuleColliders);
                         maxCapsuleCountReachedWarned = true;
                         continue;
                     }
 
                     // If there is only 1 sphere left to reach the maximum number
                     // of spheres the capsule won't fit as each capsule is formed of 2 spheres.
-                    if (sphereCount >= maxSphereCount - 1)
+                    if (sphereCount >= Internal::NvClothMaxNumSphereColliders - 1)
                     {
                         AZ_Warning("ActorAssetHelper", maxCapsuleCountReachedWarned,
                             "Maximum number of cloth capsule colliders reached");
@@ -143,13 +144,13 @@ namespace NvCloth
                         continue;
                     }
 
-                    CapsuleCollider capsuleCollider = CreateCapsuleCollider(
+                    CapsuleCollider capsuleCollider = Internal::CreateCapsuleCollider(
                         colliderConfig.get(),
                         static_cast<const Physics::CapsuleShapeConfiguration*>(shapeConfigPair.second.get()),
-                        static_cast<int>(jointIndex),
-                        capsuleCount * 2, // Each capsule holds 2 sphere indices
-                        sphereCount + 0,  // First sphere index
-                        sphereCount + 1); // Second sphere index
+                        aznumeric_cast<int>(jointIndex),
+                        aznumeric_cast<int>(capsuleCount * 2), // Each capsule holds 2 sphere indices
+                        aznumeric_cast<int>(sphereCount + 0),  // First sphere index
+                        aznumeric_cast<int>(sphereCount + 1)); // Second sphere index
 
                     capsuleColliders.push_back(capsuleCollider);
                     ++capsuleCount;

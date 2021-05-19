@@ -617,6 +617,14 @@ namespace AzToolsFramework
         }
     }
 
+    void EntityPropertyEditor::OnEntityStartStatusChanged(const AZ::EntityId& entityId)
+    {
+        if (IsEntitySelected(entityId))
+        {
+            UpdateStatusComboBox();
+        }
+    }
+
     bool EntityPropertyEditor::IsEntitySelected(const AZ::EntityId& id) const
     {
         return AZStd::find(m_selectedEntityIds.begin(), m_selectedEntityIds.end(), id) != m_selectedEntityIds.end();
@@ -3669,7 +3677,12 @@ namespace AzToolsFramework
                     break;
             }
         }
-        UpdateStatusComboBox();
+
+        // This notification will trigger the update of the actual combo box, so no need to call that explicitly
+        for (AZ::EntityId entityId : m_selectedEntityIds)
+        {
+            AZ::EntitySystemBus::Broadcast(&AZ::EntitySystemBus::Events::OnEntityStartStatusChanged, entityId);
+        }
     }
 
     void EntityPropertyEditor::UpdateOverlay()

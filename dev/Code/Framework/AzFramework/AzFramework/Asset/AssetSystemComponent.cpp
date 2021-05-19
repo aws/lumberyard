@@ -57,9 +57,11 @@ namespace AzFramework
             {
             case AssetNotificationMessage::AssetChanged:
             {
-                // note that this is a DIRECT call so that the catalog can update itself even if the main thread is blocked.
                 // Used only to communicate to AssetCatalogs - no other system should rely on this
-                // Instead listen to AssetCatalogEventBus::OnAssetChagned
+                // Instead listen to AssetCatalogEventBus::OnAssetChanged
+                // This is a DIRECT call so that the catalog can update itself immediately so that it maintains as accurate a view of the current state of assets as possible.
+                // Attempting to queue this on the main thread has led to issues previously where systems start receiving
+                // asset change/remove notifications before all of the network catalog updates have been applied and start querying the state of other assets which haven't been updated yet.
                 AzFramework::AssetSystem::NetworkAssetUpdateInterface* notificationInterface = AZ::Interface<AzFramework::AssetSystem::NetworkAssetUpdateInterface>::Get();
                 if (notificationInterface)
                 {
@@ -69,9 +71,11 @@ namespace AzFramework
             break;
             case AssetNotificationMessage::AssetRemoved:
             {
-                // note that this is a DIRECT call so that the catalog can update itself even if the main thread is blocked.
                 // Used only to communicate to AssetCatalogs - no other system should rely on this
                 // Instead listen to AssetCatalogEventBus::OnAssetRemoved
+                // This is a DIRECT call so that the catalog can update itself immediately so that it maintains as accurate a view of the current state of assets as possible.
+                // Attempting to queue this on the main thread has led to issues previously where systems start receiving
+                // asset change/remove notifications before all of the network catalog updates have been applied and start querying the state of other assets which haven't been updated yet.
                 AzFramework::AssetSystem::NetworkAssetUpdateInterface* notificationInterface = AZ::Interface<AzFramework::AssetSystem::NetworkAssetUpdateInterface>::Get();
                 if (notificationInterface)
                 {

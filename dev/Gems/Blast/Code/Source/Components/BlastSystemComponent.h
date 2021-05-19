@@ -27,7 +27,7 @@
 #include <NvBlastTkFramework.h>
 #include <NvBlastTkGroup.h>
 #include <PxSmartPtr.h>
-#include <Task/PxTaskManager.h>
+#include <task/PxTaskManager.h>
 
 namespace Blast
 {

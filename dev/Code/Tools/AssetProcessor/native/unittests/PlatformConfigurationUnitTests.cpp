@@ -157,10 +157,10 @@ void PlatformConfigurationTests::StartTest()
         UNIT_TEST_EXPECT_TRUE(config.GetOverridingFile("rootfile3.txt", tempPath.filePath("subfolder3")) == QString());
         UNIT_TEST_EXPECT_TRUE(config.GetOverridingFile("rootfile3.txt", tempPath.absolutePath()) == tempPath.absoluteFilePath("subfolder3/rootfile3.txt"));
         UNIT_TEST_EXPECT_TRUE(config.GetOverridingFile("subfolder1/whatever.txt", tempPath.filePath("subfolder1")) == QString());
-        UNIT_TEST_EXPECT_TRUE(config.GetOverridingFile("subfolder1/override.txt", tempPath.filePath("subfolder1")) == tempPath.absoluteFilePath("subfolder2/subfolder1/override.txt"));
-        UNIT_TEST_EXPECT_TRUE(config.GetOverridingFile("b/c/a/testfile.txt", tempPath.filePath("subfolder6")) == tempPath.absoluteFilePath("subfolder5/a/testfile.txt"));
-        UNIT_TEST_EXPECT_TRUE(config.GetOverridingFile("a/testfile.txt", tempPath.filePath("subfolder7")) == tempPath.absoluteFilePath("subfolder4/a/testfile.txt"));
-        UNIT_TEST_EXPECT_TRUE(config.GetOverridingFile("a/testfile.txt", tempPath.filePath("subfolder8/x")) == tempPath.absoluteFilePath("subfolder4/a/testfile.txt"));
+        UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(config.GetOverridingFile("subfolder1/override.txt", tempPath.filePath("subfolder1"))) == AssetUtilities::NormalizeFilePath(tempPath.absoluteFilePath("subfolder2/subfolder1/override.txt")));
+        UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(config.GetOverridingFile("b/c/a/testfile.txt", tempPath.filePath("subfolder6"))) == AssetUtilities::NormalizeFilePath(tempPath.absoluteFilePath("subfolder5/a/testfile.txt")));
+        UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(config.GetOverridingFile("a/testfile.txt", tempPath.filePath("subfolder7"))) == AssetUtilities::NormalizeFilePath(tempPath.absoluteFilePath("subfolder4/a/testfile.txt")));
+        UNIT_TEST_EXPECT_TRUE(AssetUtilities::NormalizeFilePath(config.GetOverridingFile("a/testfile.txt", tempPath.filePath("subfolder8/x"))) == AssetUtilities::NormalizeFilePath(tempPath.absoluteFilePath("subfolder4/a/testfile.txt")));
 
         // files which dont exist:
         UNIT_TEST_EXPECT_TRUE(config.GetOverridingFile("rootfile3", tempPath.filePath("subfolder3")) == QString());

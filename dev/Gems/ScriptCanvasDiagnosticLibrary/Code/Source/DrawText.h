@@ -49,6 +49,7 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Uuid("{AA209CEC-3813-4DC2-85A9-DE8B7A905CD6}")
                     ScriptCanvas_Node::Icon("Editor/Icons/ScriptCanvas/DrawText.png")
                     ScriptCanvas_Node::Category("Utilities/Debug")
+                    ScriptCanvas_Node::RequiresStateNotifications(true)
                     ScriptCanvas_Node::Version(1));
 
                 // DebugDrawBus
@@ -98,12 +99,18 @@ namespace ScriptCanvas
                     ScriptCanvas_Property::Input
                 );
 
+                // RuntimeNotificaitonBus
+                void OnRuntimeStopped() override;
+                ////
+
             protected:
 
                 void OnInputSignal(const SlotId& slotId) override;
                 void OnInputChanged(const Datum& input, const SlotId& slotID) override;
 
                 void OnTick(float deltaTime, AZ::ScriptTimePoint) override;
+
+                void StopText();
 
             private:
 

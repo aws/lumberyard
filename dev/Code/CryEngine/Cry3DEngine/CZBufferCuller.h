@@ -125,7 +125,7 @@ protected:
         }
         if (ROTATE == 2)
         {
-            if (MinX >= m_SizeX || MinY >= m_SizeY || MaxX < 0 ||  MaxX < 0)
+            if (MinX >= m_SizeX || MinY >= m_SizeY || MaxX < 0 ||  MaxY < 0)
             {
                 return true;
             }

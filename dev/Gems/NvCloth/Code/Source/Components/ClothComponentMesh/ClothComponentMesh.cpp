@@ -344,7 +344,7 @@ namespace NvCloth
     {
         // At the moment there is no way to distinguish "move" from "teleport".
         // As a workaround we will consider a teleport if the position has changed considerably.
-        bool teleport = (m_worldPosition.GetDistance(world.GetPosition()) >= cloth_DistanceToTeleport);
+        bool teleport = (m_worldPosition.GetDistance(world.GetTranslation()) >= cloth_DistanceToTeleport);
 
         if (teleport)
         {
@@ -701,7 +701,7 @@ namespace NvCloth
 
     void ClothComponentMesh::MoveCloth(const AZ::Transform& worldTransform)
     {
-        m_worldPosition = worldTransform.GetPosition();
+        m_worldPosition = worldTransform.GetTranslation();
 
         m_cloth->GetClothConfigurator()->SetTransform(worldTransform);
 

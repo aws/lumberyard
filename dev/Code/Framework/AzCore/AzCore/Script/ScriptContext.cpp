@@ -2168,7 +2168,7 @@ LUA_API const Node* lua_getDummyNode()
 
                 static bool FromStack(const BehaviorParameter* param, LuaLoadFromStack& arg, LuaPrepareValue* prepareValue = nullptr)
                 {
-                    if ((param->m_typeId == AzTypeInfo<ValueType>::Uuid()) ||
+                    if (param->m_typeId == AzTypeInfo<ValueType>::Uuid() ||
                         (param->m_azRtti && GetUnderlyingTypeId(*param->m_azRtti) == AzTypeInfo<ValueType>::Uuid()))
                     {
                         arg = &FromStack;
@@ -2183,7 +2183,8 @@ LUA_API const Node* lua_getDummyNode()
 
                 static bool ToStack(const BehaviorParameter* param, LuaPushToStack& toStack, LuaPrepareValue* prepareValue = nullptr)
                 {
-                    if (param->m_typeId == AzTypeInfo<ValueType>::Uuid())
+                    if (param->m_typeId == AzTypeInfo<ValueType>::Uuid() ||
+                        (param->m_azRtti && GetUnderlyingTypeId(*param->m_azRtti) == AzTypeInfo<ValueType>::Uuid()))
                     {
                         toStack = &ToStack;
                         if (prepareValue)

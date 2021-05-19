@@ -287,7 +287,7 @@ QMenuBar* ResourceManagementView::CreateMenuBar()
     QWidget::connect(cloudCanvasHelp, &QAction::triggered, this, &ResourceManagementView::OnMenuCloudCanvasHelp);
 
     QAction* cloudCanvasForum = helpMenu->addAction("Cloud Canvas forum");
-    QWidget::connect(cloudCanvasForum, &QAction::triggered, this, [](bool checked) { QDesktopServices::openUrl(QUrl(QString("https://gamedev.amazon.com/forums/spaces/133/cloud-canvas.html"))); });
+    QWidget::connect(cloudCanvasForum, &QAction::triggered, this, [](bool checked) { QDesktopServices::openUrl(QUrl(QString("https://forums.awsgametech.com/c/lumberyard-discussion/cloud-canvas-cloud-gems/100"))); });
 
     return menuBar;
 }
@@ -796,7 +796,7 @@ void ResourceManagementView::ShowDetailWidget(DetailWidget* widget)
 
     // Initially (when the project status widget is first added) the sizes array
     // will have contain all zeros. In that case we want to let the splitter work
-    // out the initial sizes (so it honors the strech factors). But after that we
+    // out the initial sizes (so it honors the stretch factors). But after that we
     // have to make sure the make the new widget has same size as the previous
     // widget or the splitter jumps around as the user selects nodes in the tree.
 
@@ -811,7 +811,7 @@ void ResourceManagementView::ShowDetailWidget(DetailWidget* widget)
     // Default source control state for items in the tree is NOT_APPLICABLE. TextDetailWidgets will change this value when they show themselves.
     this->SetSourceControlState(SourceControlState::NOT_APPLICABLE);
 
-    // Show new widget. This causes the wiget to paint, but this happens before the
+    // Show new widget. This causes the widget to paint, but this happens before the
     // QSplitter has finalized its size. That is why we disable updates (at the top
     // of this function, just to be safe) and then re-enable them after making the
     // widget visible. After updates are enabled and this function returns, the
@@ -959,7 +959,7 @@ void ResourceManagementView::SourceUpdatedCreateResourceGroup(const QString& res
 
 void ResourceManagementView::DoCreateResourceGroup(const QString& resourceGroupName, const QString& initialContent)
 {
-   QMessageBox::critical(this, "Error", "Adding resource groups is no longer supported and was deprecated in Lumberyard 1.11.  Please use the 'lmbr_aws gem create' command.");   
+   QMessageBox::critical(this, "Error", "Adding resource groups is no longer supported and was deprecated in Lumberyard 1.11.  Please use the 'lmbr_aws gem create' command.");
 }
 
 void ResourceManagementView::SourceChangedCreateResourceGroup(const QString& resourceGroupName, const QString& initialContent)
@@ -1085,6 +1085,9 @@ void ResourceManagementView::OnMenuNewDeployment(bool required)
     dialog.AddSpanningWidgetRow(&warningLabel);
 
     dialog.GetPrimaryButton()->setText(tr("Create"));
+    dialog.GetPrimaryButton()->setAutoDefault(true);
+    dialog.show();
+    dialog.adjustSize();
 
     while (true)
     {
@@ -1152,7 +1155,7 @@ void ResourceManagementView::OnProjectInitializedChanged()
         if (m_pendingCreateDeployment)
         {
             m_pendingCreateDeployment = false;
-            OnMenuNewDeployment(/* requried */ true);
+            OnMenuNewDeployment(/* required */ true);
         }
     }
 }
@@ -1293,7 +1296,7 @@ bool ResourceManagementView::UpdateStack(const QSharedPointer<IStackStatusModel>
 {
     if (!model->StackExists())
     {
-        // If update is attempted on a non-existant stack, it must be the placeholder model used
+        // If update is attempted on a non-existent stack, it must be the placeholder model used
         // by group resources when there are no deployments.
 
         if (!m_resourceManager->IsProjectInitialized())
@@ -1479,7 +1482,7 @@ bool ResourceManagementView::UploadLambdaCode(const QSharedPointer<IStackStatusM
 {
     if (!model->StackExists())
     {
-        // If update is attempted on a non-existant stack, it must be the placeholder model used
+        // If update is attempted on a non-existent stack, it must be the placeholder model used
         // by group resources when there are no deployments.
 
         if (!m_resourceManager->IsProjectInitialized())
@@ -1500,7 +1503,7 @@ bool ResourceManagementView::UploadLambdaCode(const QSharedPointer<IStackStatusM
         {
             if (m_resourceManager->GetDeploymentModel()->rowCount() == 0)
             {
-                OnMenuNewDeployment(/* requried */ true);
+                OnMenuNewDeployment(/* required */ true);
                 return false;
             }
         }
@@ -1513,7 +1516,7 @@ bool ResourceManagementView::ConfirmCreateProjectStack()
     if (!m_adminConfirmed)
     {
         QString title = tr(
-                "Initialize Resoure Manager"
+                "Initialize Resource Manager"
                 );
 
         QString message = tr(

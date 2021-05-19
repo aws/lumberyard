@@ -87,6 +87,8 @@ namespace AZ
         // Video Rendering interface to provide callbacks from the Render Thread
         struct IVideoRenderer
         {
+            virtual ~IVideoRenderer() = default;
+
             // Called from the Render Thread to request the description of the video textures.
             virtual bool   GetVideoTexturesDesc(AZ::VideoRenderer::VideoTexturesDesc& videoTexturesDesc) const = 0;
             // Called from the Render Thread to get the set of video textures that were previously created. Used at cleanup time.

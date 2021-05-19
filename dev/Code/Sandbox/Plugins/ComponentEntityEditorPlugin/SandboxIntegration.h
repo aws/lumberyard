@@ -58,6 +58,11 @@
 * - Handles source control requests from AZ components or component-related UI.
 */
 
+namespace AZ::Data
+{
+    class AssetInfo;
+}
+
 class CToolsApplicationUndoLink;
 
 class QMenu;
@@ -103,7 +108,7 @@ private:
     //////////////////////////////////////////////////////////////////////////
     // AssetCatalogEventBus::Handler
     void OnCatalogAssetAdded(const AZ::Data::AssetId& assetId) override;
-    void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+    void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& assetInfo) override;
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////

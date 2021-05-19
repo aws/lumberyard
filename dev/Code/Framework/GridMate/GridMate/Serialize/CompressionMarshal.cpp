@@ -69,6 +69,41 @@ Vec3CompMarshaler::Unmarshal(AZ::Vector3& vec, ReadBuffer& rb) const
 }
 
 //=========================================================================
+// Vec3CompRangeMarshaler::Vec3CompRangeMarshaler
+//=========================================================================
+Vec3CompRangeMarshaler::Vec3CompRangeMarshaler(float rangeMin, float rangeMax)
+    : m_min(rangeMin)
+    , m_max(rangeMax)
+{
+}
+
+//=========================================================================
+// Vec3CompRangeMarshaler::Marshal
+//=========================================================================
+void
+Vec3CompRangeMarshaler::Marshal(WriteBuffer& wb, const AZ::Vector3& vec) const
+{
+    Float16Marshaler mF16(m_min, m_max);
+    mF16.Marshal(wb, vec.GetX());
+    mF16.Marshal(wb, vec.GetY());
+    mF16.Marshal(wb, vec.GetZ());
+}
+
+//=========================================================================
+// Vec3CompRangeMarshaler::Unmarshal
+//=========================================================================
+void
+Vec3CompRangeMarshaler::Unmarshal(AZ::Vector3& vec, ReadBuffer& rb) const
+{
+    Float16Marshaler mF16(m_min, m_max);
+    float x, y, z;
+    mF16.Unmarshal(x, rb);
+    mF16.Unmarshal(y, rb);
+    mF16.Unmarshal(z, rb);
+    vec.Set(x, y, z);
+}
+
+//=========================================================================
 // Vec3CompNormMarshaler::Marshal
 //=========================================================================
 void

@@ -26,27 +26,10 @@
 #include <Tests/UI/UIFixture.h>
 
 #include <Editor/ReselectingTreeView.h>
+#include <Tests/D6JointLimitConfiguration.h>
 
 namespace EMotionFX
 {
-    // Add so that RagdollNodeInspectorPlugin::PhysXCharactersGemAvailable() will return the correct value
-    class D6JointLimitConfiguration : public Physics::JointLimitConfiguration
-    {
-      public:
-        AZ_CLASS_ALLOCATOR(D6JointLimitConfiguration, AZ::SystemAllocator, 0);
-        AZ_RTTI(D6JointLimitConfiguration, "{90C5C23D-16C0-4F23-AD50-A190E402388E}", Physics::JointLimitConfiguration);
-
-        static void Reflect(AZ::ReflectContext* context)
-        {
-            if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
-            {
-                serializeContext->Class<D6JointLimitConfiguration, Physics::JointLimitConfiguration>()->Version(1);
-            }
-        }
-
-        const char* GetTypeName() override { return "D6 Joint"; }
-    };
-
     class RagdollEditTestsFixture : public UIFixture
     {
       public:

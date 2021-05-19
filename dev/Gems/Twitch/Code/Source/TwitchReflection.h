@@ -22,6 +22,7 @@ namespace Twitch
         ** Reflect the different aspects of math (depending on context)
         */
 
+        void ReflectSerialization(AZ::SerializeContext & context);
         void Reflect(AZ::BehaviorContext & context);
     }
 }

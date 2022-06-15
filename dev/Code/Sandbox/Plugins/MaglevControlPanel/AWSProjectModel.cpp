@@ -244,7 +244,7 @@ QSharedPointer<IFileContentModel> FileNode::GetFileContentModel()
         // don't expect that to happen (but if your reading this it may have).
         //
         // We use a lambda for this because GetStackStatusModel searches up the
-        // parent hierarcy to find a node that provides a StackStatusModel. If
+        // parent hierarchy to find a node that provides a StackStatusModel. If
         // that search is done before the node is added to the tree then the
         // search doesn't work. This situation occurs when GetFileContentModel
         // is called by the CloudFormationTemplateNode's constructor.

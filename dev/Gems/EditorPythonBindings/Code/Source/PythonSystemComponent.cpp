@@ -435,7 +435,7 @@ namespace EditorPythonBindings
 
         // set PYTHON_PATH
         char bufferPath[AZ_MAX_PATH_LEN];
-        azsnprintf(bufferPath, AZ_MAX_PATH_LEN, "Tools/Python/3.7.5/%s/Lib", PY_PLATFORM);
+        azsnprintf(bufferPath, AZ_MAX_PATH_LEN, "Tools/Python/3.7.10/%s/Lib", PY_PLATFORM);
         AZStd::string libPath;
         AzFramework::StringFunc::Path::Join(engineRoot, bufferPath, libPath);
         if (!AZ::IO::SystemFile::Exists(libPath.c_str()))
@@ -446,7 +446,7 @@ namespace EditorPythonBindings
         pyPackageSites.insert(libPath);
 
         // set path to dynamic link libraries (.pyd, .dll files)
-        azsnprintf(bufferPath, AZ_MAX_PATH_LEN, "Tools/Python/3.7.5/%s/DLLs", PY_PLATFORM);
+        azsnprintf(bufferPath, AZ_MAX_PATH_LEN, "Tools/Python/3.7.10/%s/DLLs", PY_PLATFORM);
         AZStd::string pydPath;
         AzFramework::StringFunc::Path::Join(engineRoot, bufferPath, pydPath);
         if (!AZ::IO::SystemFile::Exists(pydPath.c_str()))
@@ -465,7 +465,7 @@ namespace EditorPythonBindings
         Py_SetPath(pyPathName.c_str());
 
         // set PYTHON_HOME
-        azsnprintf(bufferPath, AZ_MAX_PATH_LEN, "Tools/Python/3.7.5/%s", PY_PLATFORM);
+        azsnprintf(bufferPath, AZ_MAX_PATH_LEN, "Tools/Python/3.7.10/%s", PY_PLATFORM);
         AZStd::string pyBasePath;
         AzFramework::StringFunc::Path::Join(engineRoot, bufferPath, pyBasePath);
         if (!AZ::IO::SystemFile::Exists(pyBasePath.c_str()))

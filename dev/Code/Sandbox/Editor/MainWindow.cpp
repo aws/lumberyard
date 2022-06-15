@@ -1894,9 +1894,6 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "AWSCredentialsManager");
     am->AddAction(ID_AWS_RESOURCE_MANAGEMENT, tr("Resource Manager")).SetToolTip(tr("Show the Cloud Canvas Resource Manager"))
         .SetMetricsIdentifier("MainEditor", "AWSResourceManager");
-    am->AddAction(ID_CGP_CONSOLE, tr("Open Cloud Gem Portal"))
-        .SetMetricsIdentifier("MainEditor", "OpenCloudGemPortal")
-        .Connect(&QAction::triggered, this, &MainWindow::CGPMenuClicked);;
 
     // Commerce actions
     am->AddAction(ID_COMMERCE_MERCH, tr("Merch by Amazon"))
@@ -2134,17 +2131,6 @@ void MainWindow::InitToolActionHandlers()
         am->RegisterActionHandler(id, [id] {
             GetIEditor()->GetCommandManager()->Execute(id);
         });
-    }
-}
-
-void MainWindow::CGPMenuClicked()
-{
-    if (GetIEditor()->GetAWSResourceManager()->IsProjectInitialized()) {
-        GetIEditor()->GetAWSResourceManager()->OpenCGP();
-    }
-    else
-    {
-        QMessageBox::critical(GetIEditor()->GetEditorMainWindow(), "Cloud Gem Portal", "Cloud Canvas is not yet initialized.   Please ensure the Cloud Gem Framework is enabled in your Project Configurator and has initialized.");
     }
 }
 

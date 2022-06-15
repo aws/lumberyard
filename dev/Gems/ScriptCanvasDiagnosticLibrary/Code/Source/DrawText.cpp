@@ -28,6 +28,11 @@ namespace ScriptCanvas
     {
         namespace Debug
         {
+            void DrawTextNode::OnRuntimeStopped()
+            {
+                StopText();
+            }
+
             void DrawTextNode::OnInputSignal(const SlotId& slotId)
             {
                 if (slotId == GetSlotId("Show"))
@@ -64,9 +69,14 @@ namespace ScriptCanvas
                 m_duration -= deltaTime;
                 if (m_duration <= 0.f)
                 {
-                    ScriptCanvasDiagnostics::DebugDrawBus::Handler::BusDisconnect();
-                    AZ::TickBus::Handler::BusDisconnect();
+                    StopText();
                 }
+            }
+
+            void DrawTextNode::StopText()
+            {
+                ScriptCanvasDiagnostics::DebugDrawBus::Handler::BusDisconnect();
+                AZ::TickBus::Handler::BusDisconnect();
             }
 
             void DrawTextNode::OnDebugDraw(IRenderer* renderer)

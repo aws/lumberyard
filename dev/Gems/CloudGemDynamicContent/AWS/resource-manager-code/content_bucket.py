@@ -14,8 +14,10 @@ from botocore.exceptions import ClientError
 
 import dynamic_content_settings
 import resource_manager.util
+from resource_manager.errors import HandledError
 
 LIST_OBJECT_LIMIT = 1000
+
 
 def get_content_bucket(context: object) -> str:
     """ 
@@ -23,13 +25,14 @@ def get_content_bucket(context: object) -> str:
     
         Arguments
             context -- context to use
-    """ 
-    return get_content_bucket_by_name(context, context.config.default_deployment, dynamic_content_settings.get_default_resource_group(), dynamic_content_settings.get_default_bucket_name())
+    """
+    return get_content_bucket_by_name(context, context.config.default_deployment, dynamic_content_settings.get_default_resource_group(),
+                                      dynamic_content_settings.get_default_bucket_name())
 
 
 def get_content_bucket_by_name(context: object, deployment_name: str,
-                                resource_group_name: str =dynamic_content_settings.get_default_resource_group(),
-                                bucket_name: str =dynamic_content_settings.get_default_bucket_name()) -> str:
+                               resource_group_name: str = dynamic_content_settings.get_default_resource_group(),
+                               bucket_name: str = dynamic_content_settings.get_default_bucket_name()) -> str:
     """ 
         Returns the resource id of the content bucket
     
@@ -38,13 +41,14 @@ def get_content_bucket_by_name(context: object, deployment_name: str,
             deployment_name -- name of the deployment
             resource_group_name -- name of the resource group
             bucket_name -- name of the bucket
-        """ 
+        """
     if not deployment_name:
         deployment_name = context.config.default_deployment
-  
+
     stack_id = context.config.get_resource_group_stack_id(deployment_name, resource_group_name, optional=True)
     bucket_resource = context.stack.get_physical_resource_id(stack_id, bucket_name)
     return bucket_resource
+
 
 def content_versioning_enabled(context: object, deployment_name: str) -> bool:
     """
@@ -57,10 +61,11 @@ def content_versioning_enabled(context: object, deployment_name: str) -> bool:
     s3 = context.aws.client('s3', region=resource_manager.util.get_region_from_arn(context.config.project_stack_id))
     response = s3.get_bucket_versioning(
         Bucket=get_content_bucket_by_name(context, deployment_name)
-        )
+    )
     return response.get('Status', '') == 'Enabled'
 
-def list_all_versions(context: object, deployment_name: str ='') -> dict:
+
+def list_all_versions(context: object, deployment_name: str = '') -> dict:
     """
         Return mappings from an s3 object name to all its versions found in the content bucket
 
@@ -72,7 +77,7 @@ def list_all_versions(context: object, deployment_name: str ='') -> dict:
     s3 = context.aws.client('s3')
 
     file_to_versions = {}
-    response = s3.list_object_versions(Bucket=bucket_name)    
+    response = s3.list_object_versions(Bucket=bucket_name)
     while True:
         versions = response.get('Versions', []) + response.get('DeleteMarkers', [])
         for version in versions:
@@ -82,17 +87,18 @@ def list_all_versions(context: object, deployment_name: str ='') -> dict:
                 file_to_versions[version['Key']].append(version)
 
         list_object_versions_args = {'Bucket': bucket_name}
-        next_key_marker = response.get('NextKeyMarker')             
+        next_key_marker = response.get('NextKeyMarker')
         if next_key_marker:
             list_object_versions_args['KeyMarker'] = next_key_marker
-        next_version_id_marker = response.get('NextVersionIdMarker')  
+        next_version_id_marker = response.get('NextVersionIdMarker')
         if next_version_id_marker:
             list_object_versions_args['VersionIdMarker'] = next_version_id_marker
         if not next_key_marker and not next_version_id_marker:
             break
 
-        response = s3.list_object_versions(**list_object_versions_args)        
+        response = s3.list_object_versions(**list_object_versions_args)
     return file_to_versions
+
 
 def get_bucket_content_list(context: object) -> list:
     """
@@ -122,6 +128,7 @@ def get_bucket_content_list(context: object) -> list:
             raise HandledError('Could not list_objects on '.format(bucket=bucket_name), e)
     return contents_list
 
+
 def delete_objects_from_bucket(context: object, object_list: list):
     """
         Delete a list of objects found in the content bucket
@@ -140,6 +147,7 @@ def delete_objects_from_bucket(context: object, object_list: list):
         )
     except Exception as e:
         raise HandledError('Could not delete_objects on '.format(bucket=bucket_name), e)
+
 
 def get_latest_version_id(context: object, file_key: str, deployment_name: str) -> str:
     """
@@ -160,7 +168,7 @@ def get_latest_version_id(context: object, file_key: str, deployment_name: str) 
         )
     except ClientError as e:
         if e.response['Error']['Code'] == 'NoSuchKey':
-            return False
+            return ""
         else:
             raise e
 

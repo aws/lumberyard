@@ -32,7 +32,7 @@
 #include <NvBlastTkJoint.h>
 #include <PhysX/SystemComponentBus.h>
 #include <PxPhysics.h>
-#include <Task/PxCpuDispatcher.h>
+#include <task/PxCpuDispatcher.h>
 #include <platform_impl.h>
 #ifdef BLAST_EDITOR
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>

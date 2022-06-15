@@ -1,9 +1,36 @@
 {
     "auto": {
         "Tests": [
-            "Tests/Test.cpp",
+            "Tests/NvClothTestEnvironment.cpp",
             "Tests/NvClothTest.cpp",
-            "Tests/NvClothTest.h"
+            "Tests/UnitTestHelper.h",
+            "Tests/UnitTestHelper.cpp",
+            "Tests/ActorHelper.h",
+            "Tests/ActorHelper.cpp",
+            "Tests/TriangleInputHelper.h",
+            "Tests/TriangleInputHelper.cpp",
+            "Tests/CryRenderMeshStub.h"
+        ],
+        "Tests/Sytem": [
+            "Tests/System/ClothSystemTest.cpp",
+            "Tests/System/ClothTest.cpp",
+            "Tests/System/FabricCookerTest.cpp",
+            "Tests/System/FactoryTest.cpp",
+            "Tests/System/SolverTest.cpp",
+            "Tests/System/NvTypesTest.cpp",
+            "Tests/System/TangentSpaceHelperTest.cpp"
+        ],
+        "Tests/Components": [
+            "Tests/Components/ClothComponentTest.cpp"
+        ],
+        "Tests/Components/ClothComponentMesh": [
+            "Tests/Components/ClothComponentMesh/ClothComponentMeshTest.cpp",
+            "Tests/Components/ClothComponentMesh/ActorClothCollidersTest.cpp",
+            "Tests/Components/ClothComponentMesh/ActorClothSkinningTest.cpp",
+            "Tests/Components/ClothComponentMesh/ClothConstraintsTest.cpp"
+        ],
+        "Tests/Utils": [
+            "Tests/Utils/ActorAssetHelperTest.cpp"
         ]
     }
 }

@@ -49,6 +49,8 @@ namespace AzToolsFramework
             template<class T>
             void GatherAllTypesInObject(const T* object, TypeCollection& outTypeCollection) const;
 
+            TypeCollection GatherAllTypesForComponents() const;
+
             // Generate a fingerprint based on all types in the collection.
             TypeFingerprint GenerateFingerprintForAllTypes(const TypeCollection& typeCollection) const;
 

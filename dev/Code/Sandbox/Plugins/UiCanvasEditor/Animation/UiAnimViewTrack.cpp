@@ -85,6 +85,9 @@ bool CUiAnimViewTrack::SnapTimeToPrevKey(float& time) const
     if (prevKey.IsValid())
     {
         time = prevKey.GetTime();
+        m_pTrackAnimNode->GetSequence()->DeselectAllKeys();
+        m_pAnimTrack->SelectKey(prevKey.GetIndex(), true);
+        m_pTrackAnimNode->GetSequence()->OnKeySelectionChanged();
         return true;
     }
 
@@ -99,6 +102,9 @@ bool CUiAnimViewTrack::SnapTimeToNextKey(float& time) const
     if (prevKey.IsValid())
     {
         time = prevKey.GetTime();
+        m_pTrackAnimNode->GetSequence()->DeselectAllKeys();
+        m_pAnimTrack->SelectKey(prevKey.GetIndex(), true);
+        m_pTrackAnimNode->GetSequence()->OnKeySelectionChanged();
         return true;
     }
 

@@ -9,6 +9,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #1 $
+from configparser import NoOptionError
 from botocore.exceptions import ClientError
 
 from resource_manager_common import constant
@@ -36,19 +37,34 @@ def list(context, args):
     for section_name in credentials.sections():
         if args.profile is None or section_name == args.profile:
 
-            try:
-                # Not using context.aws.client because it always returns clients configured using the --profile argument.
-                # In this case we want to use each profile's credentials.
-                region = DEFAULT_STS_REGION if args.region is None else args.region
+            access_key = None
+            secret_key = None
+            res = {}
 
-                sts = AWSSTSUtils(region).client_with_credentials(
-                                   aws_access_key_id=credentials.get(section_name, constant.ACCESS_KEY_OPTION),
-                                   aws_secret_access_key=credentials.get(section_name, constant.SECRET_KEY_OPTION))
-                res = sts.get_caller_identity()
-            except ClientError as e:
-                if e.response['Error']['Code'] not in ['InvalidClientTokenId', 'SignatureDoesNotMatch']:
-                    raise e
-                res = {}
+            try:
+                access_key = credentials.get(section_name, constant.ACCESS_KEY_OPTION)
+                secret_key = credentials.get(section_name, constant.SECRET_KEY_OPTION)
+            except NoOptionError as noe:
+                # Assumption is that this is an AWS role for getting credentials, confirm and ignore
+                credential_process = credentials.get(section_name, constant.CREDENTIAL_PROCESS)
+                if credential_process is None:
+                    raise HandledError(f'Unexpected credential type encountered for {section_name}')
+                else:
+                    print(f'Ignoring {section_name} as unsupported credential type')
+                    continue
+
+            if access_key and secret_key:
+                try:
+                    # Not using context.aws.client because it always returns clients configured using the --profile argument.
+                    # In this case we want to use each profile's credentials.
+                    region = DEFAULT_STS_REGION if args.region is None else args.region
+
+                    sts = AWSSTSUtils(region).client_with_credentials(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+                    res = sts.get_caller_identity()
+                except ClientError as e:
+                    if e.response['Error']['Code'] not in ['InvalidClientTokenId', 'SignatureDoesNotMatch']:
+                        raise e
+                    res = {}
 
             arn = res.get('Arn', 'arn:aws:iam::554229317296:user/(unknown)')
             user_name = arn[arn.rfind('/') + 1:]
@@ -56,8 +72,8 @@ def list(context, args):
             profile_list.append(
                 {
                     'Name': section_name,
-                    'AccessKey': credentials.get(section_name, constant.ACCESS_KEY_OPTION),
-                    'SecretKey': credentials.get(section_name, constant.SECRET_KEY_OPTION),
+                    'AccessKey': access_key,
+                    'SecretKey': secret_key,
                     'Account': res.get('Account', '(unknown)'),
                     'UserName': user_name,
                     'Default': section_name == context.config.user_default_profile

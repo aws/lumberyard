@@ -1089,10 +1089,9 @@ class lmbr_aws_TestCase(unittest.TestCase):
             self.assertEquals(e.response['Error']['Code'], '404')
 
     def verify_s3_object_exists(self, bucket, key):
-
         try:
             res = self.aws_s3.head_object(Bucket=bucket, Key=key)
-        except Exception as e:
+        except NotFoundException as e:
             self.fail("head_object(Bucket='{}', Key='{}') failed: {}".format(bucket, key, e))
 
         if res.get('DeleteMarker', False):
@@ -1100,6 +1099,17 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
         if res.get('ContentLength', 0) == 0:
             self.fail("head_object(Bucket='{}', Key='{}') -> ContentLength is 0".format(bucket, key))
+
+    def verify_s3_object_missing(self, bucket, key) -> bool:
+        try:
+            self.aws_s3.head_object(Bucket=bucket, Key=key)
+        except ClientError as e:
+            if e.response['Error']['Code'] == "404":
+                return True
+            else:
+                raise e
+
+        self.fail("head_object(Bucket='{}', Key='{}') -> Was located".format(bucket, key))
 
     def verify_stack(self, context, stack_arn, spec, exact=True):
         verified = False

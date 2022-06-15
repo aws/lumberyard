@@ -1617,15 +1617,26 @@ namespace AzToolsFramework
 
             if (sourceClass->m_serializer)
             {
-                // These are leaf elements, we can just copy directly.
-                AZStd::vector<AZ::u8> sourceBuffer;
-                AZ::IO::ByteContainerStream<decltype(sourceBuffer)> sourceStream(&sourceBuffer);
-                sourceClass->m_serializer->Save(sourceNode->GetInstance(0), sourceStream);
-
-                for (size_t i = 0; i < targetNode->GetNumInstances(); ++i)
+                if (sourceClass->m_typeId == AZ::GetAssetClassId())
                 {
-                    sourceStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
-                    targetClass->m_serializer->Load(targetNode->GetInstance(i), sourceStream, sourceClass->m_version);
+                    // Optimized clone path for asset references.
+                    for (size_t i = 0; i < targetNode->GetNumInstances(); ++i)
+                    {
+                        static_cast<AZ::AssetSerializer*>(sourceClass->m_serializer.get())->Clone(sourceNode->GetInstance(0), targetNode->GetInstance(i));
+                    }
+                }
+                else
+                {
+                    // These are leaf elements, we can just copy directly.
+                    AZStd::vector<AZ::u8> sourceBuffer;
+                    AZ::IO::ByteContainerStream<decltype(sourceBuffer)> sourceStream(&sourceBuffer);
+                    sourceClass->m_serializer->Save(sourceNode->GetInstance(0), sourceStream);
+
+                    for (size_t i = 0; i < targetNode->GetNumInstances(); ++i)
+                    {
+                        sourceStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+                        targetClass->m_serializer->Load(targetNode->GetInstance(i), sourceStream, sourceClass->m_version);
+                    }
                 }
             }
             else

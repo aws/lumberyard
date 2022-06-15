@@ -76,6 +76,13 @@ namespace AZ
          * @param name The new name of the entity.
          */
         virtual void OnEntityNameChanged(const AZ::EntityId&, const AZStd::string& /*name*/) {}
+
+        /**
+         * Signals that the start status of an entity changed.
+         * @param EntityId The ID of the entity that has had the status changed.
+         */
+        virtual void OnEntityStartStatusChanged(const AZ::EntityId&) {}
+
     };
 
 

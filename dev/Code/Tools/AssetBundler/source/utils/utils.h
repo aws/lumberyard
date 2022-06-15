@@ -47,6 +47,7 @@ namespace AssetBundler
     extern const char* PrintFlag;
     extern const char* AssetCatalogFileArg;
     extern const char* AllowOverwritesFlag;
+    extern const char* IgnoreFileCaseFlag;
     ////////////////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////////////////
@@ -260,16 +261,19 @@ namespace AssetBundler
     {
     public:
         AZ_CLASS_ALLOCATOR(FilePath, AZ::SystemAllocator, 0);
-        explicit FilePath(const AZStd::string& filePath, AZStd::string platformIdentifier = AZStd::string());
+        explicit FilePath(const AZStd::string& filePath, AZStd::string platformIdentifier = AZStd::string(), bool checkFileCase = false, bool ignoreFileCase = false);
+        explicit FilePath(const AZStd::string& filePath, bool checkFileCase, bool ignoreFileCase);
         FilePath() = default;
         const AZStd::string& AbsolutePath() const;
         const AZStd::string& OriginalPath() const;
+        AZStd::string ErrorString() const;
         bool IsValid() const;
     private:
-        void ComputeAbsolutePath(AZStd::string& filePath, const AZStd::string& platformIdentifier);
+        void ComputeAbsolutePath(AZStd::string& filePath, const AZStd::string& platformIdentifier, bool checkFileCase, bool ignoreFileCase);
 
         AZStd::string m_absolutePath;
         AZStd::string m_originalPath;
+        AZStd::string m_errorString;
         bool m_validPath = false;
     };
 

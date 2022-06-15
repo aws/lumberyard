@@ -32,6 +32,10 @@ namespace EMotionFX
             AZ_RTTI(EMotionFXAsset, "{043F606A-A483-4910-8110-D8BC4B78922C}", AZ::Data::AssetData)
             AZ_CLASS_ALLOCATOR(EMotionFXAsset, EMotionFXAllocator, 0)
 
+            EMotionFXAsset(AZ::Data::AssetId id = AZ::Data::AssetId())
+                : AZ::Data::AssetData(id)
+            {}
+
             AZStd::vector<AZ::u8> m_emfxNativeData;
         };
 
@@ -58,9 +62,8 @@ namespace EMotionFX
 
             AZ::Data::AssetPtr CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type) override
             {
-                (void)id;
                 (void)type;
-                return aznew DataType();
+                return aznew DataType(id);
             }
 
             AZ::Data::AssetId AssetMissingInCatalog(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override

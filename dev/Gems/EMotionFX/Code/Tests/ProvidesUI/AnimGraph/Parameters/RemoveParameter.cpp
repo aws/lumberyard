@@ -93,7 +93,7 @@ namespace EMotionFX
 
         // Create parameter for each of the available types.
         const AZStd::vector<AZ::TypeId> parameterTypeIds = EMotionFX::ParameterFactory::GetValueParameterTypes();
-        for (const AZ::TypeId parameterTypeId : parameterTypeIds)
+        for (const AZ::TypeId& parameterTypeId : parameterTypeIds)
         {
             const AZStd::string parameterName = AZStd::string::format("Parameter (Type=%s)", parameterTypeId.ToString<AZStd::string>().c_str());
             parameterNames.emplace_back(parameterName);

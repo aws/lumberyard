@@ -54,7 +54,6 @@ class AwsCredentials(object):
             content = file.read()
 
         content = content.replace(self.__REAL_DEFAULT_SECTION_HEADING, self.__TEMP_DEFAULT_SECTION_HEADING)
-
         content_io = StringIO(content)
 
         self.__config.read_file(content_io)
@@ -107,6 +106,10 @@ class AwsCredentials(object):
     def get(self, section, option):
         section = self.__to_temp_name(section)
         return self.__config.get(section, option)
+
+    def get_with_default(self, section, option, optional: None):
+        section = self.__to_temp_name(section)
+        return self.__config.get(section, option, fallback=optional)
 
     def items(self, section):
         section = self.__to_temp_name(section)

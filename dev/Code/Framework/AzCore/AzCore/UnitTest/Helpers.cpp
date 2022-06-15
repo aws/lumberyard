@@ -12,20 +12,67 @@
 
 #include <AzCore/UnitTest/Helpers.h>
 
-#include <AzCore/Math/ToString.h>
+#include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Vector4.h>
 #include <AzCore/Math/Quaternion.h>
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Math/Color.h>
 
+// make gtest/gmock aware of these types so when a failure occurs we get more useful output
 namespace AZ
 {
-    // make gtest/gmock aware of these types so when a failure occurs we get more useful output
+    std::ostream& operator<<(std::ostream& os, const Vector2& vec)
+    {
+        return os
+            << "(X: " << static_cast<float>(vec.GetX())
+            << ", Y: " << static_cast<float>(vec.GetY())
+            << ")";
+    }
+
     std::ostream& operator<<(std::ostream& os, const Vector3& vec)
     {
-        return os << ToString(vec).c_str();
+        return os
+            << "(X: " << static_cast<float>(vec.GetX())
+            << ", Y: " << static_cast<float>(vec.GetY())
+            << ", Z: " << static_cast<float>(vec.GetZ())
+            << ")";
+    }
+
+    std::ostream& operator<<(std::ostream& os, const Vector4& vec)
+    {
+        return os
+            << "(X: " << static_cast<float>(vec.GetX())
+            << ", Y: " << static_cast<float>(vec.GetY())
+            << ", Z: " << static_cast<float>(vec.GetZ())
+            << ", W: " << static_cast<float>(vec.GetW())
+            << ")";
     }
 
     std::ostream& operator<<(std::ostream& os, const Quaternion& quat)
     {
-        return os << ToString(quat).c_str();
+        return os
+            << "(X: " << static_cast<float>(quat.GetX())
+            << ", Y: " << static_cast<float>(quat.GetY())
+            << ", Z: " << static_cast<float>(quat.GetZ())
+            << ", W: " << static_cast<float>(quat.GetW())
+            << ")";
+    }
+
+    std::ostream& operator<<(std::ostream& os, const Transform& transform)
+    {
+        return os
+            << "row 0: " << transform.GetRow(0)
+            << " row 1: " << transform.GetRow(1)
+            << " row 2: " << transform.GetRow(2);
+    }
+
+    std::ostream& operator<<(std::ostream& os, const Color& color)
+    {
+        return os
+            << "red: " << static_cast<float>(color.GetR())
+            << " green: " << static_cast<float>(color.GetG())
+            << " blue: " << static_cast<float>(color.GetB())
+            << " alpha: " << static_cast<float>(color.GetA());
     }
 } // namespace AZ

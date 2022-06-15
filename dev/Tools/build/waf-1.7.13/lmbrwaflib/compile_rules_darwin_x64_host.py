@@ -37,22 +37,22 @@ def load_darwin_x64_host_settings(conf):
 
     v['CODE_GENERATOR_EXECUTABLE'] = 'AzCodeGenerator'
     v['CODE_GENERATOR_PATH'] = [ azcg_dir ]
-    v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/3.7.5/mac'),
-                                        conf.Path('Tools/Python/3.7.5/mac/lib'),
-                                        conf.Path('Tools/Python/3.7.5/mac/lib/python3.7'),
-                                        conf.Path('Tools/Python/3.7.5/mac/lib/python3.7/lib-dynload'),
+    v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/3.7.10/mac/Python.framework/Versions/3.7'),
+                                        conf.Path('Tools/Python/3.7.10/mac/Python.framework/Versions/3.7/lib'),
+                                        conf.Path('Tools/Python/3.7.10/mac/Python.framework/Versions/3.7/lib/python3.7'),
+                                        conf.Path('Tools/Python/3.7.10/mac/Python.framework/Versions/3.7/lib/python3.7/lib-dynload'),
                                         conf.ThirdPartyPath('markupsafe', 'x64'),
                                         conf.ThirdPartyPath('jinja2', 'x64')]
     v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.ThirdPartyPath('markupsafe', 'x64'),
                                               conf.ThirdPartyPath('jinja2', 'x64'),
-                                              conf.Path('Tools/Python/3.7.5/mac'),
-                                              conf.Path('Tools/Python/3.7.5/mac/lib'),
-                                              conf.Path('Tools/Python/3.7.5/mac/lib/python3.7'),
-                                              conf.Path('Tools/Python/3.7.5/mac/lib/python3.7/lib-dynload')]
+                                              conf.Path('Tools/Python/3.7.10/mac/Python.framework/Versions/3.7'),
+                                              conf.Path('Tools/Python/3.7.10/mac/Python.framework/Versions/3.7'),
+                                              conf.Path('Tools/Python/3.7.10/mac/Python.framework/Versions/3.7/lib/python3.7'),
+                                              conf.Path('Tools/Python/3.7.10/mac/Python.framework/Versions/3.7/lib/python3.7/lib-dynload')]
                                               
-    v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'] = 'Tools/Python/3.7.5/mac'
+    v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'] = 'Tools/Python/3.7.10/mac/Python.framework/Versions/3.7'
     v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path(v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'])
-    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/3.7.5/mac')
+    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/3.7.10/mac/Python.framework/Versions/3.7')
     v['CODE_GENERATOR_INCLUDE_PATHS'] = []
     
     v['EMBEDDED_PYTHON_HOME'] = v['CODE_GENERATOR_PYTHON_HOME']

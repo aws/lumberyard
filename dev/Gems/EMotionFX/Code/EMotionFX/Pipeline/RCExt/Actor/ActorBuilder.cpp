@@ -397,12 +397,20 @@ namespace EMotionFX
                                 azrtti_cast<const SceneDataTypes::IMeshData*>(graph.GetNodeContent(nodeIndex));
                             if (meshData)
                             {
-                                // Find the Lod mesh node in emfx
-                                const AZStd::string_view nodeName = RemoveLODSuffix(graph.GetNodeName(nodeIndex).GetName());
+                                // Find the base mesh node in emfx
+                                const AZStd::string nodeName = RemoveLODSuffix(graph.GetNodeName(nodeIndex).GetName());
                                 EMotionFX::Node* emfxNode = actorSkeleton->FindNodeByName(nodeName);
                                 if (!emfxNode)
                                 {
-                                    AZ_Assert(false, "Tried to find the lod mesh %.*s in the actor hierarchy but didn't find any match.", static_cast<int>(nodeName.size()), nodeName.data());
+                                    emfxNode = actorSkeleton->FindNodeByName(nodeName + "_LOD0");
+                                }
+                                if (!emfxNode)
+                                {
+                                    emfxNode = actorSkeleton->FindNodeByName(nodeName + "_lod0");
+                                }
+                                if (!emfxNode)
+                                {
+                                    AZ_Assert(false, "Tried to find the base mesh %.*s in the actor hierarchy but didn't find any match.", static_cast<int>(nodeName.size()), nodeName.data());
                                     continue;
                                 }
                                 BuildMesh(context, emfxNode, meshData, nodeIndex, boneNameEmfxIndexMap, actorSettings, coordSysConverter, ruleIndex + 1);

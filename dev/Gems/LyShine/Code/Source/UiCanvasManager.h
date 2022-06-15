@@ -96,6 +96,8 @@ public: // member functions
     bool HandleInputEventForLoadedCanvases(const AzFramework::InputChannel& inputChannel);
     bool HandleTextEventForLoadedCanvases(const AZStd::string& textUTF8);
 
+    void DeleteCanvasesQueuedForDeletion();
+
 #ifndef _RELEASE
     void DebugDisplayCanvasData(int setting) const;
     void DebugDisplayDrawCallData() const;
@@ -128,7 +130,7 @@ private: // member functions
         const AZ::SliceComponent::EntityIdToEntityIdMap* previousRemapTable = nullptr, AZ::EntityId previousCanvasId = AZ::EntityId());
 
     void QueueCanvasForDeletion(AZ::EntityId canvasEntityId);
-    void DeleteCanvasesQueuedForDeletion();
+
 
 #ifndef _RELEASE
     AZStd::string DebugGetElementName(AZ::EntityId entityId, int maxLength) const;

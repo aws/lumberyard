@@ -28,10 +28,14 @@ TEST_UUID = "90ce8630-ec89-11ea-930d-0a7bf50fa3c2"
 TEST_ACCOUNT = "0123456789"
 TEST_STACK_ID = f"arn:aws:cloudformation:{TEST_REGION}:{TEST_ACCOUNT}:stack/{TEST_STACK_NAME}/{TEST_UUID}"
 
+# boto3.client requires a region even for stubbers. Actual region is not important
+# Removes reliance on .aws setting or environment variable
+TEST_STUB_REGION = 'us-east-1'
+
 
 def _get_cf_stubbed_client(method: str, response, expected_params: dict):
     """Generate a CF subber"""
-    client = boto3.client('cloudformation')
+    client = boto3.client('cloudformation', region_name=TEST_STUB_REGION)
     cf_stubber = Stubber(client)
     cf_stubber.add_response(method, response, expected_params)
     cf_stubber.activate()
@@ -39,7 +43,7 @@ def _get_cf_stubbed_client(method: str, response, expected_params: dict):
 
 
 def _get_cf_stubbed_client_with_error(method: str, service_error_code: str, service_message: str = None):
-    client = boto3.client('cloudformation')
+    client = boto3.client('cloudformation', region_name=TEST_STUB_REGION)
     cf_stubber = Stubber(client)
     cf_stubber.add_client_error(
         method=method,
@@ -339,7 +343,7 @@ class UnitTest_Monitor(unittest.TestCase):
         events_response = self._build_stack_events()
         resource_response = self._build_stack_resource_response()
         expected_params = {'StackName': TEST_STACK_ID}
-        client = boto3.client('cloudformation')
+        client = boto3.client('cloudformation', region_name=TEST_STUB_REGION)
         cf_stubber = Stubber(client)
         cf_stubber.add_response('describe_stack_events', events_response, expected_params)
         cf_stubber.add_response('describe_stack_resources', resource_response, expected_params)

@@ -198,13 +198,15 @@ class ResourceGroup(object):
     def cgp_code_path(self):
         return self.__cgp_code_path
 
-    def update_cgp_code(self, resource_group_uploader):
+    def update_cgp_code(self, resource_group_uploader, has_cgp: bool):
+        if not has_cgp:
+            print(f'Skipping updating cloud gem portal for resource_group: {resource_group_uploader.resource_group_name}.')
+        else:
+            content_path = os.path.join(self.cgp_code_path, "dist")
+            if not os.path.isdir(content_path):
+                return
 
-        content_path = os.path.join(self.cgp_code_path, "dist")
-        if not os.path.isdir(content_path):
-            return
-
-        resource_group_uploader.upload_dir(None, content_path, alternate_root=constant.GEM_CGP_DIRECTORY_NAME, suffix='dist')
+            resource_group_uploader.upload_dir(None, content_path, alternate_root=constant.GEM_CGP_DIRECTORY_NAME, suffix='dist')
 
     @property
     def base_settings_file_path(self):
@@ -932,7 +934,7 @@ def after_update(deployment_uploader, resource_group_name):
     deployment_name = deployment_uploader.deployment_name
     group = context.resource_groups.get(resource_group_name)
     resource_group_uploader = deployment_uploader.get_resource_group_uploader(resource_group_name)
-    group.update_cgp_code(resource_group_uploader)
+    group.update_cgp_code(resource_group_uploader, context.config.deploy_cloud_gem_portal)
 
     # Deprecated in 1.9 - TODO remove
     resource_group_uploader.execute_uploader_post_hooks()

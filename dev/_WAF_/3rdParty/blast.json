@@ -6,20 +6,38 @@
     "description": "NVIDIA Blast library for destructible objects",
     "defines": [],
     "non_release_only": "False",
-    "lib_required": "False",
+    "lib_required": "True",
     "shared_required": "True",
     "engine_configs": "True",
     "system_includes": [
-		"sdk/common",
-		"sdk/extensions/assetutils/include",
-		"sdk/extensions/authoring/include",
-		"sdk/extensions/exporter/include",
-		"sdk/extensions/physx/include",
-		"sdk/extensions/serialization/include",
-		"sdk/extensions/shaders/include",
-		"sdk/extensions/stress/include",
-		"sdk/globals/include",
-		"sdk/lowlevel/include",
-		"sdk/toolkit/include"
-	]
+        "sdk/common",
+        "sdk/extensions/assetutils/include",
+        "sdk/extensions/authoring/include",
+        "sdk/extensions/exporter/include",
+        "sdk/extensions/physx/include",
+        "sdk/extensions/serialization/include",
+        "sdk/extensions/shaders/include",
+        "sdk/extensions/stress/include",
+        "sdk/globals/include",
+        "sdk/lowlevel/include",
+        "sdk/toolkit/include"
+    ],
+    "aliases": {
+        "lib_names": [
+            "NvBlast",
+            "NvBlastExtAssetUtils",
+            "NvBlastExtPhysX",
+            "NvBlastExtPxSerialization",
+            "NvBlastExtSerialization",
+            "NvBlastExtShaders",
+            "NvBlastExtStress",
+            "NvBlastExtTkSerialization",
+            "NvBlastGlobals",
+            "NvBlastTk"
+        ],
+        "win_lib_names": [
+            "NvBlastExtAuthoring",
+            "NvBlastExtExporter"
+        ]
+    }
 }

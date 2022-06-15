@@ -244,6 +244,10 @@ def __add_project_stack_commands(stack_subparser):
     subparser.set_defaults(create_admin_roles=True)
 
     __add_common_args(subparser, no_assume_role=True)
+
+    # Provide an override to deploy cloud gem portal if it still exists in the project directory
+    # CloudGemPortal has been deprecated but if a local copy exists in dev/Gems/CloudGemFramework/v1/Website, it will be deployed
+    feature_parser.add_argument('--deploy-cgp', action='store_true', help='Deploy CloudGemPortal if it exists locally on disk')
     subparser.set_defaults(func=project.create_stack)
 
     subparser = subparsers.add_parser('upload-resources', aliases=['upload', 'update'], help='Updates the AWS resources used by Lumberyard project.')
@@ -448,7 +452,7 @@ def __add_deployment_commands(deployment_subparser):
     subparser.set_defaults(func=deployment.update_access_stack)
 
     subparser = subparsers.add_parser('tags', help='updates a deployments tags, which are used to provide resource-group overrides to a deployment')
-    subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT', required=False, help='The name of the deployment whos tags will be updated')
+    subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT', required=False, help='The name of the deployment whose tags will be updated')
     subparser.add_argument('--add', nargs='+', required=False, help='The tags to add to the deployment')
     subparser.add_argument('--delete', nargs='+', required=False, help='The tags to delete from the deployment')
     subparser.add_argument('--clear', action='store_true', required=False, help='Clear all tags for the deployment')

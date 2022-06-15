@@ -489,21 +489,13 @@ namespace LevelBuilder
         const AZStd::string& levelName, 
         AssetBuilderSDK::ProductPathDependencySet& productDependencies) const
     {
-        AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetDirectInstance();
-        AZ::IO::FileIOBase::FindFilesCallbackType registerFoundFileAsProductPathDependencyCallback = [&productDependencies](const char* aliasedFilePath)->bool {
-            // remove the alias at the front of path passed in to get the path relative to the cache.
-            AZStd::string relativePath = aliasedFilePath;
-            AzFramework::StringFunc::RKeep(relativePath, relativePath.find_first_of('/'));
-
-            productDependencies.emplace(relativePath.c_str(), AssetBuilderSDK::ProductPathDependencyType::ProductFile);
-            return true;
-        };
-
         AZStd::string levelScopedControlsPath = AZStd::string::format(s_audioControlFilesLevelPath, levelName.c_str());
-        if (fileIO->IsDirectory(levelScopedControlsPath.c_str()))
-        {
-            fileIO->FindFiles(levelScopedControlsPath.c_str(), s_audioControlFilter, registerFoundFileAsProductPathDependencyCallback);
-        }
+
+        // remove the alias at the front of path passed in to get the path relative to the cache.
+        AZStd::string relativePath = levelScopedControlsPath;
+        AzFramework::StringFunc::RKeep(relativePath, relativePath.find_first_of('/'));
+
+        productDependencies.emplace(relativePath + "/" + s_audioControlFilter, AssetBuilderSDK::ProductPathDependencyType::ProductFile);
     }
 
     void LevelBuilderWorker::PopulateLevelAudioControlDependencies(

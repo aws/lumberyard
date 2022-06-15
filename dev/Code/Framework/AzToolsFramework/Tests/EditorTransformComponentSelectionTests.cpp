@@ -29,6 +29,7 @@
 #include <AzToolsFramework/ViewportSelection/EditorInteractionSystemViewportSelectionRequestBus.h>
 #include <AzToolsFramework/ViewportSelection/EditorTransformComponentSelection.h>
 #include <AzToolsFramework/ViewportSelection/EditorVisibleEntityDataCache.h>
+#include <AzQtComponents/Components/GlobalEventFilter.h>
 
 using namespace AzToolsFramework;
 
@@ -415,6 +416,74 @@ namespace UnitTest
 
         EXPECT_THAT(selectedEntities, UnorderedElementsAreArray(expectedSelectedEntities));
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    // simple widget to listen for a mouse wheel event and then forward it on to the ViewportSelectionRequestBus
+    class WheelEventWidget
+        : public QWidget
+    {
+        using MouseInteractionResult = AzToolsFramework::ViewportInteraction::MouseInteractionResult;
+    public:
+        WheelEventWidget(QWidget* parent = nullptr)
+            : QWidget(parent)
+        {
+        }
+
+        void wheelEvent(QWheelEvent* ev) override
+        {
+            namespace vi = AzToolsFramework::ViewportInteraction;
+            vi::MouseInteraction mouseInteraction;
+            mouseInteraction.m_interactionId.m_cameraId = AZ::EntityId();
+            mouseInteraction.m_interactionId.m_viewportId = 0;
+            mouseInteraction.m_mouseButtons = vi::BuildMouseButtons(ev->buttons());
+            mouseInteraction.m_mousePick = vi::MousePick();
+            mouseInteraction.m_keyboardModifiers = vi::BuildKeyboardModifiers(ev->modifiers());
+
+            AzToolsFramework::EditorInteractionSystemViewportSelectionRequestBus::EventResult(
+                m_mouseInteractionResult, AzToolsFramework::GetEntityContextId(),
+                &EditorInteractionSystemViewportSelectionRequestBus::Events::InternalHandleAllMouseInteractions,
+                vi::MouseInteractionEvent(mouseInteraction, ev->angleDelta().y()));
+        }
+
+        MouseInteractionResult m_mouseInteractionResult;
+    };
+
+    TEST_F(EditorTransformComponentSelectionFixture, MouseScrollWheelSwitchesTransformMode)
+    {
+        using ::testing::Eq;
+        namespace vi = AzToolsFramework::ViewportInteraction;
+
+        const auto transformMode = []()
+        {
+            EditorTransformComponentSelectionRequests::Mode transformMode;
+            EditorTransformComponentSelectionRequestBus::EventResult(
+                transformMode, GetEntityContextId(),
+                &EditorTransformComponentSelectionRequestBus::Events::GetTransformMode);
+            return transformMode;
+        };
+
+        // given
+        // preconditions
+        EXPECT_THAT(transformMode(), EditorTransformComponentSelectionRequests::Mode::Translation);
+
+        auto wheelEventWidget = WheelEventWidget();
+        // attach the global event filter to the placeholder widget
+        AzQtComponents::GlobalEventFilter globalEventFilter(QApplication::instance());
+        wheelEventWidget.installEventFilter(&globalEventFilter);
+
+        // example mouse wheel event (does not yet factor in position of mouse in relation to widget)
+        auto wheelEvent = QWheelEvent(
+            QPointF(0.0f, 0.0f), QPointF(0.0f, 0.0f), QPoint(0, 1), QPoint(0, 0), Qt::MouseButton::NoButton,
+            Qt::KeyboardModifier::ControlModifier, Qt::ScrollPhase::ScrollBegin, false,
+            Qt::MouseEventSource::MouseEventSynthesizedBySystem);
+
+        // when (trigger mouse wheel event)
+        QApplication::sendEvent(&wheelEventWidget, &wheelEvent);
+
+        // then
+        // transform mode has changed and mouse event was handled
+        EXPECT_THAT(transformMode(), Eq(EditorTransformComponentSelectionRequests::Mode::Rotation));
+        EXPECT_THAT(wheelEventWidget.m_mouseInteractionResult, Eq(vi::MouseInteractionResult::Viewport));
     }
 
     // struct to contain input reference frame and expected orientation outcome based on

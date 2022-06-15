@@ -65,13 +65,22 @@ namespace CopyDependencyBuilder
             // Parse the asset id
             // Asset data could look like "id={00000000-0000-0000-0000-000000000000}:0,type={00000000-0000-0000-0000-000000000000},hint={asset_path}"
             // SubId is 16 based according to AssetSerializer
+            AZ::Data::AssetId assetId;
+            if (!text)
+            {
+                AZ_Error("XmlBuilderWorker", false, "Null string given to TextToAssetId");
+                return assetId;
+            }
             const char* idGuidStart = strchr(text, '{');
-            AZ_Error("XmlBuilderWorker", idGuidStart, "Invalid asset guid data! %s", text);
+            if (!idGuidStart)
+            {
+                AZ_Error("XmlBuilderWorker", false, "Invalid asset guid data! %s", text);
+                return assetId;
+            }
             const char* idGuidEnd = strchr(idGuidStart, ':');
             AZ_Error("XmlBuilderWorker", idGuidEnd, "Invalid asset guid data! %s", idGuidStart);
             const char* idSubIdStart = idGuidEnd + 1;
 
-            AZ::Data::AssetId assetId;
             assetId.m_guid = AZ::Uuid::CreateString(idGuidStart, idGuidEnd - idGuidStart);
             assetId.m_subId = static_cast<AZ::u32>(strtoul(idSubIdStart, nullptr, 16));
 
@@ -84,7 +93,8 @@ namespace CopyDependencyBuilder
             AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
             AssetBuilderSDK::ProductPathDependencySet& pathDependencies,
             const AZStd::string& sourceAssetFolder,
-            const AZStd::string& nodeContent = "")
+            const AZStd::string& nodeContent = "",
+            const AZStd::string& watchFolder = "")
         {
             // Attribute nodes of the XML schema specify the attributes which are used to store product dependency info in the actual XML nodes
             AZStd::string schemaAttributeName = schemaAttribute.GetName();
@@ -141,6 +151,20 @@ namespace CopyDependencyBuilder
                         {
                             AzFramework::StringFunc::AssetDatabasePath::Join(sourceAssetFolder.c_str(), dependencyValue.c_str(), dependencyValue);
                         }
+                        else if (schemaAttribute.CacheRelativePath())
+                        {
+                            AZStd::string_view depFolder{ sourceAssetFolder.c_str() };
+                            if (watchFolder.length() && sourceAssetFolder.starts_with(watchFolder))
+                            {
+                                depFolder = &sourceAssetFolder[watchFolder.length()];
+                                if (depFolder.front() == '/')
+                                {
+                                    depFolder = &sourceAssetFolder[watchFolder.length() + 1];
+                                }
+
+                            }
+                            AzFramework::StringFunc::AssetDatabasePath::Join(depFolder.data(), dependencyValue.c_str(), dependencyValue);
+                        }
 
                         pathDependencies.emplace(dependencyValue, productPathDependencyType);
                     }
@@ -164,7 +188,8 @@ namespace CopyDependencyBuilder
             const AZ::rapidxml::xml_node<char>* xmlFileNode,
             AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
             AssetBuilderSDK::ProductPathDependencySet& pathDependencies,
-            const AZStd::string& sourceAssetFolder)
+            const AZStd::string& sourceAssetFolder,
+            const AZStd::string& watchFolderPath)
         {
             // Check whether the XML node matches the schema
             AZStd::string schemaElementName = xmlSchemaElement.GetName();
@@ -181,7 +206,7 @@ namespace CopyDependencyBuilder
                 bool findMatchedChildNode = false;
                 for (AZ::rapidxml::xml_node<char>* xmlFileChildNode = xmlFileNode->first_node(); xmlFileChildNode; xmlFileChildNode = xmlFileChildNode->next_sibling())
                 {
-                    findMatchedChildNode = ParseElementNode(childSchemaElement, xmlFileChildNode, localProductDependencies, localPathDependencies, sourceAssetFolder) || findMatchedChildNode;
+                    findMatchedChildNode = ParseElementNode(childSchemaElement, xmlFileChildNode, localProductDependencies, localPathDependencies, sourceAssetFolder, watchFolderPath) || findMatchedChildNode;
                 }
 
                 if (!findMatchedChildNode && !childSchemaElement.IsOptional())
@@ -193,7 +218,7 @@ namespace CopyDependencyBuilder
             for (const AzFramework::XmlSchemaAttribute& schemaAttribute : xmlSchemaElement.GetAttributes())
             {
                 AZStd::string xmlNodeValue = schemaAttribute.GetName().empty() ? xmlFileNode->value() : "";
-                if (!ParseAttributeNode(schemaAttribute, xmlFileNode, localProductDependencies, localPathDependencies, sourceAssetFolder, xmlNodeValue))
+                if (!ParseAttributeNode(schemaAttribute, xmlFileNode, localProductDependencies, localPathDependencies, sourceAssetFolder, xmlNodeValue, watchFolderPath))
                 {
                     return false;
                 }
@@ -335,6 +360,7 @@ namespace CopyDependencyBuilder
         xmlSchemaBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("(?!.*libs\\/gameaudio\\/).*\\.xml", AssetBuilderSDK::AssetBuilderPattern::PatternType::Regex));
         xmlSchemaBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.ent", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         xmlSchemaBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.vegdescriptorlist", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
+        xmlSchemaBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.physicsconfiguration", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         xmlSchemaBuilderDescriptor.m_busId = azrtti_typeid<XmlBuilderWorker>();
         xmlSchemaBuilderDescriptor.m_version = 8;
         xmlSchemaBuilderDescriptor.m_createJobFunction =
@@ -436,13 +462,14 @@ namespace CopyDependencyBuilder
             }
         }
         // If a schema is found or not found, the result is valid. Return false if there was an error.
-        return MatchExistingSchema(request.m_fullPath, matchedSchemas, productDependencies, pathDependencies) != SchemaMatchResult::Error;
+        return MatchExistingSchema(request.m_fullPath, matchedSchemas, productDependencies, pathDependencies, request.m_watchFolder) != SchemaMatchResult::Error;
     }
 
     XmlBuilderWorker::SchemaMatchResult XmlBuilderWorker::MatchLastUsedSchema(
         const AZStd::string& sourceFilePath,
         AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
-        AssetBuilderSDK::ProductPathDependencySet& pathDependencies) const
+        AssetBuilderSDK::ProductPathDependencySet& pathDependencies,
+        const AZStd::string& watchFolderPath) const
     {
         // Check the existing schema info stored in the asset database
         // https://jira.agscollab.com/browse/LY-99056
@@ -453,7 +480,8 @@ namespace CopyDependencyBuilder
         const AZStd::string& sourceFilePath,
         AZStd::vector<AZStd::string>& sourceDependencyPaths,
         AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
-        AssetBuilderSDK::ProductPathDependencySet& pathDependencies) const
+        AssetBuilderSDK::ProductPathDependencySet& pathDependencies,
+        const AZStd::string& watchFolderPath) const
     {
         if (m_printDebug)
         {
@@ -490,7 +518,7 @@ namespace CopyDependencyBuilder
 
         for (const AZStd::string& schemaFilePath : sourceDependencyPaths)
         {
-            SchemaMatchResult matchResult = ParseXmlFile(schemaFilePath, sourceFilePath, productDependencies, pathDependencies);
+            SchemaMatchResult matchResult = ParseXmlFile(schemaFilePath, sourceFilePath, productDependencies, pathDependencies, watchFolderPath);
             if (m_printDebug)
             {
                 printf("Match on %s returns %d\n", schemaFilePath.c_str(), (int)matchResult);
@@ -518,7 +546,8 @@ namespace CopyDependencyBuilder
         const AZStd::string& schemaFilePath, 
         const AZStd::string& sourceFilePath,
         AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
-        AssetBuilderSDK::ProductPathDependencySet& pathDependencies) const
+        AssetBuilderSDK::ProductPathDependencySet& pathDependencies,
+        const AZStd::string& watchFolderPath) const
     {
         if (schemaFilePath.empty())
         {
@@ -556,7 +585,7 @@ namespace CopyDependencyBuilder
         }
         AzFramework::Version<MaxVersionPartsCount> version = SourceFileVersionOutcome.GetValue();
 
-        AZ::Outcome <void, bool> matchingRuleOutcome = SearchForMatchingRule(sourceFilePath, schemaFilePath, version, schemaAsset.GetMatchingRules());
+        AZ::Outcome <void, bool> matchingRuleOutcome = SearchForMatchingRule(sourceFilePath, schemaFilePath, version, schemaAsset.GetMatchingRules(), watchFolderPath);
         if (!matchingRuleOutcome.IsSuccess())
         {
             // This isn't a blocking error, the error was on this schema, so try checking the next schema for a match.
@@ -581,7 +610,7 @@ namespace CopyDependencyBuilder
             AzFramework::StringFunc::Path::GetFullPath(sourceAssetFolder.c_str(), sourceAssetFolder);
 
             dependencySearchRuleResult = SearchForDependencySearchRule(xmlFileRootNode, schemaFilePath, version,
-                schemaAsset.GetDependencySearchRules(), productDependencies, pathDependencies, sourceAssetFolder);
+                schemaAsset.GetDependencySearchRules(), productDependencies, pathDependencies, sourceAssetFolder, watchFolderPath);
             if (!dependencySearchRuleResult)
             {
                 AZ_Warning("XmlBuilderWorker", false, "File %s matches schema %s's maching rules defined for version %s,"
@@ -599,7 +628,8 @@ namespace CopyDependencyBuilder
         const AZStd::string& sourceFilePath, 
         const AZStd::string& schemaFilePath,
         const AzFramework::Version<MaxVersionPartsCount>& version,
-        const AZStd::vector<AzFramework::MatchingRule>& matchingRules) const
+        const AZStd::vector<AzFramework::MatchingRule>& matchingRules,
+        const AZStd::string& watchFolderPath) const
     {
         if (matchingRules.size() == 0)
         {
@@ -641,7 +671,8 @@ namespace CopyDependencyBuilder
         const AZStd::vector<AzFramework::DependencySearchRule>& dependencySearchRules,
         AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
         AssetBuilderSDK::ProductPathDependencySet& pathDependencies,
-        const AZStd::string& sourceAssetFolder) const
+        const AZStd::string& sourceAssetFolder,
+        const AZStd::string& watchFolderPath) const
     {
         if (dependencySearchRules.size() == 0)
         {
@@ -691,7 +722,7 @@ namespace CopyDependencyBuilder
 
                 for (const AZ::rapidxml::xml_node<char>* validNode : validNodes)
                 {
-                    Internal::ParseElementNode(searchRuleRootNode, validNode, productDependencies, pathDependencies, sourceAssetFolder);
+                    Internal::ParseElementNode(searchRuleRootNode, validNode, productDependencies, pathDependencies, sourceAssetFolder, watchFolderPath);
                 }
             }
 

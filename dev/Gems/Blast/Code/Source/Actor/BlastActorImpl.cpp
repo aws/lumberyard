@@ -54,39 +54,53 @@ namespace Blast
 
     BlastActorImpl::~BlastActorImpl()
     {
+        Physics::WorldBodyNotificationBus::Handler::BusDisconnect(m_entity->GetId());
         m_tkActor.userData = nullptr;
     }
 
     void BlastActorImpl::Spawn()
     {
+        Physics::WorldBodyNotificationBus::Handler::BusConnect(m_entity->GetId());
+
         // Add shapes for each of the visible chunks
         AddShapes(m_chunkIndices, m_family.GetPxAsset(), m_physicsMaterialId);
 
         m_entity->Init();
         m_entity->Activate();
+    }
 
+    void BlastActorImpl::InitializeRigidBody(const AZ::Transform& transform)
+    {
+        if (m_isStatic)
+        {
+            AZ::TransformBus::Event(m_entity->GetId(), &AZ::TransformInterface::SetWorldTM, transform);
+            return;
+        }
+
+        Physics::RigidBody* rigidBody = nullptr;
+        Physics::RigidBodyRequestBus::EventResult(
+            rigidBody, m_entity->GetId(), &Physics::RigidBodyRequests::GetRigidBody);
+        rigidBody->SetTransform(transform);
+        const AZ::Vector3 com = rigidBody->GetTransform() * rigidBody->GetCenterOfMassLocal();
+        const AZ::Vector3 linearVelocity =
+            m_parentLinearVelocity + m_bodyConfiguration.m_initialAngularVelocity.Cross(com - m_parentCenterOfMass);
+        Physics::RigidBodyRequestBus::Event(
+            m_entity->GetId(), &Physics::RigidBodyRequests::SetLinearVelocity, linearVelocity);
+        Physics::RigidBodyRequestBus::Event(
+            m_entity->GetId(), &Physics::RigidBodyRequests::SetAngularVelocity,
+            m_bodyConfiguration.m_initialAngularVelocity);
+    }
+
+    void BlastActorImpl::OnPhysicsEnabled()
+    {
         auto transform = AZ::Transform::CreateFromQuaternionAndTranslation(
             m_bodyConfiguration.m_orientation, m_bodyConfiguration.m_position);
         transform.MultiplyByScale(m_bodyConfiguration.m_scale);
+        InitializeRigidBody(transform);
+    }
 
-        AZ::TransformBus::Event(m_entity->GetId(), &AZ::TransformInterface::SetWorldTM, transform);
-
-        // Set initial velocities if we're not static
-        if (!m_isStatic)
-        {
-            Physics::RigidBody* rigidBody = nullptr;
-            Physics::RigidBodyRequestBus::EventResult(
-                rigidBody, m_entity->GetId(), &Physics::RigidBodyRequests::GetRigidBody);
-            rigidBody->SetTransform(transform);
-            const AZ::Vector3 com = rigidBody->GetTransform() * rigidBody->GetCenterOfMassLocal();
-            const AZ::Vector3 linearVelocity =
-                m_parentLinearVelocity + m_bodyConfiguration.m_initialAngularVelocity.Cross(com - m_parentCenterOfMass);
-            Physics::RigidBodyRequestBus::Event(
-                m_entity->GetId(), &Physics::RigidBodyRequests::SetLinearVelocity, linearVelocity);
-            Physics::RigidBodyRequestBus::Event(
-                m_entity->GetId(), &Physics::RigidBodyRequests::SetAngularVelocity,
-                m_bodyConfiguration.m_initialAngularVelocity);
-        }
+    void BlastActorImpl::OnPhysicsDisabled()
+    {
     }
 
     void BlastActorImpl::AddShapes(

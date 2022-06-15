@@ -67,7 +67,7 @@ public:
     void SyncReflectedVarToIVar(IVariable* pVariable) override;
     void SyncIVarToReflectedVar(IVariable* pVariable) override;
     CReflectedVar* GetReflectedVar() override { return m_reflectedVar.data(); }
-private:
+protected:
     QScopedPointer<CReflectedVarInt > m_reflectedVar;
     float m_valueMultiplier = 1.0f;
 };
@@ -81,7 +81,7 @@ public:
     void SyncReflectedVarToIVar(IVariable* pVariable) override;
     void SyncIVarToReflectedVar(IVariable* pVariable) override;
     CReflectedVar* GetReflectedVar() override { return m_reflectedVar.data(); }
-private:
+protected:
     QScopedPointer<CReflectedVarFloat > m_reflectedVar;
     float m_valueMultiplier = 1.0f;
 };

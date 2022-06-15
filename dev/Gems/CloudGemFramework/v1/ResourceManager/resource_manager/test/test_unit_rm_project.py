@@ -14,6 +14,7 @@ from unittest import mock
 from resource_manager import project
 from resource_manager.errors import HandledError
 from resource_manager import util
+from cgf_utils.version_utils import Version
 
 import unit_common_utils
 
@@ -106,7 +107,35 @@ class UnitTest_Project(unittest.TestCase):
         self.assertEqual(1, context.stack.name_exists.call_count)
         context.stack.name_exists.assert_called_with(args.stack_name, args.region)
 
-    def __project_create_sets_admin_roles_and_custom_domain_name_creates_stack(self, create_admin_roles, custom_domain_name, mock_session_call, mock_botocore_session_call):
+    def __ensure_cgp_created(self, version: str, cgp_created: bool, mock_session_call: mock.MagicMock):
+        context = self.__set_up_context(framework_version=version)
+        args = mock.MagicMock()
+        args.region = 'us-east-1'
+        args.files_only = True
+
+        mock_botocore_session = mock_session_call.return_value
+        mock_botocore_session.get_available_regions.return_value = [args.region]
+
+        # WHEN
+        project.create_stack(context, args)
+
+        # THEN
+        self.assertEqual(1, context.config.initialize_aws_directory.call_count)
+        self.assertEqual(0, context.config.local_project_settings.project_stack_exists.call_count)
+        context.stack.set_deploy_cgp.set_deploy_cloud_gem_portal(cgp_created)
+
+    @mock.patch("botocore.session.Session")
+    @mock.patch("boto3.session.Session")
+    def test_project_create_stack_ensure_no_cgp(self, mock_session_call, mock_botocore_session_call):
+        self.__ensure_cgp_created(version='1.1.5', cgp_created=False, mock_session_call=mock_botocore_session_call)
+
+    @mock.patch("botocore.session.Session")
+    @mock.patch("boto3.session.Session")
+    def test_project_create_legacy_stack_ensure_cgp(self, mock_session_call, mock_botocore_session_call):
+        self.__ensure_cgp_created(version='1.1.4', cgp_created=True, mock_session_call=mock_botocore_session_call)
+
+    def __project_create_sets_admin_roles_and_custom_domain_name_creates_stack(self, create_admin_roles, custom_domain_name, mock_session_call,
+                                                                               mock_botocore_session_call):
         # GIVEN
         project_url = "TEST_URL"
         mock_botocore_session = mock_botocore_session_call.return_value
@@ -207,11 +236,12 @@ class UnitTest_Project(unittest.TestCase):
                                                              mock_botocore_session_call=mock_botocore_session_call)
 
     @staticmethod
-    def __set_up_context(capabilities=None):
+    def __set_up_context(capabilities=None, framework_version: str = '1.1.5'):
         """
         Set up the Context object that drives everything from a CloudCanvas POV
 
         :param capabilities: A list of CloudFormation capabilities to mock
+        :param framework_version: The framework version to set
         :return: A context object that can be configured in the test
         """
         if capabilities is None:
@@ -224,6 +254,7 @@ class UnitTest_Project(unittest.TestCase):
 
         context.config.local_project_settings = mock.MagicMock()
 
+        context.config.framework_version = Version(framework_version)
         context.config.project_template_aggregator = mock.MagicMock()
         context.config.project_template_aggregator.effective_template = {}
         return context

@@ -94,7 +94,7 @@ private:
         // create a new row
         //
         // TODO: the "message" interface between python and the gui is... awkward.
-        // Need to rethink how this works. Should probabally route based on stack
+        // Need to rethink how this works. Should probably route based on stack
         // id. That would allow logs for resource group child stacks to update
         // along with the parent stack's logs when the parent stack is updated.
 
@@ -110,7 +110,7 @@ private:
 
         if (strcmp(outputType, "stack-event-errors") == 0)
         {
-            operation.append("The following errors occured:\n");
+            operation.append("The following errors occurred:\n");
             auto list = output.toMap()["Errors"].toList();
             for (auto it = list.constBegin(); it != list.constEnd(); ++it)
             {

@@ -597,6 +597,7 @@ void QtViewport::mouseMoveEvent(QMouseEvent* event)
 void QtViewport::wheelEvent(QWheelEvent* event)
 {
     OnMouseWheel(event->modifiers(), event->angleDelta().y(), event->position().toPoint());
+    event->accept();
 }
 
 void QtViewport::keyPressEvent(QKeyEvent* event)

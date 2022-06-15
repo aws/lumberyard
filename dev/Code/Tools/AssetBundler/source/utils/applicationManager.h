@@ -39,6 +39,7 @@ namespace AssetBundler
         bool m_removePlatformFromAllSeeds = false;
         bool m_updateSeedPathHint = false;
         bool m_removeSeedPathHint = false;
+        bool m_ignoreFileCase = false;
 
         bool m_save = false;
         bool m_print = false;

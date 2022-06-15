@@ -338,6 +338,11 @@ namespace AssetUtilities
         return true;
     }
 
+    void ResetGameName()
+    {
+        s_gameName[0] = 0;
+    }
+
 
     void  ComputeApplicationInformation(QString& dir, QString& filename)
     {
@@ -1744,53 +1749,7 @@ to ensure that the address is correct. Asset Processor won't be running in serve
             return false;
         }
 #endif
-        
-        QStringList tokenized = relativePathFromRoot.split(QChar('/'), Qt::SkipEmptyParts);
-        QString validatedPath(rootPath);
-
-        bool success = true;
-
-        for (QString& element : tokenized)
-        {
-            // validate the element:
-            QStringList searchPattern;
-
-            QString searchTerm = element;
-
-            // its a wildcard globbing search, and we cannot include terms that have square brackets.
-            // and unfortunately, Qt's wildcard globbing does not support escaping characters like [, ], and *
-            searchTerm = searchTerm.replace("[", "?");
-            searchTerm = searchTerm.replace("]", "?");
-            searchTerm = searchTerm.replace("*", "?");
-
-            searchPattern << searchTerm;
-
-            QDir checkDir(validatedPath);
-
-            // note that this specifically does not emit the case sensitive option - so it will find it caselessly.
-
-            bool foundAMatch = false;
-            QStringList actualCasing = checkDir.entryList(searchPattern, QDir::Files | QDir::Dirs);
-            for (const QString& found : actualCasing)
-            {
-                if (QString::compare(found, element, Qt::CaseInsensitive) == 0)
-                {
-                    element = found;
-                    foundAMatch = true;
-                    break;
-                }
-            }
-            if (!foundAMatch)
-            {
-                success = false;
-                break;
-            }
-            validatedPath = checkDir.absoluteFilePath(element); // go one step deeper.
-        }
-
-        relativePathFromRoot = tokenized.join(QChar('/'));
-
-        return success;
+        return AzToolsFramework::AssetUtils::UpdateFilePathToCorrectCase(rootPath, relativePathFromRoot);
     }
 
     BuilderFilePatternMatcher::BuilderFilePatternMatcher(const AssetBuilderSDK::AssetBuilderPattern& pattern, const AZ::Uuid& builderDescID)

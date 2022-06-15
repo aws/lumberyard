@@ -15,7 +15,7 @@
 
 namespace ScriptCanvas
 {
-    namespace Nodes    
+    namespace Nodes
     {
         namespace Internal
         {
@@ -104,6 +104,11 @@ namespace ScriptCanvas
             }
             
             void BaseTimerNode::OnDeactivate()
+            {
+                StopTimer();
+            }
+
+            void BaseTimerNode::OnRuntimeStopped()
             {
                 StopTimer();
             }

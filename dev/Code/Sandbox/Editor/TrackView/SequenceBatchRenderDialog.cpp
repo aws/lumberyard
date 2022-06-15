@@ -894,6 +894,8 @@ void CSequenceBatchRenderDialog::CaptureItemStart()
     // once the game mode kicks in with the specified range.
     nextSequence->SetFlags(m_renderContext.flagBU | IAnimSequence::eSeqFlags_PlayOnReset);
 
+    m_renderContext.captureOptions.timeStep = 1.0f / renderItem.fps;
+
     Range newRange = renderItem.frameRange;
     newRange.start -= m_renderContext.captureOptions.timeStep;
     renderItem.pSequence->SetTimeRange(newRange);
@@ -905,7 +907,6 @@ void CSequenceBatchRenderDialog::CaptureItemStart()
     }
 
     // Set specific capture options for this item.
-    m_renderContext.captureOptions.timeStep = 1.0f / renderItem.fps;
     m_renderContext.captureOptions.captureBufferIndex = renderItem.bufferIndex;
     m_renderContext.captureOptions.prefix = renderItem.prefix.toUtf8().data();
     switch (renderItem.formatIndex)

@@ -395,6 +395,11 @@ namespace ScriptCanvas_Node
         DynamicSlotOrdering(bool) {}
     };
 
+    struct RequiresStateNotifications
+    {
+        RequiresStateNotifications(bool) {}
+    };
+
 }
 
 namespace ScriptCanvas_In

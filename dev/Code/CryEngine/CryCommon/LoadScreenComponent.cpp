@@ -199,7 +199,11 @@ void LoadScreenComponent::UpdateAndRender()
 
                 const float updateDeltaTime = (m_fixedDeltaTimeInSeconds == -1.0f) ? deltaTimeInSeconds : m_fixedDeltaTimeInSeconds;
 
-                EBUS_EVENT(LoadScreenUpdateNotificationBus, UpdateAndRender, updateDeltaTime);
+                gEnv->pRenderer->SetViewport(0, 0, gEnv->pRenderer->GetOverlayWidth(), gEnv->pRenderer->GetOverlayHeight());
+
+                gEnv->pRenderer->BeginFrame();
+                LoadScreenUpdateNotificationBus::Broadcast(&LoadScreenUpdateNotificationBus::Events::UpdateAndRender, updateDeltaTime);
+                gEnv->pRenderer->EndFrame();
 
                 // Some platforms (iOS, OSX, AppleTV) require system events to be pumped in order to update the screen
                 AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);

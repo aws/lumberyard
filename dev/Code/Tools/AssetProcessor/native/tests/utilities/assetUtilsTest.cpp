@@ -26,6 +26,23 @@ using namespace AssetUtilities;
 class AssetUtilitiesTest
     : public AssetProcessor::AssetProcessorTest
 {
+    void SetUp() override
+    {
+        AssetProcessorTest::SetUp();
+
+        if (AZ::IO::FileIOBase::GetInstance() == nullptr)
+        {
+            AZ::IO::FileIOBase::SetInstance(aznew AZ::IO::LocalFileIO());
+        }
+    }
+
+    void TearDown() override
+    {
+        delete AZ::IO::FileIOBase::GetInstance();
+        AZ::IO::FileIOBase::SetInstance(nullptr);
+
+        AssetProcessorTest::TearDown();
+    }
 };
 
 TEST_F(AssetUtilitiesTest, NormlizeFilePath_NormalizedValidPathRelPath_Valid)
@@ -137,7 +154,7 @@ TEST_F(AssetUtilitiesTest, UpdateToCorrectCase_ExistingFile_ReturnsTrue_Corrects
         
         EXPECT_TRUE(AssetUtilities::UpdateToCorrectCase(canonicalTempDirPath, lowercaseVersion)) << "File being Examined: " << lowercaseVersion.toUtf8().constData();
         // each one should correct, and return a normalized path.
-        EXPECT_STREQ(lowercaseVersion.toUtf8().constData(), AssetUtilities::NormalizeFilePath(triedThing).toUtf8().constData());
+        EXPECT_STREQ(AssetUtilities::NormalizeFilePath(lowercaseVersion).toUtf8().constData(), AssetUtilities::NormalizeFilePath(triedThing).toUtf8().constData());
     }
 }
 

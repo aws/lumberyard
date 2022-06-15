@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/RTTI/RTTI.h>
 #include <AzCore/EBus/Event.h>
 #include <AzCore/std/function/function_template.h>
 #include <AzCore/std/string/string.h>

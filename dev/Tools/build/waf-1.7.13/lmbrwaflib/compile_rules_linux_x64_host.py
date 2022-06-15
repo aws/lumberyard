@@ -34,18 +34,18 @@ def load_linux_x64_host_settings(conf):
 
     v['CODE_GENERATOR_EXECUTABLE'] = 'AzCodeGenerator'
     v['CODE_GENERATOR_PATH'] = [ azcg_dir ]
-    v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/3.7.5/linux_x64/lib/python3.7'),
-                                        conf.Path('Tools/Python/3.7.5/linux_x64/lib'),
-                                        conf.Path('Tools/Python/3.7.5/linux_x64/lib/python3.7/lib-dynload'),
+    v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/3.7.10/linux_x64/lib/python3.7'),
+                                        conf.Path('Tools/Python/3.7.10/linux_x64/lib'),
+                                        conf.Path('Tools/Python/3.7.10/linux_x64/lib/python3.7/lib-dynload'),
                                         conf.ThirdPartyPath('markupsafe', 'x64'),
                                         conf.ThirdPartyPath('jinja2', 'x64')]
-    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.Path('Tools/Python/3.7.5/linux_x64/lib/python3.7'),
-                                              conf.Path('Tools/Python/3.7.5/linux_x64/lib/python3.7/lib-dynload'),
+    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.Path('Tools/Python/3.7.10/linux_x64/lib/python3.7'),
+                                              conf.Path('Tools/Python/3.7.10/linux_x64/lib/python3.7/lib-dynload'),
                                               conf.ThirdPartyPath('markupsafe', 'x64'),
                                               conf.ThirdPartyPath('jinja2', 'x64')]
-    v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'] = 'Tools/Python/3.7.5/linux_x64'
+    v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'] = 'Tools/Python/3.7.10/linux_x64'
     v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path(v['EMBEDDED_PYTHON_HOME_RELATIVE_PATH'])
-    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/3.7.5/linux_x64')
+    v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/3.7.10/linux_x64')
     v['CODE_GENERATOR_INCLUDE_PATHS'] = [conf.ThirdPartyPath('Clang', 'linux_x64/release/lib/clang/6.0.1/include')]
     
     v['EMBEDDED_PYTHON_HOME'] = v['CODE_GENERATOR_PYTHON_HOME']

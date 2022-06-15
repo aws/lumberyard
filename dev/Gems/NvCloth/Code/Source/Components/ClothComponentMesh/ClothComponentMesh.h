@@ -49,6 +49,19 @@ namespace NvCloth
 
         AZ_DISABLE_COPY_MOVE(ClothComponentMesh);
 
+        // Rendering data.
+        // It stores the tangent space information of each vertex, which is calculated every frame.
+        struct RenderData
+        {
+            AZStd::vector<SimParticleFormat> m_particles;
+            AZStd::vector<AZ::Vector3> m_tangents;
+            AZStd::vector<AZ::Vector3> m_bitangents;
+            AZStd::vector<AZ::Vector3> m_normals;
+        };
+
+        const RenderData& GetRenderData() const;
+        RenderData& GetRenderData();
+
         void UpdateConfiguration(AZ::EntityId entityId, const ClothConfiguration& config);
 
     protected:
@@ -71,16 +84,6 @@ namespace NvCloth
         void OnWindChanged(const AZ::Aabb& aabb) override;
 
     private:
-        // Rendering data.
-        // It stores the tangent space information of each vertex, which is calculated every frame.
-        struct RenderData
-        {
-            AZStd::vector<SimParticleFormat> m_particles;
-            AZStd::vector<AZ::Vector3> m_tangents;
-            AZStd::vector<AZ::Vector3> m_bitangents;
-            AZStd::vector<AZ::Vector3> m_normals;
-        };
-
         // Structure with render data as needed by IRenderMesh.
         // It stores the final particles that are going to be sent for rendering.
         struct InternalRenderData
@@ -90,9 +93,6 @@ namespace NvCloth
             AZStd::vector<SPipQTangents> m_quatTangents;
             AZStd::vector<SPipTangents> m_tangents;
         };
-
-        RenderData& GetRenderData();
-        const RenderData& GetRenderData() const;
 
         void UpdateSimulationCollisions();
         void UpdateSimulationSkinning();

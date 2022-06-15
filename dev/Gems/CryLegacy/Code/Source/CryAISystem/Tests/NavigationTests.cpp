@@ -132,6 +132,7 @@ namespace AINavigationTests
         MOCK_METHOD1(ShapeCast, Physics::RayCastHit(const Physics::ShapeCastRequest& request));
         MOCK_METHOD1(ShapeCastMultiple, AZStd::vector<Physics::RayCastHit>(const Physics::ShapeCastRequest& request));
         MOCK_METHOD1(Overlap, AZStd::vector<Physics::OverlapHit>(const Physics::OverlapRequest& request));
+        MOCK_METHOD2(OverlapUnbounded, void(const Physics::OverlapRequest& request, const Physics::HitCallback<Physics::OverlapHit>& hitCallback));
         MOCK_METHOD2(RegisterSuppressedCollision, void(const Physics::WorldBody& body0, const Physics::WorldBody& body1));
         MOCK_METHOD2(UnregisterSuppressedCollision, void(const Physics::WorldBody& body0, const Physics::WorldBody& body1));
         MOCK_METHOD1(AddBody, void(Physics::WorldBody& body));

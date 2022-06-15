@@ -265,10 +265,10 @@ namespace AZ
                 }
 
                 AZStd::atomic_uint& loadingAssetCounter = m_perThreadInfo[threadIndex].assetCount;
-                while (asset.IsLoading())
+                while (asset.IsLoading() && !AssetManager::Instance().GetCancelAllActiveJobs())
                 {
                     // process any outstanding, queued assets on this thread already
-                    while (loadingAssetCounter.load() > 0)
+                    while (loadingAssetCounter.load() > 0 && !AssetManager::Instance().GetCancelAllActiveJobs())
                     {
                         // need to block when dealing with handlers because they could get
                         // registered/unregistered while we're processing their queues

@@ -13,11 +13,13 @@
 #include "LmbrCentral_precompiled.h"
 
 #include <AzCore/Component/ComponentApplication.h>
+#include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzTest/AzTest.h>
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
+#include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <Rendering/MeshAssetHandler.h>
 
@@ -119,10 +121,16 @@ namespace UnitTest
 
     void TestEditorMeshComponent::Reflect(AZ::ReflectContext* context)
     {
+        MeshComponentRenderNode::Reflect(context);
+
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
+            AzFramework::SimpleAssetReference<MaterialAsset>::Register(*serializeContext);
+
             serializeContext->Class<TestEditorMeshComponent>()
-                ->Version(0);
+                ->Version(0)
+                ->FieldFromBase<TestEditorMeshComponent>("Static Mesh Render Node", &TestEditorMeshComponent::m_mesh)
+                ;
         }
     }
 
@@ -134,18 +142,60 @@ namespace UnitTest
     public:
         void SetUpEditorFixtureImpl() override
         {
-            AZ::SerializeContext* serializeContext = nullptr;
-            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+            AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
 
             m_testMeshComponentDescriptor =
                 AZStd::unique_ptr<ComponentDescriptor>(TestEditorMeshComponent::CreateDescriptor());
-            m_testMeshComponentDescriptor->Reflect(serializeContext);
+            m_testMeshComponentDescriptor->Reflect(m_serializeContext);
         }
 
         void TearDownEditorFixtureImpl() override
         {
             m_testMeshComponentDescriptor.reset();
         }
+
+        AZ::SerializeContext* m_serializeContext = nullptr;
+    };
+
+    struct EditorMeshComponentAssetLoadingTestFixture
+        : EditorMeshComponentTestFixture
+        , AZ::Data::AssetBus::MultiHandler
+    {
+        void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override
+        {
+            EXPECT_EQ(asset.GetId(), m_assetIdToLoad);
+            m_assetIdToLoad.SetInvalid();
+            m_assetLoadSemaphore.release();
+            m_assetLoaded = true;
+        }
+
+        void WaitForAssetToLoad(AZ::Data::AssetId assetIdToLoad)
+        {
+            m_assetIdToLoad = assetIdToLoad;
+            if (m_assetIdToLoad.IsValid())
+            {
+                AZ::Data::AssetBus::MultiHandler::BusConnect(m_assetIdToLoad);
+
+                const int assetLoadSleepMS = 20;
+                int totalWaitTimeMS = 5000;
+                bool assetLoaded = false;
+                while (!m_assetLoaded && totalWaitTimeMS > 0)
+                {
+                    m_assetLoaded = m_assetLoaded || m_assetLoadSemaphore.try_acquire_for(AZStd::chrono::milliseconds(assetLoadSleepMS));
+                    AZ::SystemTickBus::Broadcast(&AZ::SystemTickBus::Events::OnSystemTick);
+                    if (!assetLoaded)
+                    {
+                        totalWaitTimeMS -= assetLoadSleepMS;
+                    }
+                }
+
+                AZ::Data::AssetBus::MultiHandler::BusDisconnect();
+            }
+        }
+
+        bool m_assetLoaded = false;
+        AZ::Data::AssetId m_assetIdToLoad;
+        AZStd::binary_semaphore m_assetLoadSemaphore;
     };
 
     struct MeshAssetHandlerFixture
@@ -424,6 +474,61 @@ namespace UnitTest
         EXPECT_FALSE(IsPhysicalizable(scale2 * rot1));
         EXPECT_FALSE(IsPhysicalizable(scale2 * rot2));
     }
-#endif // ENABLE_CRY_PHYSICS
+#endif
 
+    TEST_F(EditorMeshComponentAssetLoadingTestFixture, MeshAssetCopiedThroughSerialization)
+    {
+        // create source and target entities
+        AZ::Entity source;
+        AZ::Entity target;
+        AZ::EntityId sourceId = source.GetId();
+        AZ::EntityId targetId = target.GetId();
+
+        // add test mesh component to 'sense' change
+        TestEditorMeshComponent* sourceTestMeshComponent = source.CreateComponent<TestEditorMeshComponent>();
+        TestEditorMeshComponent* targetTestMeshComponent = target.CreateComponent<TestEditorMeshComponent>();
+
+        // set the mesh asset of source to mock id
+        MeshAssetHandler meshAssetHandler;
+        meshAssetHandler.Register(); // registers self with AssetManager
+        AZ::Data::AssetId assetId(AZ::Uuid::CreateRandom(), 0);
+        auto assetCatalog = AZ::Data::AssetCatalogRequestBus::FindFirstHandler();
+        if (assetCatalog)
+        {
+            assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MeshAsset>::Uuid());
+        }
+        auto asset = Data::AssetManager::Instance().CreateAsset(assetId, azrtti_typeid<MeshAsset>());
+        sourceTestMeshComponent->SetMeshAsset(assetId);
+
+        // build InstanceDataHierarchy so we can call CopyInstanceData
+        AzToolsFramework::InstanceDataHierarchy targetHierarchy;
+        targetHierarchy.AddRootInstance<AZ::Entity>(&target);
+        targetHierarchy.Build(m_serializeContext, AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
+
+        AzToolsFramework::InstanceDataHierarchy sourceHierarchy;
+        sourceHierarchy.AddRootInstance<AZ::Entity>(&source);
+        sourceHierarchy.Build(m_serializeContext, AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
+
+        const AzToolsFramework::InstanceDataNode* sourceNode = &sourceHierarchy;
+        AzToolsFramework::InstanceDataNode* targetNode = &targetHierarchy;
+
+        // call CopyInstanceData which should copy the asset change from source to target
+        AzToolsFramework::InstanceDataHierarchy::CopyInstanceData(sourceNode, targetNode, m_serializeContext, nullptr, nullptr,
+            AzToolsFramework::InstanceDataNode::Address());
+
+        // verify target now has the mock asset data copied over from source
+        EXPECT_EQ(targetTestMeshComponent->GetMeshAsset(), sourceTestMeshComponent->GetMeshAsset());
+
+        // cleanup - remove all references to asset so asset can be released without complaints
+        source.RemoveComponent(sourceTestMeshComponent);
+        target.RemoveComponent(targetTestMeshComponent);
+        delete sourceTestMeshComponent;
+        delete targetTestMeshComponent;
+
+        // calling CopyInstanceData actually changes target's EntityId, need to change it back for destructor not to crash
+        target.SetId(targetId);
+
+        // need to wait for asset to finish loading before destructing
+        WaitForAssetToLoad(assetId);
+    }
 } // namespace UnitTest

@@ -454,7 +454,7 @@ namespace AzToolsFramework
                         return false;
                     }
 
-                    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, targetFilePath);
+                    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePathKeepCase, targetFilePath);
                     m_expectedAddedAssetPath = targetFilePath;
 
                     SourceControlCommandBus::Broadcast(&SourceControlCommandBus::Events::RequestEdit, targetFilePath.c_str(), true, [](bool, const SourceControlFileInfo&) {});
@@ -734,10 +734,8 @@ namespace AzToolsFramework
             }
         }
 
-        void AssetEditorWidget::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
+        void AssetEditorWidget::OnCatalogAssetRemoved(const AZ::Data::AssetId& /*assetId*/, const AZ::Data::AssetInfo& assetInfo)
         {
-            AZ::Data::AssetInfo assetInfo;
-            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, assetId);
             if (assetInfo.m_assetType == m_inMemoryAsset.GetType()
                 && assetInfo.m_relativePath.compare(m_recentlyAddedAssetPath) == 0)
             {

@@ -1,9 +1,0 @@
-pagination {
-	.page-link:focus, .page-link:hover {
-		background-color: $primary-color;
-		color: $primary-color;
-	}
-	a:not([href]):not([tabindex]):focus, a:not([href]):not([tabindex]):hover {
-		color: $white;
-	}
-}

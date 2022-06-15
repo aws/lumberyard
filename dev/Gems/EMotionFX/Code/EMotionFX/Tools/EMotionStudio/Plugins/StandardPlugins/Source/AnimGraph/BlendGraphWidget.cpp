@@ -65,7 +65,7 @@ namespace EMStudio
 
         connect(&plugin->GetAnimGraphModel(), &AnimGraphModel::rowsInserted, this, &BlendGraphWidget::OnRowsInserted);
         connect(&plugin->GetAnimGraphModel(), &AnimGraphModel::dataChanged, this, &BlendGraphWidget::OnDataChanged);
-        connect(&plugin->GetAnimGraphModel(), &AnimGraphModel::AboutToBeRemovedSignal, this, &BlendGraphWidget::OnRowsAboutToBeRemoved);
+        connect(&plugin->GetAnimGraphModel(), &AnimGraphModel::rowsAboutToBeRemoved, this, &BlendGraphWidget::OnRowsAboutToBeRemoved);
         connect(&plugin->GetAnimGraphModel(), &AnimGraphModel::FocusChanged, this, &BlendGraphWidget::OnFocusChanged);
 
         connect(&plugin->GetAnimGraphModel().GetSelectionModel(), &QItemSelectionModel::selectionChanged, this, &BlendGraphWidget::OnSelectionModelChanged);

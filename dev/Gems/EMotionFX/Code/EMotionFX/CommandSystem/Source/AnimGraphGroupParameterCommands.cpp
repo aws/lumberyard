@@ -39,8 +39,7 @@ namespace CommandSystem
     CommandAnimGraphAdjustGroupParameter::Action CommandAnimGraphAdjustGroupParameter::GetAction(const MCore::CommandLine& parameters)
     {
         // Do we want to add new parameters to the group, remove some from it or replace it entirely.
-        AZStd::string actionString;
-        parameters.GetValue("action", this, actionString);
+        const AZStd::string& actionString = parameters.GetValue("action", this);
 
         if (actionString == "add")
         {
@@ -58,8 +57,7 @@ namespace CommandSystem
     bool CommandAnimGraphAdjustGroupParameter::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Get the parameter name.
-        AZStd::string name;
-        parameters.GetValue("name", this, name);
+        const AZStd::string& name = parameters.GetValue("name", this);
         mOldName = name;
 
         // Find the anim graph by using the id from command parameter.
@@ -79,35 +77,39 @@ namespace CommandSystem
             return false;
         }
 
-        // Set the new name.
-        AZStd::string newName;
-        parameters.GetValue("newName", this, newName);
-        if (!newName.empty())
-        {
-            if (!animGraph->RenameParameter(groupParameter, newName))
-            {
-                outResult = AZStd::string::format("Cannot adjust group parameter '%s'. Newname already belongs to a different parameter.", name.c_str());
-                return false;
-            }
-        }
-
-        m_oldDescription = groupParameter->GetDescription();
-        if (parameters.CheckIfHasParameter("description"))
-        {
-            groupParameter->SetDescription(parameters.GetValue("description", this));
-        }
-
         if (parameters.CheckIfHasParameter("parameterNames"))
         {
             // Do we want to add new parameters to the group, remove some from it or replace it entirely.
             const Action action = GetAction(parameters);
 
             // Get the parameter string and tokenize it.
-            AZStd::string parametersString;
-            parameters.GetValue("parameterNames", this, parametersString);
+            const AZStd::string& parametersString = parameters.GetValue("parameterNames", this);
 
             AZStd::vector<AZStd::string> parameterNames;
             AzFramework::StringFunc::Tokenize(parametersString.c_str(), parameterNames, ";", false, true);
+
+            // Ensure that none of the new children are parents of the group they're being added to
+            if (action == ACTION_ADD)
+            {
+                for (const AZStd::string& newChildName : parameterNames)
+                {
+                    const EMotionFX::Parameter* newChildParameter = animGraph->FindParameterByName(newChildName);
+                    if (const auto* newChildGroupParameter = azrtti_cast<const EMotionFX::GroupParameter*>(newChildParameter); newChildGroupParameter)
+                    {
+                        if (newChildGroupParameter->FindRelativeParameterIndex(groupParameter).IsSuccess())
+                        {
+                            outResult = AZStd::string::format(
+                                "Cannot set parameter '%s' to be a child of '%s' because '%s' is a child of '%s'",
+                                newChildGroupParameter->GetName().c_str(),
+                                groupParameter->GetName().c_str(),
+                                groupParameter->GetName().c_str(),
+                                newChildGroupParameter->GetName().c_str()
+                            );
+                            return false;
+                        }
+                    }
+                }
+            }
 
             const size_t numParameters = parameterNames.size();
             mOldGroupParameterNames.resize(numParameters);
@@ -159,6 +161,23 @@ namespace CommandSystem
             }
         }
 
+        // Set the new name.
+        const AZStd::string& newName = parameters.GetValue("newName", this);
+        if (!newName.empty())
+        {
+            if (!animGraph->RenameParameter(groupParameter, newName))
+            {
+                outResult = AZStd::string::format("Cannot adjust group parameter '%s'. Newname already belongs to a different parameter.", name.c_str());
+                return false;
+            }
+        }
+
+        m_oldDescription = groupParameter->GetDescription();
+        if (parameters.CheckIfHasParameter("description"))
+        {
+            groupParameter->SetDescription(parameters.GetValue("description", this));
+        }
+
         // save the current dirty flag and tell the anim graph that something got changed
         mOldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
@@ -184,8 +203,7 @@ namespace CommandSystem
         // Undo the group name as first step. All commands afterwards have to use mOldName as group name.
         if (parameters.CheckIfHasParameter("newName"))
         {
-            AZStd::string newName;
-            parameters.GetValue("newName", this, newName);
+            const AZStd::string& newName = parameters.GetValue("newName", this);
 
             const AZStd::string command = AZStd::string::format("AnimGraphAdjustGroupParameter -animGraphID %i -name \"%s\" -newName \"%s\"",
                     animGraph->GetID(), newName.c_str(), mOldName.c_str());
@@ -205,8 +223,7 @@ namespace CommandSystem
             // Do we want to add new parameters to the group, remove some from it or replace it entirely.
             const Action action = GetAction(parameters);
 
-            AZStd::string parametersString;
-            parameters.GetValue("parameterNames", this, parametersString);
+            const AZStd::string& parametersString = parameters.GetValue("parameterNames", this);
 
             AZStd::vector<AZStd::string> parameterNames;
             AzFramework::StringFunc::Tokenize(parametersString.c_str(), parameterNames, ";", false, true);
@@ -336,7 +353,7 @@ namespace CommandSystem
         EMotionFX::Parameter* groupParameter = EMotionFX::ParameterFactory::Create(azrtti_typeid<EMotionFX::GroupParameter>());
         groupParameter->SetName(valueString);
 
-        const AZStd::string parentName = parameters.GetValue("parent", this);
+        const AZStd::string& parentName = parameters.GetValue("parent", this);
         const EMotionFX::GroupParameter* parentGroupParameter = animGraph->FindGroupParameterByName(parentName);
 
         // if the index parameter is specified and valid insert the group parameter at the given position, else just add it to the end
@@ -419,8 +436,7 @@ namespace CommandSystem
     bool CommandAnimGraphRemoveGroupParameter::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Get the parameter name.
-        AZStd::string name;
-        parameters.GetValue("name", this, name);
+        const AZStd::string& name = parameters.GetValue("name", this);
 
         // Find the anim graph by using the id from command parameter.
         const uint32 animGraphID = parameters.GetValueAsInt("animGraphID", this);
@@ -539,7 +555,7 @@ namespace CommandSystem
         // Construct the command group.
         AZStd::string command;
         MCore::CommandGroup commandGroup;
-        const AZStd::string updateWindow = parameters.GetValue("updateUI", this);
+        const AZStd::string& updateWindow = parameters.GetValue("updateUI", this);
 
         command = AZStd::string::format("AnimGraphAddGroupParameter -animGraphID %i -name \"%s\" -index %zu -parent \"%s\" -updateUI %s",
                 animGraph->GetID(),

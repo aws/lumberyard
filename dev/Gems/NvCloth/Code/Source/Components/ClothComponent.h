@@ -39,6 +39,8 @@ namespace NvCloth
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
 
+        const ClothComponentMesh* GetClothComponentMesh() const { return m_clothComponentMesh.get(); }
+
     protected:
         // AZ::Component overrides ...
         void Activate() override;

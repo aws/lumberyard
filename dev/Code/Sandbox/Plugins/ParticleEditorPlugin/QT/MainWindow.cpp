@@ -107,6 +107,10 @@ CMainWindow::CMainWindow(QWidget* parent)
     , m_stylesheetPreprocessor(new AzQtComponents::StylesheetPreprocessor(this))
     , m_needLibraryRefresh(false)
     , m_requireLayoutReload(false)
+    , m_groupWithLodIcon(QIcon("Editor/UI/Icons/treeview/ParticleEditor/group_with_lod_icon.png"))
+    , m_lodIcon(QIcon("Editor/UI/Icons/treeview/ParticleEditor/lod_icon.png"))
+    , m_groupIcon(QIcon("Editor/UI/Icons/treeview/ParticleEditor/group_icon.png"))
+    , m_emptyIcon(QIcon("Editor/UI/Icons/treeview/ParticleEditor/empty_icon.png"))
 {
     setWindowTitle(tr("Particle Editor"));
 
@@ -2003,6 +2007,7 @@ void CMainWindow::Library_ItemRenamed(IDataBaseItem* item, const QString& oldNam
     NotifyExceptSelf(eNotify_OnDataBaseUpdate);
 }
 
+
 void CMainWindow::Library_UpdateTreeItemStyle(IDataBaseItem* item, int column)
 {
     if (!item)
@@ -2028,22 +2033,22 @@ void CMainWindow::Library_UpdateTreeItemStyle(IDataBaseItem* item, int column)
         {
             if (params.bGroup)
             {
-                treeItem->setIcon(column, QIcon("Editor/UI/Icons/treeview/ParticleEditor/group_with_lod_icon.png"));
+                treeItem->setIcon(column, m_groupWithLodIcon);
             }
             else
             {
-                treeItem->setIcon(column, QIcon("Editor/UI/Icons/treeview/ParticleEditor/lod_icon.png"));
+                treeItem->setIcon(column, m_lodIcon);
             }
         }
         else
         {
             if (params.bGroup)
             {
-                treeItem->setIcon(column, QIcon("Editor/UI/Icons/treeview/ParticleEditor/group_icon.png"));
+                treeItem->setIcon(column, m_groupIcon);
             }
             else
             {
-                treeItem->setIcon(column, QIcon("Editor/UI/Icons/treeview/ParticleEditor/empty_icon.png"));
+                treeItem->setIcon(column, m_emptyIcon);
             }
         }
     }

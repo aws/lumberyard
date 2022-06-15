@@ -1,0 +1,25 @@
+{
+    "aliases": {
+        "bin_paths_linux_x64": ["bin/linux64-gcc"]
+    },
+    "platform": {
+        "linux_x64": {
+            "importlibpath_debug": ["${bin_paths_linux_x64}/debug"],
+            "importlibpath_profile": ["${bin_paths_linux_x64}/profile"],
+            "importlibpath_release": ["${bin_paths_linux_x64}/release"],
+
+            "sharedlibpath_debug": ["${bin_paths_linux_x64}/debug"],
+            "sharedlibpath_profile": ["${bin_paths_linux_x64}/profile"],
+            "sharedlibpath_release": ["${bin_paths_linux_x64}/release"],
+
+            "import": [
+                "lib${lib_names}.so",
+                "libNvBlastExtAuthoring.so"
+            ],
+            "shared": [
+                "lib${lib_names}.so",
+                "libNvBlastExtAuthoring.so"
+            ]
+        }
+    }
+}

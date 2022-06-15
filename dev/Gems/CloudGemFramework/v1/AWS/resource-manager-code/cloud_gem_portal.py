@@ -10,49 +10,67 @@
 #
 # $Revision: #1 $
 
-import resource_manager.util
-import resource_manager_common.constant as constant
-import webbrowser
-import os
-import update
 import argparse
+import os
 import subprocess
-from resource_manager.errors import HandledError
-from resource_manager.uploader import ProjectUploader
+import webbrowser
+
 from botocore.client import Config
 
+import resource_manager.util
+import resource_manager_common.constant as constant
+import update
+from resource_manager.errors import HandledError
+from resource_manager.uploader import ProjectUploader
+
+
+# CloudGemPortal is now deprecated
+# Commands are retained for legacy stacks or for stacks whose CloudGemPortal metadata is set to true
 
 def add_cli_commands(cgf_subparsers, addCommonArgs):
-
-    subparser = cgf_subparsers.add_parser('open-cloud-gem-portal', aliases=['open-portal', 'cloud-gem-portal'],  help='Generate pre-signed url and launch the default browser with the pre-signed url.')
-    subparser.add_argument('--show-url-only', action='store_true', required=False, help='Display the Cloud Gem Portal pre-signed url.', default=False)                        
-    subparser.add_argument('--show-bootstrap-configuration', action='store_true', required=False, help='Display the Cloud Gem Portal bootstrap information.', default=False)                        
-    addCommonArgs(subparser, no_assume_role = True)
+    subparser = cgf_subparsers.add_parser('open-cloud-gem-portal', aliases=['open-portal', 'cloud-gem-portal'],
+                                          help='[Deprecated] Generate pre-signed url and launch the default browser with the pre-signed url.')
+    subparser.add_argument('--show-url-only', action='store_true', required=False, help='Display the Cloud Gem Portal pre-signed url.', default=False)
+    subparser.add_argument('--show-bootstrap-configuration', action='store_true', required=False, help='Display the Cloud Gem Portal bootstrap information.',
+                           default=False)
+    addCommonArgs(subparser, no_assume_role=True)
     subparser.set_defaults(func=open_portal)
 
     subparser = cgf_subparsers.add_parser('upload-cloud-gem-portal', aliases=['upload-portal'], help='Upload all cloud gem portal content.')
-    subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT-NAME', required=False, help='Name of the deployment for which portal content will be uploaded. If not specified the default deployment is updated.')
-    subparser.add_argument('--resource-group', '-r', metavar='RESOURCE-GROUP-NAME', required=False, help='Name of the resource group for which portal content will be uploaded. The default is to upload portal content for all resource groups.')    
-    subparser.add_argument('--project', action='store_true', required=False, help='Update the project global portal content instead of updating deployment and resource group content.')
+    subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT-NAME', required=False,
+                           help='[Deprecated] Name of the deployment for which portal content will be uploaded. If not specified the default deployment is updated.')
+    subparser.add_argument('--resource-group', '-r', metavar='RESOURCE-GROUP-NAME', required=False,
+                           help='Name of the resource group for which portal content will be uploaded. '
+                                'The default is to upload portal content for all resource groups.')
+    subparser.add_argument('--project', action='store_true', required=False,
+                           help='[Deprecated]  Update the project global portal content instead of updating deployment and resource group content.')
     addCommonArgs(subparser)
     subparser.set_defaults(func=upload_portal)
 
-    subparser = cgf_subparsers.add_parser('create-portal-administrator', aliases=['create-admin'], help='Create the Cloud Gem Portal administrator account if none are present.')
+    subparser = cgf_subparsers.add_parser('create-portal-administrator', aliases=['create-admin'],
+                                          help='[Deprecated] Create the Cloud Gem Portal administrator account if none are present.')
     subparser.add_argument('--silent-create-admin', default=False, required=False, action='store_true', help='Run the command without outputs.')
     addCommonArgs(subparser)
     subparser.set_defaults(func=create_portal_administrator)
 
-    subparser = cgf_subparsers.add_parser('gulp', help='Execute a gulp command from the CloudGemFramework\'s CloudGemPortal folder')
+    subparser = cgf_subparsers.add_parser('gulp', help='[Deprecated] Execute a gulp command from the CloudGemFramework\'s CloudGemPortal folder')
     subparser.add_argument('arglist', nargs=argparse.REMAINDER)
     addCommonArgs(subparser)
     subparser.set_defaults(func=cgp_gulp)
 
-def open_portal(context, args):    
+
+def __check_if_cgp_deprecated(context):
+    if not context.config.deploy_cloud_gem_portal:
+        raise HandledError('CloudGemPortal was not deployed for the project. CloudGemPortal is deprecated')
+
+
+def open_portal(context, args):
     project_resources = context.config.project_resources
 
     if constant.PROJECT_CGP_RESOURCE_NAME not in project_resources:
         raise HandledError('You can not open the Cloud Gem Portal without having the Cloud Gem Framework gem installed in your project.')
-    
+    __check_if_cgp_deprecated(context)
+
     cgp_s3_resource = project_resources[constant.PROJECT_CGP_RESOURCE_NAME]
     stackid = cgp_s3_resource['StackId']
     bucket_id = cgp_s3_resource['PhysicalResourceId']
@@ -61,16 +79,20 @@ def open_portal(context, args):
 
     if args.show_url_only:
         context.view._output_message(cgp_static_url)
-    elif args.show_bootstrap_configuration: 
-        s3_client = context.aws.session.client('s3',region, config=Config(region_name=region,signature_version='s3v4', s3={'addressing_style': 'virtual'}))
+    elif args.show_bootstrap_configuration:
+        s3_client = context.aws.session.client('s3', region, config=Config(region_name=region, signature_version='s3v4', s3={'addressing_style': 'virtual'}))
         context.view._output_message(__get_configuration(s3_client, bucket_id))
     else:
         webbrowser.open_new(cgp_static_url)
 
+
 def __get_configuration(s3_client, bucket_id):
     return update.get_bootstrap(s3_client, bucket_id).replace("<script>", "").replace("</script>", "").replace(update.BOOTSTRAP_VARIABLE_NAME, "")
 
+
 def create_portal_administrator(context, args):
+    __check_if_cgp_deprecated(context)
+
     is_new_user, administrator_name, password = update.create_portal_administrator(context)
     if args.silent_create_admin:
         return
@@ -79,9 +101,11 @@ def create_portal_administrator(context, args):
         msg = "The administrator account already exists."
     context.view.create_admin(administrator_name, password, msg)
 
-def upload_portal(context, args):
-    if args.project:
 
+def upload_portal(context, args):
+    __check_if_cgp_deprecated(context)
+
+    if args.project:
         if args.deployment or args.resource_group:
             raise HandledError('The --project option cannot be used with the --deployment or --resource-group options.')
 
@@ -102,12 +126,15 @@ def upload_portal(context, args):
         resource_group_name = args.resource_group
         if resource_group_name is not None:
             resource_group = context.resource_groups.get(resource_group_name)
-            resource_group.update_cgp_code(deployment_uploader.get_resource_group_uploader(resource_group.name))
+            resource_group.update_cgp_code(deployment_uploader.get_resource_group_uploader(resource_group.name), context.config.deploy_cloud_gem_portal)
         else:
             for resource_group in context.resource_groups.values():
-                resource_group.update_cgp_code(deployment_uploader.get_resource_group_uploader(resource_group.name))
+                resource_group.update_cgp_code(deployment_uploader.get_resource_group_uploader(resource_group.name), context.config.deploy_cloud_gem_portal)
+
 
 def cgp_gulp(context, args):
+    __check_if_cgp_deprecated(context)
+
     gulpfile = 'gulpfile.js'
     gulpcmd = 'gulp'
 
@@ -124,5 +151,3 @@ def cgp_gulp(context, args):
     gulpproc = subprocess.Popen(args.arglist, cwd=gulppath, shell=True)
 
     gulpproc.wait()
-
-

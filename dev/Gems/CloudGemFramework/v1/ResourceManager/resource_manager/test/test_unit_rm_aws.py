@@ -9,10 +9,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 import os
+import random, string
 import unittest
 from unittest import mock
+from resource_manager_common import constant
 
-# Class/file under test
+# Class/files under test
 from resource_manager.aws import AWSContext
 from resource_manager.aws import AwsCredentials
 from resource_manager.aws import ClientWrapper
@@ -28,15 +30,72 @@ class Constants:
     TEST_PROFILE = "TEST_PROFILE"
     TEST_ACCESS_KEY = "AK1234567"
     TEST_SECRET_KEY = "AS1234567"
+    TEST_PATH = "/my/awesome/file"
+
+
+def _generate_random_alphanumeric(length=10) -> str:
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
 
 class UnitTest_AWSCredentials(unittest.TestCase):
 
-    def test_AwsCredentials_creation(self):
+    TEST_ACCESS_KEY = _generate_random_alphanumeric(10).upper()
+    TEST_SECRET_KEY = _generate_random_alphanumeric(16)
+
+    TEST_CREDS = '[Test1]'\
+                 f'\naws_access_key_id = {TEST_ACCESS_KEY}' \
+                 f'\naws_secret_access_key = {TEST_SECRET_KEY}' \
+                 '\n' \
+                 '\n[Test2]' \
+                 f'\naws_secret_access_key = {_generate_random_alphanumeric()}' \
+                 f'\naws_access_key_id = {TEST_ACCESS_KEY}' \
+                 '\ntoolkit_artifact_guid = 418aec5b-049f-497a-a9ef-7fa70e67d01d'
+
+    TEST_CREDS_WITH_ROLE = '[Test2]'\
+                            '\ncredential_process = ls'\
+                            '\noutput = json'\
+                            f'\nregion = {Constants.TEST_REGION}'\
+                            '\ntoolkit_artifact_guid = d88d7bcf-1f8e-46fb-b465-8c75e545090e'
+
+    def test_creation(self):
         credentials = AwsCredentials()
 
         # THEN
         self.assertIsNotNone(credentials)
+
+    def test_credentials_read(self):
+        with mock.patch('builtins.open', mock.mock_open(read_data=UnitTest_AWSCredentials.TEST_CREDS)):
+            # GIVEN
+            credentials = AwsCredentials()
+
+            # WHEN
+            credentials.read(path=Constants.TEST_PATH)
+
+            # THEN
+            self.assertTrue('Test1' in credentials.sections())
+
+            print(credentials.options('Test1'))
+            key = credentials.get('Test1', constant.ACCESS_KEY_OPTION)
+            secret = credentials.get('Test1', constant.SECRET_KEY_OPTION)
+            self.assertEqual(UnitTest_AWSCredentials.TEST_SECRET_KEY, secret)
+            self.assertEqual(UnitTest_AWSCredentials.TEST_ACCESS_KEY, key)
+
+    def test_credentials_with_role_creds_read(self):
+        with mock.patch('builtins.open', mock.mock_open(read_data=UnitTest_AWSCredentials.TEST_CREDS_WITH_ROLE)):
+            # GIVEN
+            credentials = AwsCredentials()
+
+            # WHEN
+            credentials.read(path=Constants.TEST_PATH)
+
+            # THEN
+            self.assertTrue('Test2' in credentials.sections())
+
+            print(credentials.options('Test2'))
+            key = credentials.get_with_default('Test2', constant.ACCESS_KEY_OPTION, optional=None)
+            secret = credentials.get_with_default('Test2', constant.SECRET_KEY_OPTION, optional=None)
+            self.assertIsNone(secret)
+            self.assertIsNone(key)
 
 
 class UnitTest_ClientWrapper(unittest.TestCase):

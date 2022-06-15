@@ -196,7 +196,6 @@ def __write_file(template, jinja_json, out_file):
 
 
 def __generate_component_client(context, base_code_path, destination_code_path, namespace_name, jinja, swagger, gem):
-
     if not os.path.exists(destination_code_path):
         print('Making directory {}'.format(destination_code_path))
         os.makedirs(destination_code_path)
@@ -244,6 +243,7 @@ def __generate_cs_client(context, base_code_path, destination_code_path, namespa
         }
     }
 
+
 def __make_wscript_relative_path(base_path, file_path):
     return os.path.relpath(file_path, base_path).replace(os.sep, '/')
 
@@ -252,6 +252,7 @@ def add_cli_view_commands(hook, view_context, **kwargs):
     def create_admin(self, administrator_name, password, message):
         self._output_message(message + '\n\tUsername: {}\n\tPassword: {}'.format(administrator_name, password))
     view_context.create_admin = types.MethodType(create_admin, view_context)
+
 
 def add_gui_view_commands(hook, view_context, **kwargs):
     def create_admin(self, administrator_name, password, message):

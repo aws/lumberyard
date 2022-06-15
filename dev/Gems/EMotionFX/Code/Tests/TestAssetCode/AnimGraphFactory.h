@@ -67,6 +67,8 @@ namespace EMotionFX
 
     ///////////////////////////////////////////////////////////////////////////
 
+    // This AnimGraph also contains a Final Node, which is required in order
+    // for the blend tree to be valid
     class OneBlendTreeParameterNodeAnimGraph
         : public EmptyAnimGraph
     {
@@ -76,6 +78,7 @@ namespace EMotionFX
 
     private:
         BlendTreeParameterNode* m_parameterNode = nullptr;
+        BlendTreeFinalNode* m_finalNode = nullptr;
     };
 
     ///////////////////////////////////////////////////////////////////////////

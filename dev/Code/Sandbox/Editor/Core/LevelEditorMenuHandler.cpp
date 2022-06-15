@@ -1068,10 +1068,6 @@ QMenu* LevelEditorMenuHandler::CreateAWSMenu()
     awsConsoleMenu.AddAction(ID_AWS_LAMBDA_CONSOLE);
     awsConsoleMenu.AddAction(ID_AWS_S3_CONSOLE);
 
-    // Cloud Gem Portal
-    awsMenu.AddSeparator();
-    awsMenu.AddAction(ID_CGP_CONSOLE);
-
     return awsMenu;
 }
 

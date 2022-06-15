@@ -12,6 +12,7 @@
 
 // include required headers
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/StringFunc/StringFunc.h>
 #include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include <EMotionFX/CommandSystem/Source/AnimGraphGroupParameterCommands.h>
 #include <EMotionFX/CommandSystem/Source/AnimGraphParameterCommands.h>
@@ -1358,53 +1359,33 @@ namespace EMStudio
         }
 
         // construct the name of the group parameter
-        AZStd::string commandGroupName;
-        if (numSelectedParameters == 1)
-        {
-            commandGroupName = "Assign parameter to group";
-        }
-        else
-        {
-            commandGroupName = "Assign parameters to group";
-        }
+        const AZStd::string commandGroupName = (numSelectedParameters == 1)
+            ? "Assign parameter to group"
+            : "Assign parameters to group";
 
         AZStd::string commandString;
-        MCore::CommandGroup commandGroup(commandGroupName.c_str());
+        MCore::CommandGroup commandGroup(commandGroupName);
 
         // target group parameter
         const AZStd::string groupParameterName = action->text().toUtf8().data();
         const EMotionFX::GroupParameter* groupParameter = m_animGraph->FindGroupParameterByName(groupParameterName);
 
+        AZStd::string parameterNames;
+        AZ::StringFunc::Join(parameterNames, begin(mSelectedParameterNames), end(mSelectedParameterNames), ";");
         if (groupParameter)
         {
-            for (const AZStd::string& selectedParameterName : mSelectedParameterNames)
-            {
-                // get the selected parameter
-                const EMotionFX::Parameter* parameter = m_animGraph->FindParameterByName(selectedParameterName);
-                if (parameter)
-                {
-                    commandString = AZStd::string::format("AnimGraphAdjustGroupParameter -animGraphID %d -name \"%s\" -parameterNames \"%s\" -action \"add\"",
-                            m_animGraph->GetID(),
-                            groupParameter->GetName().c_str(),
-                            parameter->GetName().c_str());
-                    commandGroup.AddCommandString(commandString);
-                }
-            }
+            commandString = AZStd::string::format(R"(AnimGraphAdjustGroupParameter -animGraphID %d -name "%s" -parameterNames "%s" -action "add")",
+                    m_animGraph->GetID(),
+                    groupParameter->GetName().c_str(),
+                    parameterNames.c_str());
+            commandGroup.AddCommandString(commandString);
         }
         else
         {
-            for (const AZStd::string& selectedParameterName : mSelectedParameterNames)
-            {
-                // get the selected parameter
-                const EMotionFX::Parameter* parameter = m_animGraph->FindParameterByName(selectedParameterName);
-                if (parameter)
-                {
-                    commandString = AZStd::string::format("AnimGraphAdjustGroupParameter -animGraphID %d -parameterNames \"%s\" -action \"clear\"",
-                            m_animGraph->GetID(),
-                            parameter->GetName().c_str());
-                    commandGroup.AddCommandString(commandString);
-                }
-            }
+            commandString = AZStd::string::format(R"(AnimGraphAdjustGroupParameter -animGraphID %d -parameterNames "%s" -action "clear")",
+                    m_animGraph->GetID(),
+                    parameterNames.c_str());
+            commandGroup.AddCommandString(commandString);
         }
 
         // Execute the command group.

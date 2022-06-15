@@ -14,6 +14,7 @@ def build(bld):
     bld.DefineGem(
         # General
         disable_pch             = True,
+        vs_filter               = 'Gems/Twitch',
         file_list               = ['twitchchatplay.waf_files'],
         
         # Testing

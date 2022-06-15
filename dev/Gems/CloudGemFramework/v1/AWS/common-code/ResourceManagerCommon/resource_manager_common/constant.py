@@ -84,6 +84,7 @@ DEFAULT_SECTION_NAME = '__default__'
 # Credentials
 ACCESS_KEY_OPTION = 'aws_access_key_id'
 SECRET_KEY_OPTION = 'aws_secret_access_key'
+CREDENTIAL_PROCESS = 'credential_process'
 
 # Local Project Settings
 ENABLED_RESOURCE_GROUPS_KEY = 'EnabledResourceGroups'  # deprecated
@@ -97,6 +98,7 @@ PENDING_PROJECT_STACK_ID = 'PendingProjectStackId'
 PROJECT_STACK_ID = 'ProjectStackId'
 FRAMEWORK_VERSION_KEY = 'FrameworkVersion'
 CUSTOM_DOMAIN_NAME = 'CustomDomainName'
+DEPLOY_CLOUD_GEM_PORTAL = 'CloudGemPortal'
 
 CROSS_GEM_RESOLVER_KEY = 'CrossGemCommunicationInterfaceResolver'
 

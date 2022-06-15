@@ -19,6 +19,7 @@
 #include "Include/EditorCoreAPI.h"
 
 class CImageEx;
+class QVariant;
 class QWidget;
 
 /** Use this class to put and get stuff from windows clipboard.
@@ -50,12 +51,18 @@ public:
     //! Return true if clipboard is empty.
     bool IsEmpty() const;
 private:
+    // Resolves the last request Put operation
+    void SendPendingPut();
+
     AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     static XmlNodeRef m_node;
     AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
     static QString m_title;
 
+    static QVariant s_pendingPut;
+
     QWidget* m_parent;
+    QTimer m_putDebounce;
 };
 
 

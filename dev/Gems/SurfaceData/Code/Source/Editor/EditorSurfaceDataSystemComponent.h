@@ -19,6 +19,11 @@
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <SurfaceData/SurfaceDataTagProviderRequestBus.h>
 
+namespace AZ::Data
+{
+    class AssetInfo;
+}
+
 namespace SurfaceData
 {
     class EditorSurfaceDataSystemConfig
@@ -64,7 +69,7 @@ namespace SurfaceData
         void OnCatalogLoaded(const char* /*catalogFile*/) override;
         void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
         void OnCatalogAssetAdded(const AZ::Data::AssetId& assetId) override;
-        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& assetInfo) override;
 
         ////////////////////////////////////////////////////////////////////////
         // AZ::Data::AssetBus

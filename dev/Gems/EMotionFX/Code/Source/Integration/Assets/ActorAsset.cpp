@@ -25,6 +25,10 @@ namespace EMotionFX
         AZ_CLASS_ALLOCATOR_IMPL(ActorAsset, EMotionFXAllocator, 0)
         AZ_CLASS_ALLOCATOR_IMPL(ActorAssetHandler, EMotionFXAllocator, 0)
 
+        ActorAsset::ActorAsset(AZ::Data::AssetId id)
+            : EMotionFXAsset(id)
+        {}
+
         ActorAsset::ActorInstancePtr ActorAsset::CreateInstance(AZ::Entity* entity)
         {
             AZ_Assert(m_emfxActor, "Actor asset is not loaded");

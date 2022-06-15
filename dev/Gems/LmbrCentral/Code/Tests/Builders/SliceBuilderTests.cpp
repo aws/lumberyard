@@ -24,6 +24,8 @@
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Slice/SliceMetadataInfoComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <Builders/SliceBuilder/SliceBuilderComponent.h>
+
 #include "AzFramework/Asset/SimpleAsset.h"
 #include "Tests/AZTestShared/Utils/Utils.h"
 
@@ -92,6 +94,47 @@ public:
     {
         return "*.txt;";
     }
+};
+
+struct MockSubType final
+{
+    AZ_RTTI(MockSubType, "{25824223-EE7E-4F44-8181-6D3AC5119BB9}");
+
+    static void Reflect(ReflectContext* reflection)
+    {
+        SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<MockSubType>()
+                ->Version(m_version);
+        }
+    }
+
+    static int m_version;
+};
+
+int MockSubType::m_version = 1;
+
+struct MockComponent : AZ::Component
+{
+    AZ_COMPONENT(MockComponent, "{0A556691-1658-48B7-9745-5FDBA8E13D11}");
+
+    static void Reflect(ReflectContext* reflection)
+    {
+        SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<MockComponent, AZ::Component>()
+                ->Field("subdata", &MockComponent::m_subData);
+        }
+    }
+
+    void Activate() override {}
+    void Deactivate() override {}
+
+    MockSubType m_subData{};
 };
 
 namespace AZ
@@ -624,4 +667,60 @@ TEST_F(DependencyTest, SliceFingerprint_ChangesWhenComponentServicesChange)
 
         ASSERT_EQ(fingerprintNoService, fingerprintNoServiceDoubleCheck);
     }
+}
+
+struct BuilderRegisterListener : AssetBuilderSDK::AssetBuilderBus::Handler
+{
+    BuilderRegisterListener()
+    {
+        BusConnect();
+    }
+
+    ~BuilderRegisterListener()
+    {
+        BusDisconnect();
+    }
+
+
+    void RegisterBuilderInformation(const AssetBuilderSDK::AssetBuilderDesc& desc) override
+    {
+        m_desc = desc;
+    }
+
+    AssetBuilderSDK::AssetBuilderDesc m_desc;
+};
+
+TEST_F(DependencyTest, SliceBuilderFingerprint_ChangesWhenNestedTypeChanges)
+{
+    BuilderRegisterListener listener;
+    AZStd::string fingerprintA, fingerprintB;
+
+    auto* descriptor = MockComponent::CreateDescriptor();
+
+    descriptor->Reflect(m_serializeContext);
+    MockSubType::Reflect(m_serializeContext);
+
+    {
+        BuilderPluginComponent builder;
+        builder.Activate();
+        fingerprintA = listener.m_desc.m_analysisFingerprint;
+    }
+
+    // Unreflect the sub type, change the version, and reflect again
+    m_serializeContext->EnableRemoveReflection();
+    MockSubType::Reflect(m_serializeContext);
+    m_serializeContext->DisableRemoveReflection();
+
+    MockSubType::m_version = 2;
+    MockSubType::Reflect(m_serializeContext);
+
+    {
+        BuilderPluginComponent builder;
+        builder.Activate();
+        fingerprintB = listener.m_desc.m_analysisFingerprint;
+    }
+
+    delete descriptor;
+
+    EXPECT_STRNE(fingerprintA.c_str(), fingerprintB.c_str());
 }

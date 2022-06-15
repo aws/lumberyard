@@ -95,30 +95,21 @@ namespace NvCloth
         const AZStd::vector<SimParticleFormat>& simParticles,
         const AZStd::vector<SimIndexType>& simIndices)
     {
-        for (size_t i = 0; i < m_motionConstraints.size(); ++i)
+        if (simParticles.size() != m_motionConstraints.size())
         {
-            const AZ::Vector3 position = simParticles[i].GetAsVector3();
-            const float maxDistance = (simParticles[i].GetW() > 0.0f)
-                ? m_motionConstraintsData[i] * m_motionConstraintsMaxDistance
-                : 0.0f;
-
-            m_motionConstraints[i].Set(position, maxDistance);
+            return;
         }
+
+        m_simParticles = simParticles;
+
+        CalculateMotionConstraints();
 
         if (!m_separationConstraints.empty())
         {
             bool normalsCalculated = AZ::Interface<ITangentSpaceHelper>::Get()->CalculateNormals(simParticles, simIndices, m_normals);
             AZ_Assert(normalsCalculated, "Cloth constraints failed to calculate normals.");
 
-            for (size_t i = 0; i < m_separationConstraints.size(); ++i)
-            {
-                const AZ::Vector3 position = CalculateBackstopSpherePosition(i);
-
-                const float radiusScale = m_backstopData[i].GetY();
-                const float radius = radiusScale * m_backstopMaxRadius;
-
-                m_separationConstraints[i].Set(position, radius);
-            }
+            CalculateSeparationConstraints();
         }
     }
 
@@ -135,22 +126,15 @@ namespace NvCloth
     void ClothConstraints::SetMotionConstraintMaxDistance(float distance)
     {
         m_motionConstraintsMaxDistance = distance;
-        for (size_t i = 0; i < m_motionConstraints.size(); ++i)
-        {
-            const float maxDistanceScale = m_motionConstraintsData[i];
-            m_motionConstraints[i].SetW(maxDistanceScale * m_motionConstraintsMaxDistance);
-        }
+
+        CalculateMotionConstraints();
     }
 
     void ClothConstraints::SetBackstopMaxRadius(float radius)
     {
         m_backstopMaxRadius = radius;
 
-        for (size_t i = 0; i < m_separationConstraints.size(); ++i)
-        {
-            const float radiusScale = m_backstopData[i].GetY();
-            m_separationConstraints[i].SetW(radiusScale * m_backstopMaxRadius);
-        }
+        CalculateSeparationConstraints();
     }
 
     void ClothConstraints::SetBackstopMaxOffsets(float backOffset, float frontOffset)
@@ -158,33 +142,53 @@ namespace NvCloth
         m_backstopMaxBackOffset = backOffset;
         m_backstopMaxFrontOffset = frontOffset;
 
-        for (size_t i = 0; i < m_separationConstraints.size(); ++i)
-        {
-            const AZ::Vector3 position = CalculateBackstopSpherePosition(i);
+        CalculateSeparationConstraints();
+    }
 
-            m_separationConstraints[i].Set(
-                position,
-                m_separationConstraints[i].GetW());
+    void ClothConstraints::CalculateMotionConstraints()
+    {
+        for (size_t i = 0; i < m_motionConstraints.size(); ++i)
+        {
+            const float maxDistance = (m_simParticles[i].GetW() > 0.0f)
+                ? m_motionConstraintsData[i] * m_motionConstraintsMaxDistance
+                : 0.0f;
+
+            m_motionConstraints[i].Set(m_simParticles[i].GetAsVector3(), maxDistance);
         }
     }
 
-    AZ::Vector3 ClothConstraints::CalculateBackstopSpherePosition(size_t index) const
+    void ClothConstraints::CalculateSeparationConstraints()
     {
-        const float offsetScale = m_backstopData[index].GetX();
-        const float offset = offsetScale * ((offsetScale >= 0.0f) ? m_backstopMaxBackOffset : m_backstopMaxFrontOffset);
+        for (size_t i = 0; i < m_separationConstraints.size(); ++i)
+        {
+            const float offsetScale = m_backstopData[i].GetX();
+            const float offset = offsetScale * ((offsetScale >= 0.0f) ? m_backstopMaxBackOffset : m_backstopMaxFrontOffset);
 
-        const float radiusScale = m_backstopData[index].GetY();
-        const float radius = radiusScale * m_backstopMaxRadius;
+            const float radiusScale = m_backstopData[i].GetY();
+            const float radius = radiusScale * m_backstopMaxRadius;
 
-        AZ::Vector3 position = m_motionConstraints[index].GetAsVector3();
+            const AZ::Vector3 position = CalculateBackstopSpherePosition(
+                m_simParticles[i].GetAsVector3(), m_normals[i], offset, radius);
+
+            m_separationConstraints[i].Set(position, radius);
+        }
+    }
+
+    AZ::Vector3 ClothConstraints::CalculateBackstopSpherePosition(
+        const AZ::Vector3& position,
+        const AZ::Vector3& normal,
+        float offset,
+        float radius) const
+    {
+        AZ::Vector3 spherePosition = position;
         if (offset >= 0.0f)
         {
-            position -= m_normals[index] * (radius + offset); // Place sphere behind the particle
+            spherePosition -= normal * (radius + offset); // Place sphere behind the particle
         }
         else
         {
-            position += m_normals[index] * (radius - offset); // Place sphere in front of the particle
+            spherePosition += normal * (radius - offset); // Place sphere in front of the particle
         }
-        return position;
+        return spherePosition;
     }
 } // namespace NvCloth

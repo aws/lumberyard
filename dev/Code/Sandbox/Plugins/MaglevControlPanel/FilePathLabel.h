@@ -31,7 +31,7 @@ public:
 
     FilePathLabel()
     {
-        // Let the HBoxLayout set the label's size basedo on the space
+        // Let the HBoxLayout set the label's size based on the space
         // available in the window instead of the width of the label's
         // text.
         setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);

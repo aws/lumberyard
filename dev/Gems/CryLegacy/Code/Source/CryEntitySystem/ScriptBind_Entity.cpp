@@ -5305,7 +5305,7 @@ int CScriptBind_Entity::GetUpdateRadius(IFunctionHandler* pH)
 {
     GET_ENTITY;
 
-    float minRadius, maxRadius;
+    float minRadius = 0.0f, maxRadius = 0.0f;
     //pEntity->GetUpdateRadiuses(minRadius,maxRadius);
     return pH->EndFunction(minRadius, maxRadius);
 }

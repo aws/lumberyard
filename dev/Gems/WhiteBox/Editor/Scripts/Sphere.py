@@ -21,22 +21,44 @@ import azlmbr.whitebox.api as api
 # usage: pyRunFile path/to/file/sphere.py <subdivisions>
 
 
+# get the midpoint of v1 and v2 from created_midpoints if already made, otherwise create new one
+def get_midpoint_vertex(whiteBoxMesh, v1, v2, radius, created_midpoints):
+    # get the index of the vertices to look them up
+    index1 = v1.Index()
+    index2 = v2.Index()
+
+    # search created_midpoints to see if this midpoint has already been made
+    # we store edges as tuples but keep in mind the edge (v1, v2) == (v2, v1) so we search both
+    if (index1, index2) in created_midpoints:
+        return created_midpoints.get((index1, index2))
+    if (index2, index1) in created_midpoints:
+        return created_midpoints.get((index2, index1))
+
+    # create the new midpoint vertex and store in created_midpoints
+    pos1 = whiteBoxMesh.VertexPosition(v1)
+    pos2 = whiteBoxMesh.VertexPosition(v2)
+    midpoint = whiteBoxMesh.AddVertex(whiteBoxMath.normalize_midpoint(pos1, pos2, radius))
+    created_midpoints.update({(index1, index2): midpoint})
+
+    return midpoint
+
+
 # divide each triangular face into four smaller faces
 def subdivide_faces(whiteBoxMesh, faces, radius):
     new_faces = []
+    created_midpoints = dict()
     for faceVertHandles in faces:
         # get each vertex
         v0 = faceVertHandles.VertexHandles[0]
         v1 = faceVertHandles.VertexHandles[1]
         v2 = faceVertHandles.VertexHandles[2]
 
-        # use vertex positions to get their normalized midpoints
-        positions = whiteBoxMesh.VertexPositions(faceVertHandles.VertexHandles)
-        v3 = whiteBoxMesh.AddVertex(whiteBoxMath.normalize_midpoint(positions[0], positions[1], radius))
-        v4 = whiteBoxMesh.AddVertex(whiteBoxMath.normalize_midpoint(positions[1], positions[2], radius))
-        v5 = whiteBoxMesh.AddVertex(whiteBoxMath.normalize_midpoint(positions[0], positions[2], radius))
+        # get the vertex representing the midpoint of each of the edges
+        v3 = get_midpoint_vertex(whiteBoxMesh, v0, v1, radius, created_midpoints)
+        v4 = get_midpoint_vertex(whiteBoxMesh, v1, v2, radius, created_midpoints)
+        v5 = get_midpoint_vertex(whiteBoxMesh, v0, v2, radius, created_midpoints)
 
-        # create four subdivided faces for each face
+        # create four subdivided faces for each original face
         new_faces.append(api.util_MakeFaceVertHandles(v0, v3, v5))
         new_faces.append(api.util_MakeFaceVertHandles(v3, v1, v4))
         new_faces.append(api.util_MakeFaceVertHandles(v4, v2, v5))

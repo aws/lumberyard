@@ -286,7 +286,7 @@ void AddLambdaFunction::OnAddFunctionCodeFolderFinished()
 these resource types. To support other resource types, an entry needs to be added to that mapping.
 
 Note that Tools\lmbr_aws\AWSResourceManager\default-project-content\project-code\discovery-utils.py
-is the origional source for the discovery_utils.py file found in the game project directory.
+is the original source for the discovery_utils.py file found in the game project directory.
 
 */
 

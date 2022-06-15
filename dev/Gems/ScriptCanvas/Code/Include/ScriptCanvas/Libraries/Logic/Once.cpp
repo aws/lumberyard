@@ -26,6 +26,11 @@ namespace ScriptCanvas
                 , m_resetStatus(true)
             {}
 
+            void Once::OnRuntimeReset()
+            {
+                m_resetStatus = true;
+            }
+
             void Once::OnInputSignal(const SlotId& slotId)
             {
                 SlotId resetSlot = OnceProperty::GetResetSlotId(this);

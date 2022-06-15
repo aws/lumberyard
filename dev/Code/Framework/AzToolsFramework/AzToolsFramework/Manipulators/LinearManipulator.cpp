@@ -101,6 +101,10 @@ namespace AzToolsFramework
             manipulatorInteraction.m_localRayOrigin, manipulatorInteraction.m_localRayDirection,
             start.m_localHitPosition, startTransition.m_localNormal, localHitPosition);
 
+        localHitPosition = Internal::TryConstrainHitPositionToView(
+            localHitPosition, start.m_localHitPosition, worldFromLocal.GetInverseFull(),
+            GetCameraState(interaction.m_interactionId.m_viewportId));
+
         const AZ::Vector3 axis = TransformDirectionNoScaling(localTransform, fixed.m_axis);
         const AZ::Vector3 hitDelta = (localHitPosition - start.m_localHitPosition);
         const AZ::Vector3 unsnappedOffset = axis * axis.Dot(hitDelta);
@@ -163,19 +167,13 @@ namespace AzToolsFramework
         const ViewportInteraction::MouseInteraction& interaction, const float rayIntersectionDistance)
     {
         const AZ::Transform worldFromLocalUniformScale = TransformUniformScale(m_worldFromLocal);
-
         const GridSnapParameters gridSnapParams = GridSnapSettings(interaction.m_interactionId.m_viewportId);
-
-        AzFramework::CameraState cameraState;
-        ViewportInteraction::ViewportInteractionRequestBus::EventResult(
-            cameraState, interaction.m_interactionId.m_viewportId,
-            &ViewportInteraction::ViewportInteractionRequestBus::Events::GetCameraState);
 
         // note: m_localTransform must not be made uniform as it may contain a local scale we want to snap
         m_starter = CalculateLinearManipulationDataStart(
             m_fixed, worldFromLocalUniformScale, m_localTransform,
-            GridSnapAction(gridSnapParams, interaction.m_keyboardModifiers.Alt()),
-            interaction, rayIntersectionDistance, cameraState);
+            GridSnapAction(gridSnapParams, interaction.m_keyboardModifiers.Alt()), interaction, rayIntersectionDistance,
+            GetCameraState(interaction.m_interactionId.m_viewportId));
 
         if (m_onLeftMouseDownCallback)
         {

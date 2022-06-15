@@ -131,12 +131,20 @@ namespace CloudCanvas
 
         bool StaticDataMonitor::IsMonitored(const AZ::Data::AssetId& assetId)
         {
-            if (m_monitoredAssets.find(assetId) != m_monitoredAssets.end())
+            AZ::Data::AssetInfo assetInfo{};
+            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetInfoById, assetId);
+
+            return IsMonitored(assetInfo);
+        }
+
+        bool StaticDataMonitor::IsMonitored(const AZ::Data::AssetInfo& assetInfo)
+        {
+            if (assetInfo.m_assetId.IsValid() && m_monitoredAssets.find(assetInfo.m_assetId) != m_monitoredAssets.end())
             {
                 return true;
             }
 
-            const AZStd::string fileName = GetAssetFilenameFromAssetId(assetId);
+            const AZStd::string fileName = GetAssetFilenameFromAssetInfo(assetInfo);
             if (!fileName.empty())
             {
                 AZStd::string sanitizedName{ GetSanitizedName(fileName.c_str()) };
@@ -175,13 +183,13 @@ namespace CloudCanvas
         }
 
 
-        void StaticDataMonitor::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
+        void StaticDataMonitor::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& assetInfo)
         {
-            if (!IsMonitored(assetId))
+            if (!IsMonitored(assetInfo))
             {
                 return;
             }
-            const AZStd::string fileName = GetAssetFilenameFromAssetId(assetId);
+            const AZStd::string fileName = GetAssetFilenameFromAssetInfo(assetInfo);
             if (!fileName.empty())
             {
                 OnFileChanged(fileName);
@@ -189,6 +197,14 @@ namespace CloudCanvas
         }
 
         AZStd::string StaticDataMonitor::GetAssetFilenameFromAssetId(const AZ::Data::AssetId& assetId)
+        {
+            AZ::Data::AssetInfo assetInfo{};
+            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetInfoById, assetId);
+
+            return GetAssetFilenameFromAssetInfo(assetInfo);
+        }
+
+        AZStd::string StaticDataMonitor::GetAssetFilenameFromAssetInfo(const AZ::Data::AssetInfo& assetInfo)
         {
             const char* cachePath = AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@");
             if (!cachePath)
@@ -198,10 +214,8 @@ namespace CloudCanvas
             AZStd::string assetCachePath{ cachePath };
             AZStd::string filename;
             AzFramework::StringFunc::AssetDatabasePath::Normalize(assetCachePath);
-
-            AZStd::string relativePath;
-            EBUS_EVENT_RESULT(relativePath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, assetId);
-            AzFramework::StringFunc::AssetDatabasePath::Join(assetCachePath.c_str(), relativePath.c_str(), filename, true);
+;
+            AzFramework::StringFunc::AssetDatabasePath::Join(assetCachePath.c_str(), assetInfo.m_relativePath.c_str(), filename, true);
 
             return filename;
         }

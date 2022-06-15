@@ -16,9 +16,12 @@
 
 #include <QClipboard>
 #include <QMessageBox>
+#include <QTimer>
+#include <QVariant>
 
 XmlNodeRef CClipboard::m_node;
 QString CClipboard::m_title;
+QVariant CClipboard::s_pendingPut;
 
 //////////////////////////////////////////////////////////////////////////
 // Clipboard implementation.
@@ -26,6 +29,10 @@ QString CClipboard::m_title;
 CClipboard::CClipboard(QWidget* parent)
     : m_parent(parent != nullptr ? parent : QApplication::activeWindow())
 {
+    m_putDebounce.setSingleShot(true);
+    m_putDebounce.setInterval(0);
+    // Wait one frame before setting clipboard contents, in case we're updated frequently
+    QObject::connect(&m_putDebounce, &QTimer::timeout, [this](){SendPendingPut();});
 }
 
 void CClipboard::Put(XmlNodeRef& node, const QString& title)
@@ -48,18 +55,19 @@ XmlNodeRef CClipboard::Get() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CClipboard::PutString(const QString& text, const QString& title /* = ""  */)
+void CClipboard::PutString(const QString& text, [[maybe_unused]]const QString& title /* = ""  */)
 {
-    // Remove the current Clipboard contents
-    QApplication::clipboard()->clear();
-
-    // For the appropriate data formats...
-    QApplication::clipboard()->setText(text);
+    s_pendingPut = text;
+    m_putDebounce.start();
 }
 
 //////////////////////////////////////////////////////////////////////////
 QString CClipboard::GetString() const
 {
+    if (s_pendingPut.type() == QVariant::String)
+    {
+        return s_pendingPut.toString();
+    }
     return QApplication::clipboard()->text();
 }
 
@@ -73,13 +81,22 @@ bool CClipboard::IsEmpty() const
 void CClipboard::PutImage(const CImageEx& img)
 {
     QImage image(img.GetWidth(), img.GetHeight(), QImage::Format_RGBA8888);
-    QApplication::clipboard()->setImage(image);
+    s_pendingPut = image;
+    m_putDebounce.start();
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CClipboard::GetImage(CImageEx& img)
 {
-    QImage image = QApplication::clipboard()->image();
+    QImage image;
+    if (s_pendingPut.type() == QVariant::Image)
+    {
+        image = s_pendingPut.value<QImage>();
+    }
+    else
+    {
+        image = QApplication::clipboard()->image();
+    }
 
     img.Allocate(image.width(), image.height());
 
@@ -100,4 +117,20 @@ bool CClipboard::GetImage(CImageEx& img)
     }
 
     return true;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CClipboard::SendPendingPut()
+{
+    if (s_pendingPut.type() == QVariant::String)
+    {
+        QString text = s_pendingPut.toString();
+        QApplication::clipboard()->setText(text);
+    }
+    else if (s_pendingPut.type() == QVariant::Image)
+    {
+        QImage image = s_pendingPut.value<QImage>();
+        QApplication::clipboard()->setImage(image);
+    }
+    s_pendingPut = {};
 }

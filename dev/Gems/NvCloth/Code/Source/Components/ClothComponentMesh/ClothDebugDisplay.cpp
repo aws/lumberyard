@@ -219,7 +219,7 @@ namespace NvCloth
 
         for (const SphereCollider& collider : m_clothComponentMesh->m_actorClothColliders->GetSphereColliders())
         {
-            DrawSphere(debugDisplay, collider.m_radius, collider.m_currentModelSpaceTransform.GetPosition(), AzFramework::ViewportColors::DeselectedColor);
+            DrawSphere(debugDisplay, collider.m_radius, collider.m_currentModelSpaceTransform.GetTranslation(), AzFramework::ViewportColors::DeselectedColor);
         }
 
         for (const CapsuleCollider& collider : m_clothComponentMesh->m_actorClothColliders->GetCapsuleColliders())

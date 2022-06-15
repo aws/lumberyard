@@ -31,6 +31,7 @@ namespace ScriptCanvas
                 ScriptCanvas_Node(Sequencer,
                     ScriptCanvas_Node::Uuid("{CB98B828-BF86-4623-BF73-396A68FA386A}")
                     ScriptCanvas_Node::Description("Trigger one of the outputs in sequential order for each input activation.")
+                    ScriptCanvas_Node::RequiresStateNotifications(true)
                     ScriptCanvas_Node::Deprecated("This node has been deprecated since it combined two node functions in an odd way. It has been replaced by the Ordered Sequencer and the Switch nodes.")
                 );
 
@@ -72,6 +73,10 @@ namespace ScriptCanvas
                 // temps
                 int m_order;
                 int m_selectedIndex;
+
+                // RuntimeNotificaitonBus
+                void OnRuntimeReset() override;
+                ////
 
             protected:
 

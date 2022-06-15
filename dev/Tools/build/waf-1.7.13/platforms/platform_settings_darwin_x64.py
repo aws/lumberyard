@@ -13,6 +13,7 @@
 import os
 import subprocess
 import sys
+from distutils.version import LooseVersion
 
 # waflib imports
 from waflib.Configure import conf
@@ -79,6 +80,16 @@ def load_darwin_x64_common_settings(ctx):
     env['CC'] = 'clang'
     env['CXX'] = 'clang++'
     env['LINK'] = env['LINK_CC'] = env['LINK_CXX'] = 'clang++'
+    clang_version = subprocess.check_output(["clang", "--version"]).decode(sys.stdout.encoding or 'iso8859-1', 'ignore').strip()
+    version_prefix = 'Apple clang version'
+    if clang_version and clang_version.startswith(version_prefix):
+        # Skip over the version prefix and any whitespace
+        clang_version = clang_version[len(version_prefix):].strip()
+        clang_version = clang_version.split(maxsplit=1)[0]
+        # The resource-dir for clang doesn't work with AzCodeGenerator post
+        # Apple Clang 12.0.5, so set the Clang libraries search path to None
+        if LooseVersion(clang_version) >= LooseVersion("12.0.5"):
+            env['CLANG_SEARCH_PATHS']['libraries'] = None
     
     # Add the C++ -fno-aligned-allocation switch for "real" clang versions 7.0.0(AppleClang version 10.0.1) and above for Mac
     # The MacOS only supports C++17 aligned new/delete when targeting MacOS 10.14 and above

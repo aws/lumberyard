@@ -119,15 +119,20 @@ namespace EMotionFX
     {
         /*
         Inside blend tree: 
-            +---------------+
-            |m_parameterNode|
-            +---------------+
+            +---------------+    +-----------+
+            |m_parameterNode|    |m_finalNode|
+            +---------------+    +-----------+
         */
         m_parameterNode = aznew BlendTreeParameterNode();
         m_parameterNode->SetName("Parameters0");
 
+        m_finalNode = aznew BlendTreeFinalNode();
+        m_finalNode->SetName("FinalNode0");
+
         BlendTree* blendTree = aznew BlendTree();
+        blendTree->SetName("BlendTree0");
         blendTree->AddChildNode(m_parameterNode);
+        blendTree->AddChildNode(m_finalNode);
 
         GetRootStateMachine()->AddChildNode(blendTree);
         GetRootStateMachine()->SetEntryState(blendTree);

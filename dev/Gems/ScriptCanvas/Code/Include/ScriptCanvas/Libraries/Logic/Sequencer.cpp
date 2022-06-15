@@ -30,6 +30,11 @@ namespace ScriptCanvas
                 , m_outputIsValid(true)
             {}
 
+            void Sequencer::OnRuntimeReset()
+            {
+                m_currentIndex = 0;
+            }
+
             void  Sequencer::OnInputSignal(const SlotId& slot)
             {
                 m_selectedIndex = SequencerProperty::GetIndex(this);

@@ -11,8 +11,9 @@
 # $Revision: #1 $
 
 import content_manifest
-import dynamic_content_settings
 import dynamic_content_migrator
+import dynamic_content_settings
+
 
 def before_this_resource_group_updated(hook, deployment_name, **kwargs):
     dynamic_content_migrator.export_current_table_entries(hook.context, deployment_name)
@@ -28,7 +29,7 @@ def after_this_resource_group_updated(hook, deployment_name, **kwargs):
     # Pass None to upload whatever is set in the startup/bootstrap manifest and immediately stage it as PUBLIC
     staging_args = {}
     staging_args['StagingStatus'] = 'PUBLIC'
-    
+
     auto_upload_name = None
     resource_group = hook.context.resource_groups.get(dynamic_content_settings.get_default_resource_group())
 

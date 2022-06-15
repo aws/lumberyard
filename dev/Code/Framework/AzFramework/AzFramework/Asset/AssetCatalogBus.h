@@ -15,6 +15,11 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Asset/AssetCommon.h>
 
+namespace AZ::Data
+{
+    class AssetInfo;
+}
+
 namespace AzFramework
 {
     /**
@@ -37,8 +42,9 @@ namespace AzFramework
         /// Notifies listeners that a new asset has been discovered.
         virtual void OnCatalogAssetAdded(const AZ::Data::AssetId& /*assetId*/) {}
 
-        /// Notifies listeners that an asset has been removed.
-        virtual void OnCatalogAssetRemoved(const AZ::Data::AssetId& /*assetId*/) {}
+        /// Notifies listeners that an asset has been removed.  This event occurs after the asset has been removed from the catalog.
+        /// assetInfo contains the catalog info from before the asset was removed.
+        virtual void OnCatalogAssetRemoved(const AZ::Data::AssetId& /*assetId*/, const AZ::Data::AssetInfo& /*assetInfo*/) {}
     };
 
     using AssetCatalogEventBus = AZ::EBus<AssetCatalogEvents>;

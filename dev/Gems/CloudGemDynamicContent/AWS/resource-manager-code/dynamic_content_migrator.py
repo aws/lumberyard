@@ -9,17 +9,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-import os
 import json
+import os
 
+import content_bucket
 import dynamic_content_settings
 import staging
-import content_bucket
 from resource_manager.deployment import delete_tags
 
 BACKUP_FILE_SUFFIX = '_unversioned_data.backup'
 UNVERSIONED_TABLE = 'StagingSettingsTable'
 VERSIONED_TABLE = 'VersionedStagingSettingsTable'
+
 
 def command_migrate_table_entries(context: object, args: dict):
     """
@@ -49,9 +50,9 @@ def command_suspend_versioning(context: object, args: dict):
         print('Content versioning is not enabled')
         return
 
-    message = 'Suspend versioning to stop accruing new versions of the same object in the content bucket. '\
-        'Existing objects in the content bucket do not change but the staging settings for any noncurrent version will be lost. '\
-        'Update your deployment after running this command for the suspension to take effect.'
+    message = 'Suspend versioning to stop accruing new versions of the same object in the content bucket. ' \
+              'Existing objects in the content bucket do not change but the staging settings for any noncurrent version will be lost. ' \
+              'Update your deployment after running this command for the suspension to take effect.'
     if not args.confirm_versioning_suspension:
         context.view.confirm_message(message)
 
@@ -109,6 +110,7 @@ def export_current_table_entries(context: object, deployment_name: str):
         backup_content = {'versioned': versioned, 'entries': entries}
         json.dump(backup_content, backup)
 
+
 def import_table_entries_from_backup(context: object, deployment_name: str):
     """
         Load table entries from a local backup file and import them to the current table
@@ -128,7 +130,7 @@ def import_table_entries_from_backup(context: object, deployment_name: str):
         backup_content = json.load(backup)
 
     versioned = content_bucket.content_versioning_enabled(context, deployment_name)
-    if (backup_content['versioned'] == versioned):
+    if backup_content['versioned'] == versioned:
         # Version status doesn't change before and after the deployment update
         # No need to migrate any data in this case
         __remove_backup_file(backup_path)
@@ -154,7 +156,7 @@ def import_table_entries_from_backup(context: object, deployment_name: str):
 
         try:
             # Check whether the key already exists in the current table
-            key = { 'FileName': entry['FileName'], 'VersionId': entry['VersionId']} if versioned else { 'FileName': entry['FileName']}
+            key = {'FileName': entry['FileName'], 'VersionId': entry['VersionId']} if versioned else {'FileName': entry['FileName']}
             existing_item = client.get_item(
                 TableName=current_table,
                 Key=key).get('Item', {})
@@ -183,6 +185,7 @@ def import_table_entries_from_backup(context: object, deployment_name: str):
         print('No all entries were migrated successfully. Please retry the migration with the migrate-unversioned-data command.')
     else:
         __remove_backup_file(backup_path)
+
 
 def __remove_backup_file(backup_path):
     """

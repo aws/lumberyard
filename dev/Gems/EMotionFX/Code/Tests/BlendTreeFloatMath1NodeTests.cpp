@@ -104,7 +104,7 @@ namespace EMotionFX
             BlendTreeConnection* connection = m_floatMath1Node->AddConnection(m_paramNode,
                 m_paramNode->FindOutputPortByName(paramName)->mPortID, BlendTreeFloatMath1Node::PORTID_INPUT_X);
 
-            for (const inputType& i : xInputs)
+            for (inputType i : xInputs)
             {
                 // Get and set parameter value to different test data inputs
                 const AZ::Outcome<size_t> parameterIndex = m_animGraphInstance->FindParameterIndex(paramName);

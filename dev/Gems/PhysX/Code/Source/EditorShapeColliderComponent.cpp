@@ -621,6 +621,8 @@ namespace PhysX
         LmbrCentral::ShapeComponentNotificationsBus::Handler::BusConnect(GetEntityId());
         PhysX::ColliderShapeRequestBus::Handler::BusConnect(GetEntityId());
 
+        AZ::TransformBus::EventResult(m_cachedWorldTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
+
         UpdateShapeConfigs();
 
         // Debug drawing
@@ -659,8 +661,14 @@ namespace PhysX
     }
 
     // TransformBus
-    void EditorShapeColliderComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
+    void EditorShapeColliderComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
+        if (world.IsClose(m_cachedWorldTransform))
+        {
+            return;
+        }
+        m_cachedWorldTransform = world;
+
         UpdateShapeConfigs();
 
         CreateStaticEditorCollider();

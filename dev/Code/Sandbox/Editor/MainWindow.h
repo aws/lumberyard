@@ -263,7 +263,6 @@ private Q_SLOTS:
     void OnConnectionStatusClicked();
     void OnUpdateConnectionStatus();
     void ShowConnectionDisconnectedDialog();
-    void CGPMenuClicked();
     void OnEscapeAction();
 
     // When signal is sent from ActionManager and MainWindow receives it, call this function as slot to send metrics event

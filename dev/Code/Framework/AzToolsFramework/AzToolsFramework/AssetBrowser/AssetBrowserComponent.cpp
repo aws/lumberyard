@@ -323,7 +323,7 @@ namespace AzToolsFramework
             }
         }
 
-        void AssetBrowserComponent::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
+        void AssetBrowserComponent::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& /*assetInfo*/)
         {
             m_changeset->RemoveProduct(assetId);
             if (m_dbReady)

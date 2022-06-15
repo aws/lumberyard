@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/RTTI/RTTI.h>
 #include <AzCore/std/optional.h>
 
 #include <NvCloth/Types.h>
@@ -20,7 +21,7 @@ namespace NvCloth
 {
     //! Interface to cook particles into fabric.
     //!
-    //! @note Use AZ::Interface<IFabricCooker> to call the interface, which
+    //! @note Use AZ::Interface<IFabricCooker>::Get() to call the interface, which
     //!       is available at both runtime and asset processing time (asset builders).
     class IFabricCooker
     {

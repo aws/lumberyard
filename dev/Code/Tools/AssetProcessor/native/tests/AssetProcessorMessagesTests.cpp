@@ -71,6 +71,8 @@ namespace AssetProcessorMessagesTests
     public:
         void SetUp() override
         {
+            AssetUtilities::ResetGameName();
+
             m_temporarySourceDir = QDir(m_temporaryDir.path());
             m_databaseLocation = m_temporarySourceDir.absoluteFilePath("test_database.sqlite").toUtf8().constData();
 

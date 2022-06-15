@@ -108,6 +108,7 @@ namespace EMotionFX
             EMotionFX::AnimGraphInstance* GetAnimGraphInstance() override;
             AZ::u32 FindParameterIndex(const char* parameterName) override;
             const char* FindParameterName(AZ::u32 parameterIndex) override;
+            bool IsParameterIndexValid(AZ::u32 parameterIndex) const;
             void SetParameterFloat(AZ::u32 parameterIndex, float value) override;
             void SetParameterBool(AZ::u32 parameterIndex, bool value) override;
             void SetParameterString(AZ::u32 parameterIndex, const char* value) override;
@@ -154,8 +155,10 @@ namespace EMotionFX
             void CreateSnapshot(bool isAuthoritative) override;
             void SetActiveStates(const NodeIndexContainer& activeStates) override;
             const NodeIndexContainer& GetActiveStates() const override;
+            static NodeIndexContainer s_emptyNodeIndexContainer;
             void SetMotionPlaytimes(const MotionNodePlaytimeContainer& motionNodePlaytimes) override;
             const MotionNodePlaytimeContainer& GetMotionPlaytimes() const override;
+            static MotionNodePlaytimeContainer s_emptyMotionNodePlaytimeContainer;
             void UpdateActorExternal(float deltatime) override;
             void SetNetworkRandomSeed(AZ::u64 seed) override;
             AZ::u64 GetNetworkRandomSeed() const override;

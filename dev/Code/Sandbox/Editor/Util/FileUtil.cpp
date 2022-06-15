@@ -111,11 +111,8 @@ bool CFileUtil::CompileLuaFile(const char* luaFilename)
     QString finalPath = path.c_str();
     finalPath = "\"" + finalPath + "\"";
 
-    // Add the name of the Lua file
-    QString cmdLine = LuaCompiler + finalPath;
-
     // Execute the compiler and capture the output
-    if (!GetIEditor()->ExecuteConsoleApp(cmdLine, CompilerOutput))
+    if (!GetIEditor()->ExecuteConsoleApp(LuaCompiler, { finalPath }, CompilerOutput))
     {
         QMessageBox::critical(QApplication::activeWindow(), QString(), QObject::tr("Error while executing '%1', make sure the file is in" \
             " your Master CD folder !").arg(luaCompiler));

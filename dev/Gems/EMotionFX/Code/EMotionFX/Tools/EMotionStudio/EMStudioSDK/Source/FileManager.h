@@ -59,7 +59,7 @@ namespace EMStudio
         // Asset catalog EBus
         void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
         void OnCatalogAssetAdded(const AZ::Data::AssetId& assetId) override;
-        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& assetInfo) override;
 
         // Editor asset system API
         void SourceFileChanged(AZStd::string relativePath, AZStd::string scanFolder, AZ::TypeId sourceTypeId) override;

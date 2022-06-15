@@ -41,6 +41,27 @@ namespace Physics
         return elems;
     }
 
+    void CollisionGroupScriptConstructor(CollisionGroup* thisPtr, AZ::ScriptDataContext& scriptDataContext)
+    {
+        int numArgs = scriptDataContext.GetNumArguments();
+        if (numArgs != 1)
+        {
+            scriptDataContext.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true,
+                "CollisionGroup() accepts only 1 argument, not %d", numArgs);
+            return;
+        }
+
+        if (!scriptDataContext.IsString(0))
+        {
+            scriptDataContext.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true,
+                "Argument to CollisionGroup() should be string");
+            return;
+        }
+
+        AZStd::string groupName;
+        scriptDataContext.ReadArg(0, groupName);
+        *thisPtr = CollisionGroup(groupName);
+    }
 
     void RayCastHit::Reflect(AZ::ReflectContext* context)
     {
@@ -93,7 +114,9 @@ namespace Physics
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "physics")
                 ->Attribute(AZ::Script::Attributes::Category, "PhysX")
-                ->Constructor<const AZStd::string>()
+                ->Constructor<const AZStd::string&>()
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                ->Attribute(AZ::Script::Attributes::ConstructorOverride, &CollisionGroupScriptConstructor)
                 ;
 
             behaviorContext->Class<RayCastRequest>("RayCastRequest")

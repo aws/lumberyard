@@ -82,37 +82,51 @@
             "default" : false
         },
         {
+            "identifier" : "compilelumberyard",
+            "alias" : ["compilegame", "compileengine", "compilesandbox"],
+            "description" : "compileLumberyardDescription",
+            "tooltip" : "compileLumberyardToolTip",
+            "tags" : ["rungame", "runeditor", "compilegame", "compileengine", "compilesandbox"],
+            "categories" : ["role", "lumberyard_role"],
+            "hosts" : [ "all" ],
+            "default" : true
+        },
+        {
             "identifier" : "compileandroid",
+            "dependency" : "compilelumberyard",
             "description" : "compileAndroidDescription",
             "tooltip" : "compileandroidToolTip",
             "tags" : ["compileandroid"],
-            "categories" : ["role"],
+            "categories" : ["role", "platform_role"],
             "hosts" : [ "all" ],
             "wafPlatforms": ["android_armv8_clang"],
             "default" : false
         },
         {
             "identifier" : "compileios",
+            "dependency" : "compilelumberyard",
             "description" : "compileIosDescription",
             "tooltip" : "compileiosToolTip",
             "tags" : ["compileios"],
-            "categories" : ["role"],
+            "categories" : ["role", "platform_role"],
             "hosts" : [ "macOS" ],
             "wafPlatforms": ["ios"],
             "default" : false
         },
         {
             "identifier" : "setuplinux",
+            "dependency" : "compilelumberyard",
             "description" : "setuplinuxDescription",
             "tooltip" : "setuplinuxToolTip",
             "tags" : ["setuplinux"],
-            "categories" : ["role"],
+            "categories" : ["role", "platform_role"],
             "hosts" : [ "windows" ],
             "wafPlatforms": [""],
             "default" : false
         },
         {
             "identifier" : "vc141",
+            "dependency" : "compilelumberyard",
             "description" : "vc141Description",
             "tooltip" : "vc141ToolTip",
             "tags" : ["vc141"],
@@ -123,6 +137,7 @@
         },
         {
             "identifier" : "vc142",
+            "dependency" : "compilelumberyard",
             "description" : "vc142Description",
             "tooltip" : "vc142ToolTip",
             "tags" : ["vc142"],
@@ -1368,34 +1383,40 @@
         {
             "identifier" : "BLASTLIB",
             "name" : "BLASTLIBName",
-            "version" : "1.1.6-az.1",
-            "source" : "Blast/1.1.6-az.1",
+            "version" : "1.1.7-az.3",
+            "source" : "Blast/1.1.7-az.3",
             "description" : "BLASTLIBDescriptionSummary",
             "detailedInstructions" : "BLASTLIBDetailedInstructions",
-            "roles" : ["compilegame", "compileengine", "compilesandbox"],
+            "roles" : ["compilegame", "compileengine", "compilesandbox", "setuplinux"],
             "symlinks" :
             [
                 {
-                    "source" : "Blast/1.1.6-az.1/sdk",
+                    "source" : "Blast/1.1.7-az.3/sdk",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Blast/sdk",
                     "exampleFile" : "toolkit/include/NvBlastTk.h"
                 },
                 {
-                    "source" : "Blast/1.1.6-az.1/shared",
+                    "source" : "Blast/1.1.7-az.3/shared",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Blast/shared",
                     "exampleFile" : "utils/AssetGenerator.h"
                 },
                 {
                     "compilers" : ["vc141", "vc142"],
-                    "source": "Blast/1.1.6-az.1/bin",
+                    "source": "Blast/1.1.7-az.3/bin",
                     "destination": "$CODEFOLDERNAME$/SDKs/Blast/bin",
-                    "exampleFile": "vc15win64-cmake/NvBlast_x64.dll"
+                    "exampleFile": "vc15win64-cmake/release/NvBlast_x64.dll"
                 },
                 {
                     "compilers" : ["vc141", "vc142"],
-                    "source": "Blast/1.1.6-az.1/lib",
+                    "source": "Blast/1.1.7-az.3/lib",
                     "destination": "$CODEFOLDERNAME$/SDKs/Blast/lib",
-                    "exampleFile": "vc15win64-cmake/NvBlastTk_x64.lib"
+                    "exampleFile": "vc15win64-cmake/release/NvBlastTk_x64.lib"
+                },
+                {
+                    "roles" : ["setuplinux"],
+                    "source": "Blast/1.1.7-az.3/bin",
+                    "destination": "$CODEFOLDERNAME$/SDKs/Blast/bin",
+                    "exampleFile": "linux64-gcc/release/libNvBlast.so"
                 }
             ]
         },
@@ -1577,33 +1598,33 @@
         {
             "identifier" : "OpenSSL",
             "name" : "OpenSSLname",
-            "version" : "1.1.1b-noasm-az",
-            "source" : "OpenSSL/1.1.1b-noasm-az",
+            "version" : "1.1.1b-noasm-az1",
+            "source" : "OpenSSL/1.1.1b-noasm-az1",
             "description" : "OpenSSLdescription",
             "detailedInstructions" : "OpenSSLdetailedInstructions",
             "roles" : ["compilegame","compileengine", "compileandroid","compilesandbox", "setuplinux"],
             "symlinks" :
             [
                 {
-                    "source" : "OpenSSL/1.1.1b-noasm-az",
+                    "source" : "OpenSSL/1.1.1b-noasm-az1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "include/openssl/ssl.h"
                 },
                 {
                     "compilers" : ["vc141", "vc142"],
-                    "source" : "OpenSSL/1.1.1b-noasm-az",
+                    "source" : "OpenSSL/1.1.1b-noasm-az1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "lib/vc140_x64_release/libssl.lib"
                 },
                 {
                     "hostOS" : ["macOS"],
-                    "source" : "OpenSSL/1.1.1b-noasm-az",
+                    "source" : "OpenSSL/1.1.1b-noasm-az1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "lib/darwin-x86_64-release/libssl.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source" : "OpenSSL/1.1.1b-noasm-az",
+                    "source" : "OpenSSL/1.1.1b-noasm-az1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "lib/linux-x86_64-clang-release/libssl.a"
                 }

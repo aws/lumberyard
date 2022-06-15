@@ -68,6 +68,11 @@ namespace ScriptCanvas
                 AZ::TickBus::Handler::BusConnect();
             }
 
+            void Duration::OnRuntimeStopped()
+            {
+                AZ::TickBus::Handler::BusDisconnect();
+            }
+
             void Duration::OnTick(float deltaTime, AZ::ScriptTimePoint time)
             {
                 const SlotId outSlot = DurationProperty::GetOutSlotId(this);
@@ -97,7 +102,7 @@ namespace ScriptCanvas
 
             void Duration::OnDeactivate()
             {
-                AZ::TickBus::Handler::BusDisconnect();
+                OnRuntimeStopped();
             }
         }
     }

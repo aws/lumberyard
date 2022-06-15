@@ -35,7 +35,7 @@ def build(bld):
                            'AWS_CPP_SDK_MOBILEANALYTICS',
                            'AWS_CPP_SDK_STS',
                            'SSLEAY'],
-
+        test_use        = ['AzFrameworkTestShared'],
         defines = [ 'METRICS_ENABLED' ],
 
         includes = [ bld.Path("Code/Tools/LyMetrics/LyMetricsProducer/include"),

@@ -38,7 +38,7 @@ namespace EMotionFX
 
         void TearDown() override
         {
-            AZ::Data::AssetManager::Instance().PrepareShutDown();
+            AZ::Data::AssetManager::Instance().CancelAllActiveJobs();
             EMotionFXBuilderFixture::TearDown();
         }
     };

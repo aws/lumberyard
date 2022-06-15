@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <WhiteBox/WhiteBoxBus.h>
 
 namespace AZ::Data
@@ -22,6 +23,7 @@ namespace AZ::Data
 
 namespace WhiteBox
 {
+    struct Impl; //!< Forward declaration of opaque pointer to implementation.
     class RenderMeshInterface;
 
     //! System component for the White Box Tool.
@@ -52,5 +54,7 @@ namespace WhiteBox
         void Deactivate() override;
 
         AZStd::vector<AZStd::unique_ptr<AZ::Data::AssetHandler>> m_assetHandlers;
+
+        AZStd::unique_ptr<Impl> m_impl; //!< Pointer to impl.
     };
 } // namespace WhiteBox

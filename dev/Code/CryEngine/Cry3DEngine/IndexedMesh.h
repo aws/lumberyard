@@ -194,6 +194,8 @@ public:
     virtual void Optimize(const char* szComment = NULL);
 #endif
 
+    void Build() override;
+
     virtual void RestoreFacesFromIndices();
 
     //////////////////////////////////////////////////////////////////////////

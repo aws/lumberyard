@@ -124,6 +124,7 @@ class QQmlEngine;
 class QWidget;
 class QMimeData;
 class QString;
+class QStringList;
 class QColor;
 class QPixmap;
 
@@ -569,10 +570,11 @@ struct IEditor
     virtual QString GetProjectName() = 0;
     //! Execute application and get console output.
     virtual bool ExecuteConsoleApp(
-        const QString& CommandLine,
-        QString& OutputText,
-        bool bNoTimeOut = false,
-        bool bShowWindow = false) = 0;
+        const QString& program,
+        const QStringList& arguments,
+        QString& outputText,
+        bool noTimeOut = false,
+        bool showWindow = false) = 0;
     //! Sets the document modified flag in the editor
     virtual void SetDataModified() = 0;
     //! Tells if editor startup is finished

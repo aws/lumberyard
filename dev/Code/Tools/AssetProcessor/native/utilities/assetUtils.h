@@ -68,6 +68,9 @@ namespace AssetUtilities
     //! If the current root folder is also the engine folder, then this behaves the same as ComputeAssetRoot
     bool ComputeEngineRoot(QDir& root, const QDir* optionalStartingRoot = nullptr);
 
+    //! Reset the game name to not be cached anymore.  Generally only useful for tests
+    void ResetGameName();
+
     //! Reset the asset root to not be cached anymore.  Generally only useful for tests
     void ResetAssetRoot();
 
@@ -251,15 +254,7 @@ namespace AssetUtilities
 
     QString GuessProductNameInDatabase(QString path, QString platform, AssetProcessor::AssetDatabaseConnection* databaseConnection);
 
-    /** A utility function which checks the given path starting at the root and updates the relative path to be the actual case correct path.
-    * For example, if you pass it "c:\lumberyard\dev" as the root and "editor\icons\whatever.ico" as the relative path.
-    * It may update relativePathFromRoot to be "Editor\Icons\Whatever.ico" if such a casing is the actual physical case on disk already.
-    * @param rootPath a trusted already-case-correct path (will not be case corrected).
-    * @param relativePathFromRoot a non-trusted (may be incorrect case) path relative to rootPath, 
-    *        which will be normalized and updated to be correct casing.
-    * @return if such a file does NOT exist, it returns FALSE, else returns TRUE.
-    * @note A very expensive function!  Call sparingly.
-    */
+    // A utility function which checks the given path starting at the root and updates the relative path to be the actual case correct path.
     bool UpdateToCorrectCase(const QString& rootPath, QString& relativePathFromRoot);
 
     class BuilderFilePatternMatcher

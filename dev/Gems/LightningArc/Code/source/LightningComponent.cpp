@@ -180,6 +180,8 @@ namespace Lightning
 
             //Retrieve original sky highlight settings
             RetrieveOriginalSkyHighlightSettings();
+
+            m_transformInitialized = true;
         };
 
         AZ::TickBus::QueueFunction(onFirstTick);
@@ -201,6 +203,11 @@ namespace Lightning
 
     void LightningComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
     {
+        if (!m_transformInitialized)
+        {
+            return;
+        }
+
         m_lightIntensity -= (m_lightFade * deltaTime);
 
         if (m_lightIntensity <= 0.0f)

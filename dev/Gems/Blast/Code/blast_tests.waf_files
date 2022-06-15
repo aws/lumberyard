@@ -1,12 +1,6 @@
 {
-    "auto": {
-      "Tests": [
-        "Tests/BlastTest.cpp",
-        "Tests/DamageManagerTest.cpp",
-        "Tests/Mocks/BlastMocks.h",
-        "Tests/ActorRenderManagerTest.cpp",
-        "Tests/BlastFamilyTest.cpp",
-        "Tests/BlastActorTest.cpp"
-      ]
+    "none":
+    {
+        "Tests" : []
     }
 }

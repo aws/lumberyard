@@ -40,6 +40,9 @@ namespace NvCloth
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
 
+        const MeshNodeList& GetMeshNodeList() const;
+        const AZStd::unordered_set<AZStd::string>& GetMeshNodesWithBackstopData() const;
+
         // EditorComponentBase overrides ...
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 

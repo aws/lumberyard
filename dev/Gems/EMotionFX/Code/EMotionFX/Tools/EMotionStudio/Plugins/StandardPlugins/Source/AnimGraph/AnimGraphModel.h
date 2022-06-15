@@ -167,11 +167,6 @@ namespace EMStudio
         void SetAnimGraphInstance(EMotionFX::AnimGraph* currentAnimGraph, EMotionFX::AnimGraphInstance* currentAnimGraphInstance, EMotionFX::AnimGraphInstance* newAnimGraphInstance);
 
     signals:
-        // Emitted when model index about to be removed. We aren't using the QT rowsAboutToBeRemoved signal because our anim graph model doesn't behave the same way
-        // QT expected. By the time BeginRemoveRow happen in our system, the underlying model item is already been deleted. We create our custom signal in order to
-        // properly inform our widget.
-        void AboutToBeRemovedSignal(const QModelIndex& parent, int first, int last);
-
         // Emitted when focus has changed. Index is the element we are focusing on. IndexContainer is the index of a potential
         // parent. UIs use the indexContainer to dive into that node/graph. Is possible that index is the same as indexContainer
         // for the cases where index is a container at the same time. If they are not the same, indexContainer will be the first
@@ -193,6 +188,7 @@ namespace EMStudio
 
         // AnimGraphNotificationBus
         void OnSyncVisualObject(EMotionFX::AnimGraphObject* object) override;
+        void OnReferenceAnimGraphAboutToBeChanged(EMotionFX::AnimGraphReferenceNode* referenceNode) override;
         void OnReferenceAnimGraphChanged(EMotionFX::AnimGraphReferenceNode* referenceNode) override;
 
         // With reference nodes, an AnimGraphObject could belong to multiple AnimGraphReferenceNodes.
@@ -381,9 +377,7 @@ namespace EMStudio
         bool NodeAdded(EMotionFX::AnimGraphNode* animGraphNode);
         bool ConnectionAdded(EMotionFX::AnimGraphNode* animGraphTargetNode, EMotionFX::BlendTreeConnection* animGraphConnection);
         bool TransitionAdded(EMotionFX::AnimGraphStateTransition* animGraphTransition);
-        void AboutToBeRemoved(const QModelIndexList& modelIndexList);
-        void AboutToBeRemoved(const QModelIndex& modelIndex);
-        void RemovePending();
+        void RemoveIndices(const QModelIndexList& modelIndexList);
         bool Edited(EMotionFX::AnimGraphObject* animGraphObject, const QVector<int>& roles = QVector<int>());
         bool ParameterEdited(EMotionFX::AnimGraph* animGraph);
         bool MotionEdited();

@@ -2166,6 +2166,12 @@ namespace ScriptCanvas
         m_executionBus = ExecutionRequestBus::FindFirstHandler(m_scriptCanvasId);
 
         OnGraphSet();
+
+        if (RequiresStateNotifications())
+        {
+            RuntimeNotificationBus::Handler::BusDisconnect();
+            RuntimeNotificationBus::Handler::BusConnect(m_scriptCanvasId);
+        }
     }
 
     void Node::SetGraphEntityId(AZ::EntityId graphEntityId)
@@ -2859,6 +2865,11 @@ namespace ScriptCanvas
     }
 
     bool Node::RequiresDynamicSlotOrdering() const
+    {
+        return false;
+    }
+
+    bool Node::RequiresStateNotifications() const
     {
         return false;
     }

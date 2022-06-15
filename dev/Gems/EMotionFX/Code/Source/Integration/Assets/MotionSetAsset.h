@@ -46,8 +46,8 @@ namespace EMotionFX
             AZ_RTTI(MotionSetAsset, "{1DA936A0-F766-4B2F-B89C-9F4C8E1310F9}", EMotionFXAsset)
             AZ_CLASS_ALLOCATOR_DECL
 
-            MotionSetAsset();
-            ~MotionSetAsset();
+            MotionSetAsset(AZ::Data::AssetId id = AZ::Data::AssetId());
+            ~MotionSetAsset() override;
 
             // AZ::Data::AssetBus::MultiHandler
             void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
@@ -58,7 +58,7 @@ namespace EMotionFX
 
             AZStd::unique_ptr<EMotionFX::MotionSet>     m_emfxMotionSet;            ///< EMotionFX motion set
             AZStd::vector<AZ::Data::Asset<MotionAsset>> m_motionAssets;             ///< Handles to all contained motions
-            bool                                        m_isReloadPending;          ///< True if a dependent motion was reloaded and we're pending our own reload notification.
+            bool                                        m_isReloadPending = false;  ///< True if a dependent motion was reloaded and we're pending our own reload notification.
         };
 
         /**

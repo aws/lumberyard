@@ -12,7 +12,7 @@
 #ifndef AZCORE_PP_SEQUENCES
 #define AZCORE_PP_SEQUENCES
 
-// Scripted bus event macros support up to 50 expansions.
+// Scripted bus event macros support up to 64 expansions.
 
 #define AZ_SEQ_FOR_EACH(macro, seq) AZ_SEQ_JOIN(AZ_SEQ_FOR_EACH_, AZ_SEQ_COUNT(seq)(macro, seq))
 #define AZ_SEQ_FOR_EACH_1(macro, seq)   macro(AZ_SEQ_HEAD(seq))
@@ -65,6 +65,20 @@
 #define AZ_SEQ_FOR_EACH_48(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_47(macro, AZ_SEQ_TAIL(seq))
 #define AZ_SEQ_FOR_EACH_49(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_48(macro, AZ_SEQ_TAIL(seq))
 #define AZ_SEQ_FOR_EACH_50(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_49(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_51(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_50(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_52(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_51(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_53(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_52(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_54(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_53(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_55(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_54(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_56(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_55(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_57(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_56(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_58(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_57(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_59(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_58(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_60(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_59(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_61(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_60(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_62(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_61(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_63(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_62(macro, AZ_SEQ_TAIL(seq))
+#define AZ_SEQ_FOR_EACH_64(macro, seq)  macro(AZ_SEQ_HEAD(seq)) AZ_SEQ_FOR_EACH_63(macro, AZ_SEQ_TAIL(seq))
 
 #define AZ_SEQ_COUNT(seq)   AZ_SEQ_JOIN(AZ_SEQ_COUNT_0 seq, _END)
 #define AZ_SEQ_COUNT_0(x)   AZ_SEQ_COUNT_1
@@ -117,7 +131,21 @@
 #define AZ_SEQ_COUNT_47(x)  AZ_SEQ_COUNT_48
 #define AZ_SEQ_COUNT_48(x)  AZ_SEQ_COUNT_49
 #define AZ_SEQ_COUNT_49(x)  AZ_SEQ_COUNT_50
-#define AZ_SEQ_COUNT_50(x)  AZ_SEQ_COUNT_ERROR
+#define AZ_SEQ_COUNT_50(x)  AZ_SEQ_COUNT_51
+#define AZ_SEQ_COUNT_51(x)  AZ_SEQ_COUNT_52
+#define AZ_SEQ_COUNT_52(x)  AZ_SEQ_COUNT_53
+#define AZ_SEQ_COUNT_53(x)  AZ_SEQ_COUNT_54
+#define AZ_SEQ_COUNT_54(x)  AZ_SEQ_COUNT_55
+#define AZ_SEQ_COUNT_55(x)  AZ_SEQ_COUNT_56
+#define AZ_SEQ_COUNT_56(x)  AZ_SEQ_COUNT_57
+#define AZ_SEQ_COUNT_57(x)  AZ_SEQ_COUNT_58
+#define AZ_SEQ_COUNT_58(x)  AZ_SEQ_COUNT_59
+#define AZ_SEQ_COUNT_59(x)  AZ_SEQ_COUNT_60
+#define AZ_SEQ_COUNT_60(x)  AZ_SEQ_COUNT_61
+#define AZ_SEQ_COUNT_61(x)  AZ_SEQ_COUNT_62
+#define AZ_SEQ_COUNT_62(x)  AZ_SEQ_COUNT_63
+#define AZ_SEQ_COUNT_63(x)  AZ_SEQ_COUNT_64
+#define AZ_SEQ_COUNT_64(x)  AZ_SEQ_COUNT_ERROR
 
 #define AZ_SEQ_COUNT_0_END  0
 #define AZ_SEQ_COUNT_1_END  1
@@ -170,6 +198,20 @@
 #define AZ_SEQ_COUNT_48_END 48
 #define AZ_SEQ_COUNT_49_END 49
 #define AZ_SEQ_COUNT_50_END 50
+#define AZ_SEQ_COUNT_51_END 51
+#define AZ_SEQ_COUNT_52_END 52
+#define AZ_SEQ_COUNT_53_END 53
+#define AZ_SEQ_COUNT_54_END 54
+#define AZ_SEQ_COUNT_55_END 55
+#define AZ_SEQ_COUNT_56_END 56
+#define AZ_SEQ_COUNT_57_END 57
+#define AZ_SEQ_COUNT_58_END 58
+#define AZ_SEQ_COUNT_59_END 59
+#define AZ_SEQ_COUNT_60_END 60
+#define AZ_SEQ_COUNT_61_END 61
+#define AZ_SEQ_COUNT_62_END 62
+#define AZ_SEQ_COUNT_63_END 63
+#define AZ_SEQ_COUNT_64_END 64
 
 #define AZ_SEQ_HEAD(seq)        AZ_SEQ_HEAD_II((AZ_SEQ_HEAD_I seq))
 #define AZ_SEQ_HEAD_I(x)        x, NIL
@@ -217,6 +259,39 @@
 #define AZ_REP_APPLY30(X) AZ_REP_APPLY29(X) X(30)
 #define AZ_REP_APPLY31(X) AZ_REP_APPLY30(X) X(31)
 #define AZ_REP_APPLY32(X) AZ_REP_APPLY31(X) X(32)
+#define AZ_REP_APPLY33(X) AZ_REP_APPLY32(X) X(33)
+#define AZ_REP_APPLY34(X) AZ_REP_APPLY33(X) X(34)
+#define AZ_REP_APPLY35(X) AZ_REP_APPLY34(X) X(35)
+#define AZ_REP_APPLY36(X) AZ_REP_APPLY35(X) X(36)
+#define AZ_REP_APPLY37(X) AZ_REP_APPLY36(X) X(37)
+#define AZ_REP_APPLY38(X) AZ_REP_APPLY37(X) X(38)
+#define AZ_REP_APPLY39(X) AZ_REP_APPLY38(X) X(39)
+#define AZ_REP_APPLY40(X) AZ_REP_APPLY39(X) X(40)
+#define AZ_REP_APPLY41(X) AZ_REP_APPLY40(X) X(41)
+#define AZ_REP_APPLY42(X) AZ_REP_APPLY41(X) X(42)
+#define AZ_REP_APPLY43(X) AZ_REP_APPLY42(X) X(43)
+#define AZ_REP_APPLY44(X) AZ_REP_APPLY43(X) X(44)
+#define AZ_REP_APPLY45(X) AZ_REP_APPLY44(X) X(45)
+#define AZ_REP_APPLY46(X) AZ_REP_APPLY45(X) X(46)
+#define AZ_REP_APPLY47(X) AZ_REP_APPLY46(X) X(47)
+#define AZ_REP_APPLY48(X) AZ_REP_APPLY47(X) X(48)
+#define AZ_REP_APPLY49(X) AZ_REP_APPLY48(X) X(49)
+#define AZ_REP_APPLY50(X) AZ_REP_APPLY49(X) X(50)
+#define AZ_REP_APPLY51(X) AZ_REP_APPLY50(X) X(51)
+#define AZ_REP_APPLY52(X) AZ_REP_APPLY51(X) X(52)
+#define AZ_REP_APPLY53(X) AZ_REP_APPLY52(X) X(53)
+#define AZ_REP_APPLY54(X) AZ_REP_APPLY53(X) X(54)
+#define AZ_REP_APPLY55(X) AZ_REP_APPLY54(X) X(55)
+#define AZ_REP_APPLY56(X) AZ_REP_APPLY55(X) X(56)
+#define AZ_REP_APPLY57(X) AZ_REP_APPLY56(X) X(57)
+#define AZ_REP_APPLY58(X) AZ_REP_APPLY57(X) X(58)
+#define AZ_REP_APPLY59(X) AZ_REP_APPLY58(X) X(59)
+#define AZ_REP_APPLY60(X) AZ_REP_APPLY59(X) X(60)
+#define AZ_REP_APPLY61(X) AZ_REP_APPLY60(X) X(61)
+#define AZ_REP_APPLY62(X) AZ_REP_APPLY61(X) X(62)
+#define AZ_REP_APPLY63(X) AZ_REP_APPLY62(X) X(63)
+#define AZ_REP_APPLY64(X) AZ_REP_APPLY63(X) X(64)
+
 
 #define AZ_PP_REPEAT(FUNC, N) AZ_PP_REPEAT_I(FUNC, N)
 #define AZ_PP_REPEAT_I(FUNC, N) AZ_PP_REPEAT_II(AZ_SEQ_JOIN(AZ_REP_APPLY, N), FUNC)
@@ -257,6 +332,38 @@
 #define AZ_DEC_30 29
 #define AZ_DEC_31 30
 #define AZ_DEC_32 31
+#define AZ_DEC_33 32
+#define AZ_DEC_34 33
+#define AZ_DEC_35 34
+#define AZ_DEC_36 35
+#define AZ_DEC_37 36
+#define AZ_DEC_38 37
+#define AZ_DEC_39 38
+#define AZ_DEC_40 39
+#define AZ_DEC_41 40
+#define AZ_DEC_42 41
+#define AZ_DEC_43 42
+#define AZ_DEC_44 43
+#define AZ_DEC_45 44
+#define AZ_DEC_46 45
+#define AZ_DEC_47 46
+#define AZ_DEC_48 47
+#define AZ_DEC_49 48
+#define AZ_DEC_50 49
+#define AZ_DEC_51 50
+#define AZ_DEC_52 51
+#define AZ_DEC_53 52
+#define AZ_DEC_54 53
+#define AZ_DEC_55 54
+#define AZ_DEC_56 55
+#define AZ_DEC_57 56
+#define AZ_DEC_58 57
+#define AZ_DEC_59 58
+#define AZ_DEC_60 59
+#define AZ_DEC_61 60
+#define AZ_DEC_62 61
+#define AZ_DEC_63 62
+#define AZ_DEC_64 63
 
 #define AZ_INC(x) AZ_INC_IMPL(x)
 #define AZ_INC_IMPL(x) AZ_INC_ ## x
@@ -293,5 +400,37 @@
 #define AZ_INC_29 30
 #define AZ_INC_30 31
 #define AZ_INC_31 32
+#define AZ_INC_32 33
+#define AZ_INC_33 34
+#define AZ_INC_34 35
+#define AZ_INC_35 36
+#define AZ_INC_36 37
+#define AZ_INC_37 38
+#define AZ_INC_38 39
+#define AZ_INC_39 40
+#define AZ_INC_40 41
+#define AZ_INC_41 42
+#define AZ_INC_42 43
+#define AZ_INC_43 44
+#define AZ_INC_44 45
+#define AZ_INC_45 46
+#define AZ_INC_46 47
+#define AZ_INC_47 48
+#define AZ_INC_48 49
+#define AZ_INC_49 50
+#define AZ_INC_50 51
+#define AZ_INC_51 52
+#define AZ_INC_52 53
+#define AZ_INC_53 54
+#define AZ_INC_54 55
+#define AZ_INC_55 56
+#define AZ_INC_56 57
+#define AZ_INC_57 58
+#define AZ_INC_58 59
+#define AZ_INC_59 60
+#define AZ_INC_60 61
+#define AZ_INC_61 62
+#define AZ_INC_62 63
+#define AZ_INC_63 64
 
 #endif  // AZCORE_PP_SEQUENCES

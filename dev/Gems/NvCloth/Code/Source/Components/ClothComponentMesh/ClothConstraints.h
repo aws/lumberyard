@@ -50,7 +50,16 @@ namespace NvCloth
         void SetBackstopMaxOffsets(float backOffset, float frontOffset);
 
     private:
-        AZ::Vector3 CalculateBackstopSpherePosition(size_t index) const;
+        void CalculateMotionConstraints();
+        void CalculateSeparationConstraints();
+        AZ::Vector3 CalculateBackstopSpherePosition(
+            const AZ::Vector3& position,
+            const AZ::Vector3& normal,
+            float offset,
+            float radius) const;
+
+        // Simulation Particles
+        AZStd::vector<SimParticleFormat> m_simParticles;
 
         // Motion constraints data
         AZStd::vector<float> m_motionConstraintsData;

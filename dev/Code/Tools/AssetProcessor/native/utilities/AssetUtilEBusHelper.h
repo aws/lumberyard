@@ -186,6 +186,9 @@ namespace AssetProcessor
         // This function will either return the registry version of the next registry save or of the current one, if it is in progress
         // It will not put another save registry event in the event pump if we are currently in the process of saving the registry
         virtual int SaveRegistry() = 0;
+        
+        // This method checks for cyclic preload dependency for all the currently processed assets.
+        virtual void ValidatePreLoadDependency() = 0;
     };
 
     typedef AZ::EBus<AssetRegistryRequests> AssetRegistryRequestBus;

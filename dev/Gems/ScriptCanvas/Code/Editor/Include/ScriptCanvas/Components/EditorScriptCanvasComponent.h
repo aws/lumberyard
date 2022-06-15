@@ -117,7 +117,7 @@ namespace ScriptCanvasEditor
         //=====================================================================
         // AssetCatalogEventBus
         void OnCatalogAssetAdded(const AZ::Data::AssetId& assetId) override;
-        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& assetInfo) override;
         //=====================================================================
 
         void OnScriptCanvasAssetChanged(AZ::Data::AssetId assetId);

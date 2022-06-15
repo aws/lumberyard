@@ -42,6 +42,7 @@ namespace AZStd
 
     using std::forward;
     using std::declval;
+    using std::exchange;
 
     template <class T>
     struct default_delete

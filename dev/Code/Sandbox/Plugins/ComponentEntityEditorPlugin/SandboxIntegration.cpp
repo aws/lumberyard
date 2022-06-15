@@ -277,17 +277,15 @@ void SandboxIntegrationManager::OnCatalogAssetAdded(const AZ::Data::AssetId& ass
     }
 }
 
-// This event handler will be triggered on a non-main thread. No mutex is used for now because the only 
+// No mutex is used for now because the only 
 // operation writing to shared resource is queued on main thread.
-void SandboxIntegrationManager::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
+void SandboxIntegrationManager::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& assetInfo)
 {
     // Check to see if the removed slice asset has any instance in the level, then check if 
     // those dangling instances are directly under the root slice (not sub-slices). If yes,
     // detach them and save necessary information so they can be restored when their slice asset
     // comes back.
 
-    AZ::Data::AssetInfo assetInfo;
-    AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetInfoById, assetId);
     if (assetInfo.m_assetType == AZ::AzTypeInfo<AZ::SliceAsset>::Uuid())
     {
         AZ::SliceComponent* rootSlice = nullptr;

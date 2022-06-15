@@ -11,10 +11,10 @@
  */
 #pragma once
 
+#include <Actor/BlastActorDesc.h>
 #include <Actor/ShapesProvider.h>
 #include <AzFramework/Physics/WorldBodyBus.h>
 #include <Blast/BlastActor.h>
-#include <Actor/BlastActorDesc.h>
 #include <PhysX/ColliderComponentBus.h>
 
 namespace Nv::Blast
@@ -25,7 +25,9 @@ namespace Nv::Blast
 namespace Blast
 {
     //! Provides the glue between Blast actors and the PhysX actors they manipulate.
-    class BlastActorImpl : public BlastActor
+    class BlastActorImpl
+        : public BlastActor
+        , public Physics::WorldBodyNotificationBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(BlastActorImpl, AZ::SystemAllocator, 0);
@@ -63,6 +65,13 @@ namespace Blast
         void AddShapes(
             const AZStd::vector<uint32_t>& chunkIndices, const Nv::Blast::ExtPxAsset& asset,
             const Physics::MaterialId& material);
+
+        void InitializeRigidBody(const AZ::Transform& transform);
+
+        // Physics::WorldBodyNotificationBus
+        void OnPhysicsEnabled() override;
+        void OnPhysicsDisabled() override;
+
 
         const BlastFamily& m_family;
         Nv::Blast::TkActor& m_tkActor;

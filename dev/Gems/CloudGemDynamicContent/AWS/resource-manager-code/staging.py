@@ -9,18 +9,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #1 $
-import json
 import datetime
+import json
 
 from botocore.exceptions import ClientError
 
-from resource_manager.errors import HandledError
-from cgf_utils import custom_resource_utils
-import resource_manager.util
-
-import dynamic_content_settings
-import show_manifest
 import content_bucket
+import dynamic_content_settings
+import resource_manager.util
+import show_manifest
+from cgf_utils import custom_resource_utils
+from resource_manager.errors import HandledError
 
 
 def get_staging_table(context, deployment_name, versioned=False):
@@ -43,7 +42,7 @@ def _get_stack_resource_by_name(context, deployment_name, resource_group_name, r
     """Returns the resource id of the staging table."""
     if deployment_name is None:
         deployment_name = context.config.default_deployment
-  
+
     stack_id = context.config.get_resource_group_stack_id(deployment_name, resource_group_name, optional=True)
 
     resource_obj = context.stack.get_physical_resource_id(stack_id, resource_name)
@@ -53,10 +52,12 @@ def _get_stack_resource_by_name(context, deployment_name, resource_group_name, r
 
 
 def _get_request_lambda(context):
-    return _get_request_lambda_by_name(context, context.config.default_deployment, dynamic_content_settings.get_default_resource_group(), dynamic_content_settings.get_default_request_lambda_name())
+    return _get_request_lambda_by_name(context, context.config.default_deployment, dynamic_content_settings.get_default_resource_group(),
+                                       dynamic_content_settings.get_default_request_lambda_name())
 
 
-def _get_request_lambda_by_name(context, deployment_name, resource_group_name=dynamic_content_settings.get_default_resource_group(), lambda_name=dynamic_content_settings.get_default_request_lambda_name()):
+def _get_request_lambda_by_name(context, deployment_name, resource_group_name=dynamic_content_settings.get_default_resource_group(),
+                                lambda_name=dynamic_content_settings.get_default_request_lambda_name()):
     """Returns the resource id of the request lambda."""
     return _get_stack_resource_by_name(context, deployment_name, resource_group_name, lambda_name)
 
@@ -95,12 +96,13 @@ def command_set_staging_status(context, args):
     set_staging_status(args.file_path, context, staging_args, context.config.default_deployment, args.version_id)
 
     if args.include_children:
-        children = _get_children_by_parent_name_and_version(context, args.file_path, args.version_id)
+        children = get_children_by_parent_name_and_version(context, args.file_path, args.version_id)
         for child in children:
-            set_staging_status(child.get('FileName', {}).get('S'), context, staging_args, context.config.default_deployment, child.get('VersionId', {}).get('S'))
+            set_staging_status(child.get('FileName', {}).get('S'), context, staging_args, context.config.default_deployment,
+                               child.get('VersionId', {}).get('S'))
 
 
-def _get_children_by_parent_name_and_version(context: object, parent_name: str, parent_version_id: str = None) ->list:
+def get_children_by_parent_name_and_version(context: object, parent_name: str, parent_version_id: str = None) -> list:
     dynamoDB = context.aws.client('dynamodb', region=resource_manager.util.get_region_from_arn(context.config.project_stack_id))
     versioned = content_bucket.content_versioning_enabled(context, context.config.default_deployment)
     table_arn = get_staging_table(context, context.config.default_deployment, versioned)
@@ -135,14 +137,14 @@ def set_staging_status(file_path, context, staging_args, deployment_name, versio
     parent_version_id = staging_args.get('ParentVersionId')
     file_size = staging_args.get('Size')
     file_hash = staging_args.get('Hash')
-        
+
     if staging_status == 'WINDOW':
         if not staging_start:
             raise HandledError('No start-date set for WINDOW staging_status')
-            
+
         if not staging_end:
-            raise HandledError('No end-date set for WINDOW staging_status')  
-          
+            raise HandledError('No end-date set for WINDOW staging_status')
+
     dynamoDB = context.aws.client('dynamodb', region=resource_manager.util.get_region_from_arn(context.config.project_stack_id))
     versioned = content_bucket.content_versioning_enabled(context, deployment_name)
     table_arn = get_staging_table(context, deployment_name, versioned)
@@ -155,7 +157,7 @@ def set_staging_status(file_path, context, staging_args, deployment_name, versio
                 'S': staging_status
             }
         }
-    
+
     if parent_pak and len(parent_pak):
         attributeUpdate['Parent'] = {
             'Value': {
@@ -165,9 +167,9 @@ def set_staging_status(file_path, context, staging_args, deployment_name, versio
 
     if versioned and parent_version_id:
         response = dynamoDB.get_item(
-                TableName=table_arn,
-                Key=key
-            )
+            TableName=table_arn,
+            Key=key
+        )
         item = response.get('Item', {})
         parent_version_ids = item.get('ParentVersionIds', {}).get('SS', [])
         if parent_version_id not in parent_version_ids:
@@ -177,7 +179,7 @@ def set_staging_status(file_path, context, staging_args, deployment_name, versio
                     'SS': parent_version_ids
                 }
             }
-        
+
     if signature:
         # Ensure signature from UX is handled
         if isinstance(signature, (bytes, bytearray)):
@@ -213,26 +215,26 @@ def set_staging_status(file_path, context, staging_args, deployment_name, versio
         else:
             # Validate our input
             time_start = get_formatted_time_string(get_struct_time(staging_start))
-            
+
         time_end = None
         if staging_end.lower() == 'never':
             time_end = get_formatted_time_string(datetime.datetime.utcnow() + datetime.timedelta(days=dynamic_content_settings.get_max_days()))
         else:
             # Validate our input
             time_end = get_formatted_time_string(get_struct_time(staging_end))
-            
+
         attributeUpdate['StagingStart'] = {
             'Value': {
                 'S': time_start
             }
         }
-        
+
         attributeUpdate['StagingEnd'] = {
             'Value': {
                 'S': time_end
             }
         }
-            
+
     try:
         response = dynamoDB.update_item(
             TableName=table_arn,
@@ -266,41 +268,40 @@ def set_staging_status(file_path, context, staging_args, deployment_name, versio
 def empty_staging_table(context, deleted_object_list):
     dynamoDB = context.aws.client('dynamodb', region=resource_manager.util.get_region_from_arn(context.config.project_stack_id))
     versioned = content_bucket.content_versioning_enabled(context, context.config.default_deployment)
-    table_arn = get_staging_table(context, context.config.default_deployment, versioned)    
+    table_arn = get_staging_table(context, context.config.default_deployment, versioned)
     for this_item in deleted_object_list:
         key_path = this_item.get('Key')
         if versioned:
             remove_entry(context, key_path, this_item.get('VersionId'))
         else:
-            remove_entry(context, key_path)           
+            remove_entry(context, key_path)
 
-            
+
 def remove_entry(context, file_path, version_id=None):
     dynamoDB = context.aws.client('dynamodb', region=resource_manager.util.get_region_from_arn(context.config.project_stack_id))
     versioned = content_bucket.content_versioning_enabled(context, context.config.default_deployment)
     table_arn = get_staging_table(context, context.config.default_deployment, versioned)
-    key={'FileName': {'S': file_path},'VersionId': {'S': version_id}} if versioned else {'FileName': {'S': file_path}}
+    key = {'FileName': {'S': file_path}, 'VersionId': {'S': version_id}} if versioned else {'FileName': {'S': file_path}}
     try:
         response = dynamoDB.delete_item(
             TableName=table_arn,
             Key=key
         )
     except Exception as e:
-        raise HandledError('Could not delete entry for for'.format(FilePath=file_path,), e)
+        raise HandledError('Could not delete entry for for'.format(FilePath=file_path, ), e)
+
 
 def command_request_url(context, args):
     file_name = args.file_path
-    
-    file_list = []
-    file_list.append(file_name)
-    
-    request = {}
-    request['FileList'] = file_list
-    
+
+    file_list = [file_name]
+
+    request = {'FileList': file_list}
+
     lambdaClient = context.aws.client('lambda', region=resource_manager.util.get_region_from_arn(context.config.project_stack_id))
-    
+
     lambda_arn = _get_request_lambda(context)
-    
+
     contextRequest = json.dumps(request)
     print('Using request {}'.format(contextRequest))
     try:
@@ -313,7 +314,8 @@ def command_request_url(context, args):
         payload_string = payloadstream.read()
         print('Got result {}'.format(payload_string))
     except Exception as e:
-        raise HandledError('Could not get URL for'.format(FilePath=file_name,), e)
+        raise HandledError('Could not get URL for'.format(FilePath=file_name, ), e)
+
 
 def signing_status_changed(context, key, do_signing, version_id):
     dynamoDB = context.aws.client('dynamodb', region=resource_manager.util.get_region_from_arn(context.config.project_stack_id))
@@ -337,4 +339,3 @@ def signing_status_changed(context, key, do_signing, version_id):
 
     pak_is_signed = response.get('Item', {}).get('Signature', {}).get('S', '') != ''
     return pak_is_signed != do_signing
-

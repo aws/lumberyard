@@ -18,44 +18,46 @@ def build(bld):
 
     bld.DefineGem(
         # Add custom build options here
-        includes            = [ 'Include'
-                              , 'Source'
-                              , 'Tests/Mocks'
-                              , bld.Path('Gems/PhysX/Code/Include/') # for LY -> PhysX conversions
-                              , bld.Path('Code/CryEngine/CryCommon')
-                              , bld.Path('Code/Framework/AzToolsFramework')
-                              ],
-        file_list           = [ 'blast.waf_files' ],
-        test_file_list      = [ 'blast_tests.waf_files' ],
-        uselib              = [ 'BLAST_LIB', physx_sdk_lib ],
-        use                 = [ 'PHYSX', 'LmbrCentral' ],
-        platforms           = ['win'],
+        disable_pch             = True,
+        includes                = [ 'Include'
+                                  , 'Source'
+                                  , 'Tests/Mocks'
+                                  , bld.Path('Gems/PhysX/Code/Include/') # for LY -> PhysX conversions
+                                  , bld.Path('Code/CryEngine/CryCommon')
+                                  , bld.Path('Code/Framework/AzToolsFramework')
+                                  ],
+        win_test_file_list      = [ 'blast_tests_supported.waf_files' ],
+        uselib                  = [ 'BLAST_LIB', physx_sdk_lib ],
+        use                     = [ 'PHYSX', 'LmbrCentral' ],
+        platform_roots          = [ bld.PlatformRoot('Platform', export_includes=False) ],
 
         editor = dict(
-            defines         = [ 'BLAST_EDITOR' ],
-            includes        = [ bld.Path('Code/Sandbox')
-                              , bld.Path('Code/Sandbox/Editor')
-                              , bld.Path('Code/Sandbox/Editor/Include')
-                              , bld.Path('Gems/LmbrCentral/Code/Include')
-                              , bld.Path('Gems/LmbrCentral/Code/Source')
-                              , bld.Path('Code/CryEngine/CryCommon')
-                              , bld.Path('Gems/PhysX/Code/Include/')
-                              , bld.Path('Code/Tools')
-                              ],
-            file_list       = [ 'blast_editor.waf_files' ] + [ 'blast.waf_files' ],
-            test_file_list  = [ 'blast_tests_editor.waf_files' ],            
-            uselib          = [ 'BLAST_LIB', physx_sdk_lib],
-            use             = [ 'AzToolsFramework'
-                              , 'AzQtComponents'
-                              , 'EditorCore'
-                              , 'LmbrCentral'
-                              , 'LmbrCentral.Editor'
-                              , 'EditorCommon'
-                              , 'AzFramework'
-                              , 'PHYSX'
-                              , 'SceneData'
-                              , 'SceneCore'
-                              ],
-            platforms       = ['win'],
+            disable_pch         = True,
+            defines             = [ 'BLAST_EDITOR' ],
+            includes            = [ bld.Path('Code/Sandbox')
+                                  , bld.Path('Code/Sandbox/Editor')
+                                  , bld.Path('Code/Sandbox/Editor/Include')
+                                  , bld.Path('Gems/LmbrCentral/Code/Include')
+                                  , bld.Path('Gems/LmbrCentral/Code/Source')
+                                  , bld.Path('Code/CryEngine/CryCommon')
+                                  , bld.Path('Gems/PhysX/Code/Include/')
+                                  , bld.Path('Code/Tools')
+                                  ],
+            win_file_list       = [ 'blast_supported.waf_files', 'blast_editor_supported.waf_files' ],
+            darwin_file_list    = [ 'blast_unsupported.waf_files' ],
+            linux_file_list     = [ 'blast_unsupported.waf_files' ],
+            win_test_file_list  = [ 'blast_tests_editor_supported.waf_files' ],            
+            uselib              = [ 'BLAST_LIB', physx_sdk_lib],
+            use                 = [ 'AzToolsFramework'
+                                  , 'AzQtComponents'
+                                  , 'EditorCore'
+                                  , 'LmbrCentral'
+                                  , 'LmbrCentral.Editor'
+                                  , 'EditorCommon'
+                                  , 'AzFramework'
+                                  , 'PHYSX'
+                                  , 'SceneData'
+                                  , 'SceneCore'
+                                  ]
         ),
     )

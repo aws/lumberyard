@@ -182,16 +182,26 @@ namespace ScriptCanvas
                 }
                 else if (slot == cancelSlotId)
                 {
-                    m_holding = false;
-                    m_currentTime = 0.f;
-
-                    AZ::TickBus::Handler::BusDisconnect();
+                    CancelCountdown();
                 }
             }
 
             bool Countdown::IsOutOfDate() const
             {
                 return !CountdownProperty::GetCancelSlotId(this).IsValid();
+            }
+
+            void Countdown::OnRuntimeStopped()
+            {
+                CancelCountdown();
+            }
+
+            void Countdown::CancelCountdown()
+            {
+                m_holding = false;
+                m_currentTime = 0.f;
+
+                AZ::TickBus::Handler::BusDisconnect();
             }
 
             void Countdown::OnTick(float deltaTime, AZ::ScriptTimePoint time)
@@ -237,7 +247,7 @@ namespace ScriptCanvas
 
             void Countdown::OnDeactivate()
             {
-                AZ::TickBus::Handler::BusDisconnect();
+                OnRuntimeStopped();
             }
 
             UpdateResult Countdown::OnUpdateNode()

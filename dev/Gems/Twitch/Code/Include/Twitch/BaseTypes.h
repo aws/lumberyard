@@ -83,6 +83,10 @@ namespace Twitch
         {                                                                                                           \
             AZ_TYPE_INFO(_valueType, _ClassGUID);                                                                   \
                                                                                                                     \
+            _valueType()                                                                                            \
+                : ReturnValue()                                                                                     \
+                , Value()                                                                                           \
+                {}                                                                                                  \
             _valueType(const _returnType& value, const ReceiptID& recieptID, ResultCode result=ResultCode::Success) \
                 : ReturnValue(recieptID, result)                                                                    \
                 , Value(value)                                                                                      \

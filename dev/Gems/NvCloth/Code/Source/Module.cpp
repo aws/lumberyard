@@ -97,7 +97,8 @@ namespace NvCloth
         AZStd::unique_ptr<TangentSpaceHelper> m_tangentSpaceHelper;
 
 #ifdef NVCLOTH_EDITOR
-        AZStd::vector<AzToolsFramework::PropertyHandlerBase*> m_propertyHandlers;
+        using PropertyHandlers = AZStd::vector<AzToolsFramework::PropertyHandlerBase*>;
+        AZStd::unique_ptr<PropertyHandlers> m_propertyHandlers;
 #endif //NVCLOTH_EDITOR
     };
 
@@ -116,14 +117,16 @@ namespace NvCloth
         [[maybe_unused]] const SSystemInitParams& systemInitParams)
     {
 #ifdef NVCLOTH_EDITOR
-        m_propertyHandlers = NvCloth::Editor::RegisterPropertyTypes();
+        m_propertyHandlers = AZStd::make_unique<PropertyHandlers>();
+        *m_propertyHandlers = NvCloth::Editor::RegisterPropertyTypes();
 #endif //NVCLOTH_EDITOR
     }
 
     void Module::OnCrySystemShutdown([[maybe_unused]] ISystem& system)
     {
 #ifdef NVCLOTH_EDITOR
-        NvCloth::Editor::UnregisterPropertyTypes(m_propertyHandlers);
+        NvCloth::Editor::UnregisterPropertyTypes(*m_propertyHandlers);
+        m_propertyHandlers.reset();
 #endif //NVCLOTH_EDITOR
     }
 

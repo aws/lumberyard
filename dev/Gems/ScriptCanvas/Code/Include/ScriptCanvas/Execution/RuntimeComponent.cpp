@@ -263,6 +263,8 @@ namespace ScriptCanvas
             }
         }
 
+        RuntimeNotificationBus::Event(m_scriptCanvasId, &RuntimeNotifications::OnRuntimeStopped);
+
         m_executionContext.DeactivateContext();
 
         SC_EXECUTION_TRACE_GRAPH_DEACTIVATED(CreateDeactivationInfo());
@@ -743,6 +745,8 @@ namespace ScriptCanvas
                 variable->SetOwningScriptCanvasId(m_scriptCanvasId);
             }
         }
+
+        RuntimeNotificationBus::Event(m_scriptCanvasId, &RuntimeNotifications::OnRuntimeReset);
     }
 
     void RuntimeComponent::SetVariableEntityIdMap(const AZStd::unordered_map<AZ::u64, AZ::EntityId> variableEntityIdMap)

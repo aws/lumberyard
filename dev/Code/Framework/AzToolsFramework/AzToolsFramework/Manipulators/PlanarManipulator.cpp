@@ -17,6 +17,7 @@
 #include <AzToolsFramework/Manipulators/ManipulatorSnapping.h>
 #include <AzToolsFramework/Manipulators/ManipulatorView.h>
 #include <AzToolsFramework/Maths/TransformUtils.h>
+#include <AzToolsFramework/ViewportSelection/EditorSelectionUtil.h>
 
 namespace AzToolsFramework
 {
@@ -76,6 +77,10 @@ namespace AzToolsFramework
         Internal::CalculateRayPlaneIntersectingPoint(
             manipulatorInteraction.m_localRayOrigin, manipulatorInteraction.m_localRayDirection,
             startInternal.m_localHitPosition, normal, localHitPosition);
+
+        localHitPosition = Internal::TryConstrainHitPositionToView(
+            localHitPosition, startInternal.m_localHitPosition, worldFromLocal.GetInverseFull(),
+            GetCameraState(interaction.m_interactionId.m_viewportId));
 
         const AZ::Vector3 axis1 = TransformDirectionNoScaling(localTransform, fixed.m_axis1);
         const AZ::Vector3 axis2 = TransformDirectionNoScaling(localTransform, fixed.m_axis2);

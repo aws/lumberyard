@@ -13,6 +13,7 @@
 #pragma once
 
 #include <EMotionFX/Source/AnimGraph.h>
+#include <Integration/Assets/AnimGraphAsset.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <QWidget>
 #include <QPushButton>
@@ -27,14 +28,18 @@ namespace EMotionFX
     //
     class AnimGraphParameterPicker
         : public QWidget
+        , private AZ::Data::AssetBus::Handler
     {
         Q_OBJECT // AUTOMOC
     public:
         AZ_CLASS_ALLOCATOR_DECL
         
         AnimGraphParameterPicker(QWidget* parent,  bool singleSelection = false, bool parameterMaskMode = false);
+        ~AnimGraphParameterPicker();
+
         void SetFilterTypes(const AZStd::vector<AZ::TypeId>& filterTypes) { m_filterTypes = filterTypes; }
-        void SetAnimGraph(AnimGraph* animGraph) { m_animGraph = animGraph; }
+        void SetAnimGraph(AnimGraph* animGraph);
+        void SetAnimGraphAsset(const AZ::Data::Asset<Integration::AnimGraphAsset>& animGraphAsset);
         void SetObjectAffectedByParameterChanges(ObjectAffectedByParameterChanges* affectedObject);
 
         // Called to initialize the parameter names in the UI from values in the object
@@ -48,6 +53,10 @@ namespace EMotionFX
         void SetSingleParameterName(const AZStd::string& parameterName);
         const AZStd::string GetSingleParameterName() const;
 
+        // AZ::Data::AssetBus::Handler
+        void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+        void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+
     signals:
         void ParametersChanged(const AZStd::vector<AZStd::string>& newParameters);
 
@@ -59,6 +68,7 @@ namespace EMotionFX
     private:
         void UpdateInterface();
 
+        AZ::Data::Asset<Integration::AnimGraphAsset> m_animGraphAsset;
         AnimGraph* m_animGraph;
         ObjectAffectedByParameterChanges* m_affectedByParameterChanges;
         AZStd::vector<AZStd::string> m_parameterNames;
@@ -90,9 +100,6 @@ namespace EMotionFX
 
         void WriteGUIValuesIntoProperty(size_t index, AnimGraphParameterPicker* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node) override;
         bool ReadValuesIntoGUI(size_t index, AnimGraphParameterPicker* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node) override;
-
-    protected:
-        AnimGraph* m_animGraph;
     };
 
     class AnimGraphSingleNumberParameterHandler

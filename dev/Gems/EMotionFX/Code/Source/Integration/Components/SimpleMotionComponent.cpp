@@ -110,6 +110,7 @@ namespace EMotionFX
                         ->Attribute(AZ::Script::Attributes::Ignore, true)
                     ->Event("GetMotion", &SimpleMotionComponentRequestBus::Events::GetMotion)
                         ->Attribute(AZ::Script::Attributes::Ignore, true)
+                     ->VirtualProperty("Motion", "GetMotion", "Motion")
                     ->Event("BlendInTime", &SimpleMotionComponentRequestBus::Events::BlendInTime)
                     ->Event("GetBlendInTime", &SimpleMotionComponentRequestBus::Events::GetBlendInTime)
                         ->Attribute("Hidden", AZ::Edit::Attributes::PropertyHidden)

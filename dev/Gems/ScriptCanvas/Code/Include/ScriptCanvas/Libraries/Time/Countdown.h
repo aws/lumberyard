@@ -118,6 +118,7 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Name("Delay")
                     ScriptCanvas_Node::Uuid("{FAEADF5A-F7D9-415A-A3E8-F534BD379B9A}")
                     ScriptCanvas_Node::Description("Counts down time from a specified value.")
+                    ScriptCanvas_Node::RequiresStateNotifications(true)
                     ScriptCanvas_Node::Version(2, CountdownNodeVersionConverter)
                 );
 
@@ -183,7 +184,13 @@ namespace ScriptCanvas
 
                 bool IsOutOfDate() const override;
 
+                // RuntimeNotificationBus
+                void OnRuntimeStopped() override;
+                ////
+
             protected:
+
+                void CancelCountdown();
 
                 void OnDeactivate() override;
 

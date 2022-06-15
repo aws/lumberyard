@@ -24,6 +24,11 @@ namespace ScriptCanvas
                 , m_milliseconds(0.f)
             {}
 
+            void Timer::OnRuntimeStopped()
+            {
+                AZ::TickBus::Handler::BusDisconnect();
+            }
+
             void Timer::OnTick(float deltaTime, AZ::ScriptTimePoint time)
             {
                 const SlotId millisecondsSlot = TimerProperty::GetMillisecondsSlotId(this);
@@ -69,7 +74,7 @@ namespace ScriptCanvas
 
             void Timer::OnDeactivate()
             {
-                AZ::TickBus::Handler::BusDisconnect();
+                OnRuntimeStopped();
             }
         }
     }

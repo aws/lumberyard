@@ -408,7 +408,7 @@ namespace
         {
             // We have "pyRunFile filename x y z", so copy everything past filename into a new vector
             AZStd::vector<AZStd::string_view> pythonArgs;
-            AZStd::transform(args.begin() + 1, args.end(), std::back_inserter(pythonArgs), [](auto&& value) { return value; });
+            AZStd::transform(args.begin() + 1, args.end(), std::back_inserter(pythonArgs), [](auto&& value) { return value.c_str(); });
             AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(
                 &AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByFilenameWithArgs,
                 args[0],
@@ -633,6 +633,9 @@ BOOL CCryDocManager::DoPromptFileName(QString& fileName, UINT nIDSTitle,
     DWORD lFlags, BOOL bOpenFileDialog, CDocTemplate* pTemplate)
 {
     CLevelFileDialog levelFileDialog(bOpenFileDialog);
+
+    levelFileDialog.show();
+    levelFileDialog.adjustSize();
 
     if (levelFileDialog.exec() == QDialog::Accepted)
     {
@@ -6982,6 +6985,9 @@ void CCryEditApp::OnCreateSlice()
 void CCryEditApp::OnOpenLevel()
 {
     CLevelFileDialog levelFileDialog(true);
+
+    levelFileDialog.show();
+    levelFileDialog.adjustSize();
 
     if (levelFileDialog.exec() == QDialog::Accepted)
     {

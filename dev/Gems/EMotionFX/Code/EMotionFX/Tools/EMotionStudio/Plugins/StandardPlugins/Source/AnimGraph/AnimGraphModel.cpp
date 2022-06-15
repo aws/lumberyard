@@ -207,7 +207,6 @@ namespace EMStudio
 
     QModelIndex AnimGraphModel::parent(const QModelIndex& child) const
     {
-        AZ_Assert(child.isValid(), "Expected valid child model index");
         if (!child.isValid())
         {
             return QModelIndex();
@@ -856,8 +855,7 @@ namespace EMStudio
             if (modelItemData->m_type == ModelItemType::NODE && modelItemData->m_object.m_node->GetAnimGraph() == animGraph)
             {
                 const QModelIndex modelIndex = createIndex(modelItemData->m_row, 0, modelItemData);
-                AboutToBeRemoved(modelIndex);
-                RemovePending();
+                RemoveIndices({modelIndex});
                 break;
             }
         }
@@ -879,7 +877,7 @@ namespace EMStudio
         }
     }
 
-    void AnimGraphModel::OnReferenceAnimGraphChanged(EMotionFX::AnimGraphReferenceNode* referenceNode)
+    void AnimGraphModel::OnReferenceAnimGraphAboutToBeChanged(EMotionFX::AnimGraphReferenceNode* referenceNode)
     {
         // Locate the model indexes for the referenceNode in question, remove the children so we don't loose the connections
         const QModelIndexList modelIndexList = FindModelIndexes(referenceNode);
@@ -896,10 +894,13 @@ namespace EMStudio
         }
         if (!childModelIndexList.empty())
         {
-            AboutToBeRemoved(childModelIndexList);
-            RemovePending();
+            RemoveIndices(childModelIndexList);
         }
+    }
 
+    void AnimGraphModel::OnReferenceAnimGraphChanged(EMotionFX::AnimGraphReferenceNode* referenceNode)
+    {
+        const QModelIndexList modelIndexList = FindModelIndexes(referenceNode);
         EMotionFX::AnimGraph* referencedAnimGraph = referenceNode->GetReferencedAnimGraph();
         if (referencedAnimGraph)
         {
@@ -1153,8 +1154,7 @@ namespace EMStudio
             {
                 if (itModelIndex->second.isValid())
                 {
-                    AboutToBeRemoved(itModelIndex->second);
-                    RemovePending();
+                    RemoveIndices(QModelIndexList{itModelIndex->second});
                     m_modelIndexByAssetId.erase(itModelIndex);
                 }
             }
@@ -1245,63 +1245,49 @@ namespace EMStudio
         return true;
     }
 
-    void AnimGraphModel::AboutToBeRemoved(const QModelIndexList& modelIndexList)
+    void AnimGraphModel::RemoveIndices(const QModelIndexList& modelIndexList)
     {
         for (const QModelIndex& modelIndex : modelIndexList)
         {
-            AboutToBeRemoved(modelIndex);
-        }
-    }
+            m_pendingToDeleteIndices.emplace_back(modelIndex);
 
-    void AnimGraphModel::AboutToBeRemoved(const QModelIndex& modelIndex)
-    {
-        m_pendingToDeleteIndices.emplace_back(modelIndex);
-
-        // Find the focus element that needs to be set before deleting
-        if (m_focus.isValid())
-        {
-            // Collect recursively the parents of m_focus, then remove those contained in m_pendingToDeleteIndices.
-            // Note that a parent could be in m_pendingToDeleteIndices, so we need to remove all the children focus as well.
-            AZStd::vector<QModelIndex> focusParents;
-
-            // 1) collect recursively the parents
-            QModelIndex currentFocus = m_focus;
-            while (currentFocus.isValid())
+            // Find the focus element that needs to be set before deleting
+            if (m_focus.isValid())
             {
-                focusParents.emplace_back(currentFocus);
-                currentFocus = currentFocus.parent();
-            }
+                // Collect recursively the parents of m_focus, then remove those contained in m_pendingToDeleteIndices.
+                // Note that a parent could be in m_pendingToDeleteIndices, so we need to remove all the children focus as well.
+                AZStd::vector<QModelIndex> focusParents;
 
-            // 2) Starting from the parent-most, check if they are in m_pendingToDeleteIndices, if they are, we can stop there
-            // since all children will be removed as well. If not, we continue finding the child-most focus element
-            const int focusCount = static_cast<int>(focusParents.size());
-            for (int i = focusCount - 1; i >= 0; --i)
-            {
-                if (AZStd::find(m_pendingToDeleteIndices.begin(), m_pendingToDeleteIndices.end(), focusParents[i]) != m_pendingToDeleteIndices.end())
+                // 1) collect recursively the parents
+                QModelIndex currentFocus = m_focus;
+                while (currentFocus.isValid())
                 {
-                    // 2.a.) we found the element, remove everything up to this point since all children will be removed
-                    focusParents.erase(focusParents.begin(), focusParents.begin() + i + 1);
-                    break; // nothing else to do
+                    focusParents.emplace_back(currentFocus);
+                    currentFocus = currentFocus.parent();
+                }
+
+                // 2) Starting from the parent-most, check if they are in m_pendingToDeleteIndices, if they are, we can stop there
+                // since all children will be removed as well. If not, we continue finding the child-most focus element
+                const int focusCount = static_cast<int>(focusParents.size());
+                for (int i = focusCount - 1; i >= 0; --i)
+                {
+                    if (AZStd::find(m_pendingToDeleteIndices.begin(), m_pendingToDeleteIndices.end(), focusParents[i]) != m_pendingToDeleteIndices.end())
+                    {
+                        // 2.a.) we found the element, remove everything up to this point since all children will be removed
+                        focusParents.erase(focusParents.begin(), focusParents.begin() + i + 1);
+                        break; // nothing else to do
+                    }
+                }
+
+                // 3) Move the focus to thew new element, if the focus is maintained, the Focus method won't do anything
+                if (!focusParents.empty())
+                {
+                    // If we still have an element, this is our new focus
+                    m_pendingFocus = *focusParents.begin();
                 }
             }
-
-            // 3) Move the focus to thew new element, if the focus is maintained, the Focus method won't do anything
-            if (!focusParents.empty())
-            {
-                // If we still have an element, this is our new focus
-                m_pendingFocus = *focusParents.begin();
-            }
         }
 
-        // Send the signal to UI that we will delete the model index.
-        // Note: This is a custom signal. We have to rely on an earlier custom signal (instead of the standard rowsAboutToBeRemoved signal),
-        // because by the time beginRemoveRows called in RemovePending(), the underlying item already been deleted.
-        const QModelIndex parentModelIndex = modelIndex.parent();
-        AboutToBeRemovedSignal(parentModelIndex, modelIndex.row(), modelIndex.row());
-    }
-
-    void AnimGraphModel::RemovePending()
-    {
         if (m_pendingToDeleteIndices.empty())
         {
             return; // early out, nothing to do

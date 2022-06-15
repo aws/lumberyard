@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/RTTI/RTTI.h>
 #include <AzCore/std/string/string.h>
 
 #include <NvCloth/Types.h>
@@ -25,7 +26,7 @@ namespace NvCloth
     //! Interface to the cloth system that allows to create/destroy cloths and solvers.
     //!
     //! A default solver is always present in the system.
-    //! @note Use AZ::Interface<IClothSystem> to call the interface.
+    //! @note Use AZ::Interface<IClothSystem>::Get() to call the interface.
     class IClothSystem
     {
     public:

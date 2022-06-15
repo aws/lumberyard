@@ -100,9 +100,10 @@ protected:
         AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
     }
 
+    static constexpr char testFileFolder[] = "@root@/../Gems/LmbrCentral/Code/Tests/";
+
     AZStd::string GetFullPath(AZStd::string_view fileName)
     {
-        constexpr char testFileFolder[] = "@root@/../Gems/LmbrCentral/Code/Tests/";
         return AZStd::string::format("%s%.*s", testFileFolder, aznumeric_cast<int>(fileName.size()), fileName.data());
     }
 
@@ -135,7 +136,8 @@ protected:
         CopyDependencyBuilderWorker* worker,
         AZStd::string_view fileName,
         const AZStd::vector<const char*>& expectedPathDependencies,
-        const AZStd::vector<AssetBuilderSDK::ProductDependency>& expectedProductDependencies)
+        const AZStd::vector<AssetBuilderSDK::ProductDependency>& expectedProductDependencies,
+        const AZStd::string watchFolder = {})
     {
         AssetBuilderSDK::ProductPathDependencySet resolvedPaths;
         AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
@@ -152,6 +154,7 @@ protected:
         request.m_fullPath = GetFullPath(fileName);
         request.m_sourceFile = fileName;
         request.m_platformInfo.m_identifier = m_currentPlatform;
+        request.m_watchFolder = watchFolder;
 
         bool result = worker->ParseProductDependencies(request, productDependencies, resolvedPaths);
         ASSERT_TRUE(result);
@@ -1055,10 +1058,22 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_ProductPathRelativeToSourceAssetF
     AZStd::string fileName = "Xmls/XmlExample.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/PathRelativeToSourceAssetFolder"));
+}
+
+TEST_F(CopyDependencyBuilderTest, TestXmlAsset_ProductPathRelativeToProductAssetFolder_OutputProductDependencies)
+{
+    AZStd::string product = "Xmls/dependency1.txt";
+    AZStd::vector<const char*> expectedPaths = {
+        product.c_str()
+    };
+
+    AZStd::string fileName = "Xmls/XmlExample.xml";
+    XmlBuilderWorker builderWorker;
+    builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/PathRelativeToProductAssetFolder"));
 
     AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
 
-    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies, testFileFolder);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_ProductDependencyWithAssetId_OutputProductDependencies)

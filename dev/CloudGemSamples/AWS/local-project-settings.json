@@ -1,14 +1,17 @@
 {
     "default": {
         "DisabledResourceGroups": [
-            "CloudGemLeaderboard", 
-            "CloudGemMessageOfTheDay", 
-            "CloudGemPlayerAccount", 
-            "CloudGemInGameSurvey", 
-            "CloudGemDynamicContent",
-            "CloudGemAWSScriptBehaviors"
+            "CloudGemAWSScriptBehaviors",
+            "CloudGemComputeFarm",
+            "CloudGemDefectReporter",
+            "CloudGemInGameSurvey",
+            "CloudGemLeaderboard",
+            "CloudGemMessageOfTheDay",
+            "CloudGemMetric",
+            "CloudGemSpeechRecognition",
+            "CloudGemTextToSpeech"
         ],
         "Set": "default",
-        "FrameworkVersion": "1.1.4"
+        "FrameworkVersion": "1.1.5"
     }
 }

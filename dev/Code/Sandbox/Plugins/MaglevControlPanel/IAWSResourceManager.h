@@ -699,8 +699,6 @@ public:
 
     virtual bool IsOperationInProgress() = 0;
 
-    virtual void OpenCGP() = 0;
-
 Q_SIGNALS:
 
     void ProjectInitializedChanged();

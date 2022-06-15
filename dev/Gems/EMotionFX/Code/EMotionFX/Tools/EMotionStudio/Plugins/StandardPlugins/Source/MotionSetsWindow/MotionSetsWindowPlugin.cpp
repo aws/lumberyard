@@ -406,6 +406,11 @@ namespace EMStudio
         {
             motionSetsPlugin->ReInit();
         }
+        else
+        {
+            // At a minimum we need to reinitialize the management window as that keeps track of the currently selected motion sets.
+            motionSetsPlugin->GetManagementWindow()->ReInit();
+        }
 
         return true;
     }

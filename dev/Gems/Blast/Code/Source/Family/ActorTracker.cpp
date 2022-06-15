@@ -21,7 +21,10 @@ namespace Blast
     {
         m_actors.emplace(actor);
         m_entityIdToActor.emplace(actor->GetEntity()->GetId(), actor);
-        m_bodyToActor.emplace(actor->GetWorldBody(), actor);
+        if (auto* worldBody = actor->GetWorldBody(); worldBody != nullptr)
+        {
+            m_bodyToActor.emplace(worldBody, actor);
+        }
     }
 
     void ActorTracker::RemoveActor(BlastActor* actor)
@@ -45,6 +48,17 @@ namespace Blast
         if (const auto it = m_bodyToActor.find(body); it != m_bodyToActor.end())
         {
             return it->second;
+        }
+        // It might be the case that actor didn't have rigid body when being added to the tracker, try all actors and
+        // see if they match given body. This might happen very rarely, when blast entity is spawned using a dynamic
+        // slice and only for the root actor.
+        for (auto* actor : m_actors)
+        {
+            if (actor->GetWorldBody() == body)
+            {
+                m_bodyToActor.emplace(body, actor);
+                return actor;
+            }
         }
         return nullptr;
     }

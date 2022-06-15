@@ -177,6 +177,9 @@ namespace EMotionFX
         Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetNamedParameterFloat, m_parameterName.c_str(), 4.0f);
         Integration::AnimGraphComponentRequestBus::EventResult(newValue, m_entityId, &Integration::AnimGraphComponentRequestBus::Events::GetNamedParameterFloat, m_parameterName.c_str());
         EXPECT_EQ(newValue, 4.0f) << "Expected a parameter value of 3.0.";
+
+        // SetParameterFloat invalid index test
+        Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetParameterFloat, 100, 3.0f);
     }
 
     TEST_F(AnimGraphComponentBusTests, BoolParameter)
@@ -200,6 +203,9 @@ namespace EMotionFX
         Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetNamedParameterBool, m_parameterName.c_str(), false);
         Integration::AnimGraphComponentRequestBus::EventResult(newValue, m_entityId, &Integration::AnimGraphComponentRequestBus::Events::GetNamedParameterBool, m_parameterName.c_str());
         EXPECT_EQ(newValue, false) << "Expected false as parameter value.";
+
+        // SetParameterBool invalid index test
+        Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetParameterBool, 100, true);
     }
 
     TEST_F(AnimGraphComponentBusTests, StringParameter)
@@ -223,6 +229,9 @@ namespace EMotionFX
         Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetNamedParameterString, m_parameterName.c_str(), "Yet Another String");
         Integration::AnimGraphComponentRequestBus::EventResult(newValue, m_entityId, &Integration::AnimGraphComponentRequestBus::Events::GetNamedParameterString, m_parameterName.c_str());
         EXPECT_STREQ(newValue.c_str(), "Yet Another String") << "Expected yet another string.";
+
+        // SetParameterString invalid index test
+        Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetParameterString, 100, "Test String");
     }
 
     TEST_F(AnimGraphComponentBusTests, Vector2Parameter)
@@ -246,6 +255,9 @@ namespace EMotionFX
         Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetNamedParameterVector2, m_parameterName.c_str(), AZ::Vector2(3.0f, 4.0f));
         Integration::AnimGraphComponentRequestBus::EventResult(newValue, m_entityId, &Integration::AnimGraphComponentRequestBus::Events::GetNamedParameterVector2, m_parameterName.c_str());
         EXPECT_EQ(newValue, AZ::Vector2(3.0f, 4.0f));
+
+        // SetParameterVector2 invalid index test
+        Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetParameterVector2, 100, AZ::Vector2(1.0f, 2.0f));
     }
 
     TEST_F(AnimGraphComponentBusTests, Vector3Parameter)
@@ -269,6 +281,9 @@ namespace EMotionFX
         Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetNamedParameterVector3, m_parameterName.c_str(), AZ::Vector3(4.0f, 5.0f, 6.0f));
         Integration::AnimGraphComponentRequestBus::EventResult(newValue, m_entityId, &Integration::AnimGraphComponentRequestBus::Events::GetNamedParameterVector3, m_parameterName.c_str());
         EXPECT_EQ(newValue, AZ::Vector3(4.0f, 5.0f, 6.0f));
+
+        // SetParameterVector3 invalid index test
+        Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetParameterVector3, 100, AZ::Vector3(1.0f, 2.0f, 3.0f));
     }
 
     TEST_F(AnimGraphComponentBusTests, RotationParameterEuler)
@@ -294,6 +309,9 @@ namespace EMotionFX
         Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetNamedParameterRotationEuler, m_parameterName.c_str(), expectedEuler);
         Integration::AnimGraphComponentRequestBus::EventResult(newValue, m_entityId, &Integration::AnimGraphComponentRequestBus::Events::GetNamedParameterRotationEuler, m_parameterName.c_str());
         EXPECT_TRUE(newValue.IsClose(expectedEuler, 0.001f));
+
+        // SetParameterRotationEuler invalid index test
+        Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetParameterRotationEuler, 100, expectedEuler);
     }
 
     TEST_F(AnimGraphComponentBusTests, RotationParameter)
@@ -322,6 +340,9 @@ namespace EMotionFX
         Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetNamedParameterRotation, m_parameterName.c_str(), expectedQuat);
         Integration::AnimGraphComponentRequestBus::EventResult(newValue, m_entityId, &Integration::AnimGraphComponentRequestBus::Events::GetNamedParameterRotation, m_parameterName.c_str());
         EXPECT_TRUE(newValue.IsClose(expectedQuat, 0.001f));
+
+        // SetParameterRotation invalid index test
+        Integration::AnimGraphComponentRequestBus::Event(m_entityId, &Integration::AnimGraphComponentRequestBus::Events::SetParameterRotation, 100, expectedQuat);
     }
 
     TEST_F(AnimGraphComponentBusTests, OnAnimGraphInstanceDestroyed)

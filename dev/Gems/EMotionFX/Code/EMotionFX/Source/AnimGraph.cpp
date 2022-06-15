@@ -968,6 +968,12 @@ namespace EMotionFX
         AnimGraph* animGraph =  AZ::Utils::LoadObjectFromFile<AnimGraph>(filename, context, loadFilter);
         if (animGraph)
         {
+            if (!animGraph->GetRootStateMachine())
+            {
+                AZ_Error("EMotionFX", false, "Loaded anim graph does not have a root state machine");
+                delete animGraph;
+                return nullptr;
+            }
             const float deserializeTimeInMs = loadTimer.StampAndGetDeltaTimeInSeconds() * 1000.0f;
 
             animGraph->InitAfterLoading();
@@ -990,6 +996,12 @@ namespace EMotionFX
         AnimGraph* animGraph = AZ::Utils::LoadObjectFromBuffer<AnimGraph>(buffer, length, context, loadFilter);
         if (animGraph)
         {
+            if (!animGraph->GetRootStateMachine())
+            {
+                AZ_Error("EMotionFX", false, "Loaded anim graph does not have a root state machine");
+                delete animGraph;
+                return nullptr;
+            }
             const float deserializeTimeInMs = loadTimer.StampAndGetDeltaTimeInSeconds() * 1000.0f;
             animGraph->InitAfterLoading();
             animGraph->RemoveInvalidConnections(true);  // Remove connections that have nullptr source node's, which happens when connections point to unknown nodes.

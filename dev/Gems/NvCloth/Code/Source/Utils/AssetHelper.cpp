@@ -58,4 +58,19 @@ namespace NvCloth
         AZ_Warning("AssetHelper", false, "Unexpected asset type");
         return nullptr;
     }
+
+    float AssetHelper::ConvertBackstopOffset(float backstopOffset)
+    {
+        constexpr float ToleranceU8 = 1.0f / 255.0f;
+
+        // Convert range from [0,1] -> [-1,1]
+        backstopOffset = AZ::GetClamp(backstopOffset * 2.0f - 1.0f, -1.0f, 1.0f);
+
+        // Since the color was stored as U32 in the mesh, the low precision makes values
+        // of 0.5f becoming an small negative number in the conversion from [0,1] to [-1,1].
+        // So this sets the value to 0 when it is smaller than the tolerance of U8.
+        backstopOffset = (std::fabs(backstopOffset) < ToleranceU8) ? 0.0f : backstopOffset;
+
+        return backstopOffset;
+    }
 } // namespace NvCloth

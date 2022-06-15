@@ -330,6 +330,7 @@ namespace ScriptCanvas
         , private SignalBus::Handler
         , public NodeRequestBus::Handler
         , public EndpointNotificationBus::MultiHandler
+        , public RuntimeNotificationBus::Handler
     {
         friend class Graph;
         friend class RuntimeComponent;
@@ -428,6 +429,7 @@ namespace ScriptCanvas
         // CodeGen Overrides
         virtual bool IsEntryPoint() const;
         virtual bool RequiresDynamicSlotOrdering() const;
+        virtual bool RequiresStateNotifications() const;
         ////
 
         void SetExecutionType(ExecutionType executionType);

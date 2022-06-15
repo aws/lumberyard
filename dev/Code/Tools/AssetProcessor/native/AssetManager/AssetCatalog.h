@@ -81,6 +81,7 @@ namespace AssetProcessor
         //////////////////////////////////////////////////////////////////////////
         // AssetRegistryRequestBus::Handler overrides
         int SaveRegistry() override;
+        void ValidatePreLoadDependency() override;
         //////////////////////////////////////////////////////////////////////////
 
         void RegistrySaveComplete(int assetCatalogVersion, bool allCatalogsSaved);
@@ -144,6 +145,8 @@ namespace AssetProcessor
 
         bool ConnectToDatabase();
 
+        bool CheckValidatedAssets(AZ::Data::AssetId assetId, const QString& platform);
+
         //! List of AssetTypes that should return info for the source instead of the product
         AZStd::unordered_set<AZ::Data::AssetType> m_sourceAssetTypes;
         AZStd::unordered_map<AZStd::string, AZ::Data::AssetType> m_sourceAssetTypeFilters;
@@ -157,6 +160,7 @@ namespace AssetProcessor
             QString m_watchFolder;
             QString m_sourceName;
         };
+
 
         AZStd::mutex m_sourceUUIDToSourceNameMapMutex;
         using SourceUUIDToSourceNameMap = AZStd::unordered_map<AZ::Uuid, SourceInfo>;
@@ -175,9 +179,12 @@ namespace AssetProcessor
         bool m_registryBuiltOnce;
         bool m_catalogIsDirty = true;
         bool m_currentlySavingCatalog = false;
+        bool m_currentlyValidatingPreloadDependency = false;
         int m_currentRegistrySaveVersion = 0;
         QMutex m_savingRegistryMutex;
         QMultiMap<int, AssetProcessor::NetworkRequestID> m_queuedSaveCatalogRequest;
+        AZStd::vector<AZStd::pair<AZ::Data::AssetId,QString>> m_preloadAssetList;
+        AZStd::unordered_multimap<AZ::Data::AssetId, QString> m_cachedNoPreloadDependenyAssetList;
 
         AZStd::vector<char> m_saveBuffer; // so that we don't realloc all the time
 

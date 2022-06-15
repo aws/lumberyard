@@ -41,6 +41,7 @@ namespace ScriptCanvas
                 ScriptCanvas_Node::Name("Lerp Between")
                 ScriptCanvas_Node::Uuid("{58AF538D-021A-4D0C-A3F1-866C2FFF382E}")
                 ScriptCanvas_Node::Description("Performs a lerp between the two specified sources using the speed specified or in the amount of time specified, or the minimum of the two")
+                ScriptCanvas_Node::RequiresStateNotifications(true)
                 ScriptCanvas_Node::Version(1)
                 ScriptCanvas_Node::Category("Math")
             );
@@ -125,11 +126,15 @@ namespace ScriptCanvas
             ////
             
             // TickBus
-            void OnTick(float deltaTime, AZ::ScriptTimePoint timePoint) override;                
+            void OnTick(float deltaTime, AZ::ScriptTimePoint timePoint) override;
             ////
             
             // Node
             void OnInputSignal(const SlotId& slotId) override;
+            ////
+
+            // RuntimeNotificationBus
+            void OnRuntimeStopped() override;
             ////
             
         private:

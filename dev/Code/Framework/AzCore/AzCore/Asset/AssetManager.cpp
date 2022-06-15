@@ -295,7 +295,12 @@ namespace AZ
         protected:
             void Wait() override
             {
-                m_waitEvent.acquire();
+                const int WaitTimeBetweenChecks = 100;
+
+                while(!m_waitEvent.try_acquire_for(AZStd::chrono::milliseconds(WaitTimeBetweenChecks)) && !AssetManager::Instance().GetCancelAllActiveJobs())
+                {
+                    // Intentionally left blank
+                }
             }
 
             void Finish() override
@@ -453,8 +458,14 @@ namespace AZ
         // Destroy
         // [6/12/2012]
         //=========================================================================
+
         void AssetManager::Destroy()
         {
+            if (!s_assetDB)
+            {
+                s_assetDB = Environment::FindVariable<AssetManager*>(kAssetDBInstanceVarName);
+            }
+
             AZ_Assert(s_assetDB, "AssetManager not created!");
             delete (*s_assetDB);
             *s_assetDB = nullptr;
@@ -537,9 +548,10 @@ namespace AZ
         // ~AssetManager
         // [6/12/2012]
         //=========================================================================
+
         AssetManager::~AssetManager()
         {
-            PrepareShutDown();
+            CancelAllActiveJobs();
 
             delete m_jobContext;
             delete m_jobManager;
@@ -593,7 +605,7 @@ namespace AZ
             return m_cancelAllActiveJobs;
         }
 
-        void AssetManager::PrepareShutDown()
+        void AssetManager::CancelAllActiveJobs()
         {
             m_cancelAllActiveJobs = true;
 
@@ -608,6 +620,11 @@ namespace AZ
 
             // Ensure that there are no queued events on the AssetBus
             DispatchEvents();
+        }
+
+        void AssetManager::ReEnableJobProcessing()
+        {
+            m_cancelAllActiveJobs = false;
         }
 
         //=========================================================================

@@ -15,7 +15,7 @@ REM
 SETLOCAL
 SET CMD_DIR=%~dp0
 SET CMD_DIR=%CMD_DIR:~0,-1%
-SET PY_CMD_DIR=%CMD_DIR%\3.7.5\windows
+SET PY_CMD_DIR=%CMD_DIR%\3.7.10\windows
 SET PATH=%PY_CMD_DIR%;%PATH%
 
 CALL "%CMD_DIR%\python3.cmd" -m pip %*

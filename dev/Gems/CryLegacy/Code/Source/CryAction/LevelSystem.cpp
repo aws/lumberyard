@@ -39,6 +39,8 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 
 #include <IGameVolumes.h>
+#include <MainThreadRenderRequestBus.h>
+#include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Script/ScriptSystemBus.h>
 
 #include <LyShine/ILyShine.h>
@@ -2088,6 +2090,8 @@ void CLevelSystem::UnLoadLevel()
 
     CTimeValue tBegin = gEnv->pTimer->GetAsyncTime();
 
+    AZ::Data::AssetManager::Instance().CancelAllActiveJobs();
+
     I3DEngine* p3DEngine = gEnv->p3DEngine;
     if (p3DEngine)
     {
@@ -2275,6 +2279,13 @@ void CLevelSystem::UnLoadLevel()
         p3DEngine->UnloadLevel();
 
     }
+
+    // Perform level unload procedures for the LyShine UI system
+    if (gEnv && gEnv->pLyShine)
+    {
+        gEnv->pLyShine->OnLevelUnload();
+    }
+
     // Force to clean render resources left after deleting all objects and materials.
     IRenderer* pRenderer = gEnv->pRenderer;
     if (pRenderer)
@@ -2296,12 +2307,6 @@ void CLevelSystem::UnLoadLevel()
         CryComment("done");
     }
 
-    // Perform level unload procedures for the LyShine UI system
-    if (gEnv && gEnv->pLyShine)
-    {
-        gEnv->pLyShine->OnLevelUnload();
-    }
-
     m_bLevelLoaded = false;
 
     CTimeValue tUnloadTime = gEnv->pTimer->GetAsyncTime() - tBegin;
@@ -2310,6 +2315,8 @@ void CLevelSystem::UnLoadLevel()
     // Must be sent last.
     // Cleanup all containers
     GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_LEVEL_POST_UNLOAD, 0, 0);
+
+    AZ::Data::AssetManager::Instance().ReEnableJobProcessing();
 }
 
 //////////////////////////////////////////////////////////////////////////

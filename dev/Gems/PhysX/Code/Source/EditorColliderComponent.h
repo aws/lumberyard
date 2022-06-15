@@ -235,5 +235,6 @@ namespace PhysX
         void ValidateMaterialSurfaces();
 
         DebugDraw::Collider m_colliderDebugDraw;
+        AZ::Transform m_cachedWorldTransform;
     };
 } // namespace PhysX

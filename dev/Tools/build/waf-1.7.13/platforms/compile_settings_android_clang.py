@@ -101,7 +101,7 @@ def load_android_clang_common_settings(conf):
     ndk_root = env['ANDROID_NDK_HOME']
     is_ndk_19_plus = env['ANDROID_IS_NDK_19_PLUS']
 
-    common_flags = []
+    common_flags = ['-fPIC']
     cxx_flags = []
 
     if not is_ndk_19_plus:

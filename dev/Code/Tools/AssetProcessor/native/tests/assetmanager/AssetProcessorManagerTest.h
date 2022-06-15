@@ -116,7 +116,7 @@ struct PathDependencyTest
         AZStd::vector<AZ::Data::AssetId> m_products;
     };
 
-    void CaptureJobs(AZStd::vector<AssetProcessor::JobDetails>& jobDetails, const char* sourceFilePath);
+    void CaptureJobs(AZStd::vector<AssetProcessor::JobDetails>& jobDetails, const AZStd::vector<const char*>& sourceFilePaths);
     bool ProcessAsset(TestAsset& asset, const OutputAssetSet& outputAssets, const AssetBuilderSDK::ProductPathDependencySet& dependencies = {}, const AZStd::string& folderPath = "subfolder1/", const AZStd::string& extension = ".txt");
 
     void RunWildcardTest(bool useCorrectDatabaseSeparator, AssetBuilderSDK::ProductPathDependencyType pathDependencyType, bool buildDependenciesFirst);
@@ -153,6 +153,11 @@ struct MockBuilderInfoHandler
     QString m_jobFingerprint;
     QString m_dependencyFilePath;
     QString m_jobDependencyFilePath;
+
+    using JobDependencyFunc = AZStd::function<void(const AssetBuilderSDK::PlatformInfo&, const AssetBuilderSDK::CreateJobsRequest&, AssetBuilderSDK::JobDescriptor&)>;
+
+    JobDependencyFunc m_jobDependencyFunc{};
+
     int m_createJobsCount = 0;
 };
 

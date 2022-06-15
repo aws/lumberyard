@@ -715,6 +715,17 @@ namespace UnitTest
             rb.Read(rv, Vec3CompMarshaler());
             AZ_TEST_ASSERT(v.IsClose(rv, 0.5f));
 
+            // Vec3CompRangeMarshaler
+            constexpr float rangeMax = 4096.f;
+            v.Set(798.584290f, 671.875427f, 24.6103153f);
+            wb.Clear();
+            wb.Write(v, Vec3CompRangeMarshaler(0, rangeMax));
+            AZ_TEST_ASSERT(wb.Size() == 6);
+
+            rb = ReadBuffer(wb.GetEndianType(), wb.Get(), wb.Size());
+            rb.Read(rv, Vec3CompRangeMarshaler(0, rangeMax));
+            AZ_TEST_ASSERT(v.IsClose(rv, 0.1f));
+
             // Vec3CompNormMarshaler
             v.Set(0.0f, 1.0f, 0.0f);
             wb.Clear();

@@ -10,28 +10,27 @@
 #
 # $Revision: #1 $
 
-from resource_manager.errors import HandledError
-from cgf_utils import aws_utils
-from cgf_utils import custom_resource_utils
-import boto3
 import json
+
+from cgf_utils import custom_resource_utils
 from resource_manager import util
+from resource_manager.errors import HandledError
 from six import iteritems
 
 
-def after_resource_group_updated(hook, resource_group_uploader,  **kwargs):
+def after_resource_group_updated(hook, resource_group_uploader, **kwargs):
     stack_arn = hook.context.config.get_deployment_stack_id(kwargs['deployment_name'])
     deployment_region = util.get_region_from_arn(hook.context.config.project_stack_id)
     stack_resources = hook.context.stack.describe_resources(stack_arn, recursive=True)
-    channel_table_id = stack_resources.get('CloudGemWebCommunicator.ChannelDataTable',{}).get('PhysicalResourceId')
-    
+    channel_table_id = stack_resources.get('CloudGemWebCommunicator.ChannelDataTable', {}).get('PhysicalResourceId')
+
     if not channel_table_id:
         return
 
     channel_table_id = custom_resource_utils.get_embedded_physical_id(channel_table_id)
 
-    dynamoresource = hook.context.aws.resource('dynamodb', region=deployment_region)
-    channel_table = dynamoresource.Table(channel_table_id)
+    dynamo_resource = hook.context.aws.resource('dynamodb', region=deployment_region)
+    channel_table = dynamo_resource.Table(channel_table_id)
 
     if not channel_table:
         raise HandledError('Could not get table {}'.format(channel_table_id))
@@ -43,7 +42,7 @@ def after_resource_group_updated(hook, resource_group_uploader,  **kwargs):
     aggregate_settings = hook.context.config.aggregate_settings
     if aggregate_settings:
         for gem_name, settings_data in iteritems(aggregate_settings):
-            communicator_settings = settings_data.get('GemSettings',{}).get('CloudGemWebCommunicator')
+            communicator_settings = settings_data.get('GemSettings', {}).get('CloudGemWebCommunicator')
             if not communicator_settings:
                 continue
 
@@ -77,7 +76,7 @@ def after_resource_group_updated(hook, resource_group_uploader,  **kwargs):
                 except Exception as e:
                     raise HandledError(
                         'Could not update status for channel {} in table {} update_expression {} : {}'.format(
-                            this_channel.get('Name', 'NULL'),channel_table_id, update_expression, e.message
+                            this_channel.get('Name', 'NULL'), channel_table_id, update_expression, str(e)
                         )
                     )
 
@@ -91,7 +90,7 @@ def after_resource_group_updated(hook, resource_group_uploader,  **kwargs):
                     except Exception as e:
                         raise HandledError(
                             'Could not update status for channel {} in table {} channel_update {} : {}'.format(
-                                this_channel.get('Name', 'NULL'), channel_table_id, channel_update, e.message
+                                this_channel.get('Name', 'NULL'), channel_table_id, channel_update, str(e)
                             )
                         )
 
@@ -108,7 +107,5 @@ def after_resource_group_updated(hook, resource_group_uploader,  **kwargs):
                 )
             except Exception as e:
                 raise HandledError(
-                    'Could not delete entry for {} : {}'.format(channel_name, e.message)
+                    'Could not delete entry for {} : {}'.format(channel_name, str(e))
                 )
-
-

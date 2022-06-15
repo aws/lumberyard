@@ -20,6 +20,8 @@ namespace Blast
     class BlastListener
     {
     public:
+        virtual ~BlastListener() = default;
+
         /// Called when BlastFamily creates a new actor.
         /// @param family Corresponding BlastFamily that created the new actor.
         /// @param actor The newly created actor.

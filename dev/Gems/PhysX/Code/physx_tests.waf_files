@@ -18,7 +18,8 @@
             "Tests/PhysXMultithreadingTest.cpp",
             "Tests/PhysXBenchmarks.cpp",
             "Tests/PhysXWindTest.cpp",
-            "Tests/PhysXJointsTest.cpp"
+            "Tests/PhysXJointsTest.cpp",
+            "Tests/PhysXScriptTest.cpp"
         ]
     }
 }

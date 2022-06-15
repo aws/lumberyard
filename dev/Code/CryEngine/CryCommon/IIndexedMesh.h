@@ -2301,6 +2301,8 @@ struct IIndexedMesh
     // Optimizes mesh
     virtual void Optimize(const char* szComment = NULL) = 0;
 #endif
+
+    virtual void Build() {}
 };
 
 

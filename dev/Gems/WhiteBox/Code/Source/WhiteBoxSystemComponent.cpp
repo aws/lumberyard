@@ -15,6 +15,7 @@
 #include "Asset/WhiteBoxMeshAsset.h"
 #include "Asset/WhiteBoxMeshAssetHandler.h"
 #include "Rendering/Legacy/WhiteBoxLegacyRenderMesh.h"
+#include "Rendering/Legacy/WhiteBoxLegacyMaterials.h"
 #include "WhiteBoxSystemComponent.h"
 #include "WhiteBoxToolApiReflection.h"
 
@@ -23,6 +24,12 @@
 
 namespace WhiteBox
 {
+    struct Impl
+    {
+        //! Look-up table for White Box materials.
+        WhiteBoxLegacyMaterials m_whiteBoxLegacyMaterials;
+    };
+
     void WhiteBoxSystemComponent::Reflect(AZ::ReflectContext* context)
     {
         if (auto serialize = azrtti_cast<AZ::SerializeContext*>(context))
@@ -77,10 +84,15 @@ namespace WhiteBox
 #ifdef WHITE_BOX_EDITOR
         RegisterAsset<Pipeline::WhiteBoxMeshAssetHandler, Pipeline::WhiteBoxMeshAsset>(m_assetHandlers);
 #endif
+        m_impl = AZStd::make_unique<Impl>();
+        m_impl->m_whiteBoxLegacyMaterials.Connect();
     }
 
     void WhiteBoxSystemComponent::Deactivate()
     {
+        m_impl->m_whiteBoxLegacyMaterials.Disconnect();
+        m_impl.reset();
+
         WhiteBoxRequestBus::Handler::BusDisconnect();
         m_assetHandlers.clear();
     }

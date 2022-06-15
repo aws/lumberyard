@@ -196,7 +196,7 @@ namespace SliceFavorites
 
         ////////////////////////////////////////////////////////////////////////
         // AssetCatalogBus::Handler overrides
-        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& assetInfo) override;
         void OnAssetBrowserComponentReady() override;
         ////////////////////////////////////////////////////////////////////////
 

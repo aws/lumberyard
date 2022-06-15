@@ -82,7 +82,7 @@ namespace AzFramework
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<XmlSchemaAttribute>()
-                ->Version(5)
+                ->Version(6)
                 ->Field("Name", &XmlSchemaAttribute::m_name)
                 ->Field("ExpectedExtension", &XmlSchemaAttribute::m_expectedExtension)
                 ->Field("MatchPattern", &XmlSchemaAttribute::m_matchPattern)
@@ -91,7 +91,8 @@ namespace AzFramework
                 ->Field("Type", &XmlSchemaAttribute::m_type)
                 ->Field("PathDependencyType", &XmlSchemaAttribute::m_pathDependencyType)
                 ->Field("RelativeToSourceAssetFolder", &XmlSchemaAttribute::m_relativeToSourceAssetFolder)
-                ->Field("Optional", &XmlSchemaAttribute::m_optional);
+                ->Field("Optional", &XmlSchemaAttribute::m_optional)
+                ->Field("CacheRelativePath", &XmlSchemaAttribute::m_cacheRelativePath);
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
@@ -103,14 +104,16 @@ namespace AzFramework
                     ->DataElement(AZ::Edit::UIHandlers::Default, &XmlSchemaAttribute::m_findPattern, "Find Pattern", "(Optional) Regex pattern to use to match against the value for replacing.  Case-insensitive.")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &XmlSchemaAttribute::m_replacePattern, "Replace Pattern", "(Optional) Regex pattern to use to replace the value.")
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &XmlSchemaAttribute::m_type, "Type", "Type of the attribute. Select from RelativePath, AssetId, etc.")
-                        ->EnumAttribute(AttributeType::RelativePath, "RelativePath")
-                        ->EnumAttribute(AttributeType::Asset, "Asset")
+                    ->EnumAttribute(AttributeType::RelativePath, "RelativePath")
+                    ->EnumAttribute(AttributeType::Asset, "Asset")
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &XmlSchemaAttribute::m_pathDependencyType, "Path Dependency Type", "Path dependency type of the attribute. Select from SourceFile and ProductFile")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, &XmlSchemaAttribute::GetVisibilityProperty)
-                        ->EnumAttribute(AttributePathDependencyType::SourceFile, "SourceFile")
-                        ->EnumAttribute(AttributePathDependencyType::ProductFile, "ProductFile")
+                    ->Attribute(AZ::Edit::Attributes::Visibility, &XmlSchemaAttribute::GetVisibilityProperty)
+                    ->EnumAttribute(AttributePathDependencyType::SourceFile, "SourceFile")
+                    ->EnumAttribute(AttributePathDependencyType::ProductFile, "ProductFile")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &XmlSchemaAttribute::m_relativeToSourceAssetFolder, "RelativeToSourceAssetFolder", "Whether the file path is relative to the source asset folder")
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &XmlSchemaAttribute::m_optional, "Optional", "Whether the attribute is optional");
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &XmlSchemaAttribute::m_optional, "Optional", "Whether the attribute is optional")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &XmlSchemaAttribute::m_cacheRelativePath, "CacheRelativePath", "CacheRelative allows dependent assets to be from other scan folders.");
+
             }
         }
     }
@@ -153,6 +156,11 @@ namespace AzFramework
     bool XmlSchemaAttribute::IsRelativeToSourceAssetFolder() const
     {
         return m_relativeToSourceAssetFolder;
+    }
+
+    bool XmlSchemaAttribute::CacheRelativePath() const
+    {
+        return m_cacheRelativePath;
     }
 
     bool XmlSchemaAttribute::IsOptional() const

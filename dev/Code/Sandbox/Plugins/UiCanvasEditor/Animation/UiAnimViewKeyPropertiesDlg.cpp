@@ -173,6 +173,9 @@ void CUiAnimViewKeyPropertiesDlg::OnKeySelectionChanged(CUiAnimViewSequence* pSe
         return;
     }
 
+    m_wndProps->setEnabled(true);
+    m_wndTrackProps->setEnabled(true);
+
     CUiAnimViewKeyBundle selectedKeys = pSequence->GetSelectedKeys();
 
     m_wndTrackProps->OnKeySelectionChange(selectedKeys);
@@ -299,11 +302,16 @@ void CUiAnimViewTrackPropsDlg::OnSequenceChanged()
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimViewTrackPropsDlg::OnKeySelectionChange(CUiAnimViewKeyBundle& selectedKeys)
 {
+    m_selectedKeys = selectedKeys;
     m_keyHandle = CUiAnimViewKeyHandle();
 
-    if (selectedKeys.GetKeyCount() == 1)
+    if (selectedKeys.GetKeyCount() > 1)
     {
         m_keyHandle = selectedKeys.GetKey(0);
+    }
+    else
+    {
+        m_keyHandle = selectedKeys.GetSingleSelectedKey();
     }
 
     if (m_keyHandle.IsValid())
@@ -333,7 +341,12 @@ void CUiAnimViewTrackPropsDlg::OnUpdateTime()
     UiAnimUndo::Record(new CUndoTrackObject(m_keyHandle.GetTrack()));
 
     const float time = (float) ui->TIME->value();
-    m_keyHandle.SetTime(time);
+    const float offset = time - m_keyHandle.GetTime();
+
+    for (int i = 0; i < m_selectedKeys.GetKeyCount(); ++i)
+    {
+        m_selectedKeys.GetKey(i).Offset(offset);
+    }
 
     CUiAnimViewKeyHandle newKey = m_keyHandle.GetTrack()->GetKeyByTime(time);
 

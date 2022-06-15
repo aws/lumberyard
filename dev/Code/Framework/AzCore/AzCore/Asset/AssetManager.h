@@ -274,7 +274,10 @@ namespace AZ
             * This method is automatically called in the destructor but if you are unregistering handlers manually,
             * you must invoke it yourself. 
             */
-            void        PrepareShutDown();
+            void        CancelAllActiveJobs();
+
+            /// Allows asset loading to resume after calling PrepareShutDown
+            void ReEnableJobProcessing();
 
 
         protected:
@@ -347,7 +350,7 @@ namespace AZ
             AZStd::unordered_map<AssetId, AZStd::thread::id> m_assetsLoadingByThread;
 
             // Setting this to true will cause all loadAssets jobs that have not started yet to cancel as soon as they start.
-            bool m_cancelAllActiveJobs = false;
+            AZStd::atomic_bool m_cancelAllActiveJobs = false;
         };
 
         /**

@@ -43,6 +43,7 @@ namespace AssetBundler
     const char* PrintFlag = "print";
     const char* AssetCatalogFileArg = "overrideAssetCatalogFile";
     const char* AllowOverwritesFlag = "allowOverwrites";
+    const char* IgnoreFileCaseFlag = "ignoreFileCase";
 
     // Seeds
     const char* SeedsCommand = "seeds";
@@ -675,7 +676,7 @@ namespace AssetBundler
         return true; // do not forward
     }
 
-    FilePath::FilePath(const AZStd::string& filePath, AZStd::string platformIdentifier)
+    FilePath::FilePath(const AZStd::string& filePath, AZStd::string platformIdentifier, bool checkFileCase, bool ignoreFileCase)
     {
         AZStd::string platform = platformIdentifier;
         if (!platform.empty())
@@ -699,8 +700,14 @@ namespace AssetBundler
             m_validPath = true;
             m_originalPath = m_absolutePath = filePath;
             AzFramework::StringFunc::Path::Normalize(m_originalPath);
-            ComputeAbsolutePath(m_absolutePath, platform);
+            ComputeAbsolutePath(m_absolutePath, platform, checkFileCase, ignoreFileCase);
         }
+    }
+
+
+    FilePath::FilePath(const AZStd::string& filePath, bool checkFileCase, bool ignoreFileCase)
+        :FilePath(filePath, AZStd::string(), checkFileCase, ignoreFileCase)
+    {
     }
 
     const AZStd::string& FilePath::AbsolutePath() const
@@ -718,7 +725,12 @@ namespace AssetBundler
         return m_validPath;
     }
 
-    void FilePath::ComputeAbsolutePath(AZStd::string& filePath, const AZStd::string& platformIdentifier)
+    AZStd::string FilePath::ErrorString() const
+    {
+        return m_errorString;
+    }
+
+    void FilePath::ComputeAbsolutePath(AZStd::string& filePath, const AZStd::string& platformIdentifier, bool checkFileCase, bool ignoreFileCase)
     {
         if (AzToolsFramework::AssetFileInfoListComparison::IsTokenFile(filePath))
         {
@@ -747,10 +759,36 @@ namespace AssetBundler
         {
             // it is already an absolute path
             AzFramework::StringFunc::Path::Normalize(filePath);
-            return;
+        }
+        else
+        {
+            AzFramework::StringFunc::Path::ConstructFull(appRoot, m_absolutePath.c_str(), m_absolutePath, true);
         }
 
-        AzFramework::StringFunc::Path::ConstructFull(appRoot, m_absolutePath.c_str(), m_absolutePath, true);
+        if (checkFileCase)
+        {
+            QDir rootDir(appRoot);
+            QString relFilePath = rootDir.relativeFilePath(m_absolutePath.c_str());
+            if (AzToolsFramework::AssetUtils::UpdateFilePathToCorrectCase(QString(appRoot), relFilePath))
+            {
+                if (ignoreFileCase)
+                {
+                    AzFramework::StringFunc::Path::ConstructFull(appRoot, relFilePath.toUtf8().data(), m_absolutePath, true);
+                }
+                else
+                {
+                    AZStd::string absfilePath(rootDir.filePath(relFilePath).toUtf8().data());
+                    AzFramework::StringFunc::Path::Normalize(absfilePath);
+                    if (!AZ::StringFunc::Equal(absfilePath.c_str(), m_absolutePath.c_str(), true))
+                    {
+                        m_errorString = AZStd::string::format("File case mismatch, file ( %s ) does not exist on disk, did you mean file ( %s ). \
+Please run the command again with the correct file path or use ( --%s ) arg if you want to allow case insensitive file match.\n",
+m_absolutePath.c_str(), rootDir.filePath(relFilePath.toUtf8().data()).toUtf8().data(), IgnoreFileCaseFlag);
+                        m_validPath = false;
+                    }
+                }
+            }
+        }
     }
 
     ScopedTraceHandler::ScopedTraceHandler()

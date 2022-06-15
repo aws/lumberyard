@@ -16,15 +16,15 @@
 #include <gtest/gtest_prod.h>
 
 #include <AzCore/Component/TransformBus.h>
-#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzFramework/Physics/Casts.h>
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Physics/World.h>
 #include <AzTest/AzTest.h>
 #include <Blast/BlastSystemBus.h>
-#include <BlastMocks.h>
 #include <Family/ActorRenderManager.h>
+#include <Tests/Mocks/BlastMocks.h>
 
 using testing::_;
 using testing::Eq;

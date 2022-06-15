@@ -11,7 +11,7 @@
  */
 #pragma once
 
-#include <AZCore/std/containers/vector.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzCore/Component/Component.h>
 
 #include <AzCore/Asset/AssetCommon.h>
@@ -26,6 +26,8 @@ namespace Blast
     class BlastMeshData
     {
     public:
+        virtual ~BlastMeshData() = default;
+
         virtual const AZ::Data::Asset<LmbrCentral::MeshAsset>& GetMeshAsset(size_t index) const = 0;
         virtual const AZStd::vector<AZ::Data::Asset<LmbrCentral::MeshAsset>>& GetMeshAssets() const = 0;
     };

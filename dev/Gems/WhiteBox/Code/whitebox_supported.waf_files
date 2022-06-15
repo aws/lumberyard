@@ -38,7 +38,9 @@
         ],
         "Source/Rendering/Legacy": [
             "Source/Rendering/Legacy/WhiteBoxLegacyRenderMesh.cpp",
-            "Source/Rendering/Legacy/WhiteBoxLegacyRenderMesh.h"
+            "Source/Rendering/Legacy/WhiteBoxLegacyRenderMesh.h",
+            "Source/Rendering/Legacy/WhiteBoxLegacyMaterials.h",
+            "Source/Rendering/Legacy/WhiteBoxLegacyMaterialsRequestBus.h"
         ]
     }
 }

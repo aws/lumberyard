@@ -1,142 +1,45 @@
 {
+    "aliases": {
+        "bin_paths_win_vs2017": ["bin/vc15win64-cmake"],
+        "lib_paths_win_vs2017": ["lib/vc15win64-cmake"]
+    },
     "platform": {
-		"win_x64_vs2017": {
-			"importlibpath": [
-				"lib/vc15win64-cmake"
-			],
-			"sharedlibpath": [
-				"bin/vc15win64-cmake"
-			],
-			"import_debug": [
-				"NvBlastDEBUG_x64.lib",
-				"NvBlastExtAssetUtilsDEBUG_x64.lib",
-				"NvBlastExtAuthoringDEBUG_x64.lib",
-				"NvBlastExtExporterDEBUG_x64.lib",
-				"NvBlastExtImportDEBUG_x64.lib",
-				"NvBlastExtPhysXDEBUG_x64.lib",
-				"NvBlastExtPxSerializationDEBUG_x64.lib",
-				"NvBlastExtSerializationDEBUG_x64.lib",
-				"NvBlastExtShadersDEBUG_x64.lib",
-				"NvBlastExtStressDEBUG_x64.lib",
-				"NvBlastExtTkSerializationDEBUG_x64.lib",
-				"NvBlastGlobalsDEBUG_x64.lib",
-				"NvBlastTkDEBUG_x64.lib"
-			],
-			"shared_debug": [
-				"NvBlastDEBUG_x64.dll",
-				"NvBlastExtAssetUtilsDEBUG_x64.dll",
-				"NvBlastExtAuthoringDEBUG_x64.dll",
-				"NvBlastExtExporterDEBUG_x64.dll",
-				"NvBlastExtPhysXDEBUG_x64.dll",
-				"NvBlastExtPxSerializationDEBUG_x64.dll",
-				"NvBlastExtSerializationDEBUG_x64.dll",
-				"NvBlastExtShadersDEBUG_x64.dll",
-				"NvBlastExtStressDEBUG_x64.dll",
-				"NvBlastExtTkSerializationDEBUG_x64.dll",
-				"NvBlastGlobalsDEBUG_x64.dll",
-				"NvBlastTkDEBUG_x64.dll"
-			],
-			"pdb_debug": [
-				"NvBlastDEBUG_x64.pdb",
-				"NvBlastExtAssetUtilsDEBUG_x64.pdb",
-				"NvBlastExtAuthoringDEBUG_x64.pdb",
-				"NvBlastExtExporterDEBUG_x64.pdb",
-				"NvBlastExtPhysXDEBUG_x64.pdb",
-				"NvBlastExtPxSerializationDEBUG_x64.pdb",
-				"NvBlastExtSerializationDEBUG_x64.pdb",
-				"NvBlastExtShadersDEBUG_x64.pdb",
-				"NvBlastExtStressDEBUG_x64.pdb",
-				"NvBlastExtTkSerializationDEBUG_x64.pdb",
-				"NvBlastGlobalsDEBUG_x64.pdb",
-				"NvBlastTkDEBUG_x64.pdb"
-			],
-			"import_profile": [
-				"NvBlastPROFILE_x64.lib",
-				"NvBlastExtAssetUtilsPROFILE_x64.lib",
-				"NvBlastExtAuthoringPROFILE_x64.lib",
-				"NvBlastExtExporterPROFILE_x64.lib",
-				"NvBlastExtImportPROFILE_x64.lib",
-				"NvBlastExtPhysXPROFILE_x64.lib",
-				"NvBlastExtPxSerializationPROFILE_x64.lib",
-				"NvBlastExtSerializationPROFILE_x64.lib",
-				"NvBlastExtShadersPROFILE_x64.lib",
-				"NvBlastExtStressPROFILE_x64.lib",
-				"NvBlastExtTkSerializationPROFILE_x64.lib",
-				"NvBlastGlobalsPROFILE_x64.lib",
-				"NvBlastTkPROFILE_x64.lib"
-			],
-			"shared_profile": [
-				"NvBlastPROFILE_x64.dll",
-				"NvBlastExtAssetUtilsPROFILE_x64.dll",
-				"NvBlastExtAuthoringPROFILE_x64.dll",
-				"NvBlastExtExporterPROFILE_x64.dll",
-				"NvBlastExtPhysXPROFILE_x64.dll",
-				"NvBlastExtPxSerializationPROFILE_x64.dll",
-				"NvBlastExtSerializationPROFILE_x64.dll",
-				"NvBlastExtShadersPROFILE_x64.dll",
-				"NvBlastExtStressPROFILE_x64.dll",
-				"NvBlastExtTkSerializationPROFILE_x64.dll",
-				"NvBlastGlobalsPROFILE_x64.dll",
-				"NvBlastTkPROFILE_x64.dll"
-			],
-			"pdb_profile": [
-				"NvBlastPROFILE_x64.pdb",
-				"NvBlastExtAssetUtilsPROFILE_x64.pdb",
-				"NvBlastExtAuthoringPROFILE_x64.pdb",
-				"NvBlastExtExporterPROFILE_x64.pdb",
-				"NvBlastExtPhysXPROFILE_x64.pdb",
-				"NvBlastExtPxSerializationPROFILE_x64.pdb",
-				"NvBlastExtSerializationPROFILE_x64.pdb",
-				"NvBlastExtShadersPROFILE_x64.pdb",
-				"NvBlastExtStressPROFILE_x64.pdb",
-				"NvBlastExtTkSerializationPROFILE_x64.pdb",
-				"NvBlastGlobalsPROFILE_x64.pdb",
-				"NvBlastTkPROFILE_x64.pdb"
-			],
-			"import_release": [
-				"NvBlast_x64.lib",
-				"NvBlastExtAssetUtils_x64.lib",
-				"NvBlastExtAuthoring_x64.lib",
-				"NvBlastExtExporter_x64.lib",
-				"NvBlastExtImport_x64.lib",
-				"NvBlastExtPhysX_x64.lib",
-				"NvBlastExtPxSerialization_x64.lib",
-				"NvBlastExtSerialization_x64.lib",
-				"NvBlastExtShaders_x64.lib",
-				"NvBlastExtStress_x64.lib",
-				"NvBlastExtTkSerialization_x64.lib",
-				"NvBlastGlobals_x64.lib",
-				"NvBlastTk_x64.lib"
-			],
-			"shared_release": [
-				"NvBlast_x64.dll",
-				"NvBlastExtAssetUtils_x64.dll",
-				"NvBlastExtAuthoring_x64.dll",
-				"NvBlastExtExporter_x64.dll",
-				"NvBlastExtPhysX_x64.dll",
-				"NvBlastExtPxSerialization_x64.dll",
-				"NvBlastExtSerialization_x64.dll",
-				"NvBlastExtShaders_x64.dll",
-				"NvBlastExtStress_x64.dll",
-				"NvBlastExtTkSerialization_x64.dll",
-				"NvBlastGlobals_x64.dll",
-				"NvBlastTk_x64.dll"
-			],
-			"pdb_release": [
-				"NvBlast_x64.pdb",
-				"NvBlastExtAssetUtils_x64.pdb",
-				"NvBlastExtAuthoring_x64.pdb",
-				"NvBlastExtExporter_x64.pdb",
-				"NvBlastExtPhysX_x64.pdb",
-				"NvBlastExtPxSerialization_x64.pdb",
-				"NvBlastExtSerialization_x64.pdb",
-				"NvBlastExtShaders_x64.pdb",
-				"NvBlastExtStress_x64.pdb",
-				"NvBlastExtTkSerialization_x64.pdb",
-				"NvBlastGlobals_x64.pdb",
-				"NvBlastTk_x64.pdb"
-			]
-		},
-		"win_x64_vs2019": "@win_x64_vs2017"
-	}
+        "win_x64_vs2017": {
+            "importlibpath_debug": [
+                "${lib_paths_win_vs2017}/debug"
+            ],
+            "importlibpath_profile": [
+                "${lib_paths_win_vs2017}/profile"
+            ],
+            "importlibpath_release": [
+                "${lib_paths_win_vs2017}/release"
+            ],
+
+            "sharedlibpath_debug": [
+                "${bin_paths_win_vs2017}/debug"
+            ],
+            "sharedlibpath_profile": [
+                "${bin_paths_win_vs2017}/profile"
+            ],
+            "sharedlibpath_release": [
+                "${bin_paths_win_vs2017}/release"
+            ],
+
+            "import": [
+                "${lib_names}_x64.lib",
+                "${win_lib_names}_x64.lib",
+                "NvBlastExtImport_x64.lib"
+            ],
+            "shared": [
+                "${lib_names}_x64.dll",
+                "${win_lib_names}_x64.dll"
+            ],
+            "pdb": [
+                "${lib_names}_x64.pdb",
+                "${win_lib_names}_x64.pdb"
+            ]
+        },
+        "win_x64_vs2019": "@win_x64_vs2017",
+        "win_x64_clang": "@win_x64_vs2017"
+    }
 }

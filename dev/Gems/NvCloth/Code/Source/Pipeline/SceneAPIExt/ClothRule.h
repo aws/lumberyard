@@ -61,6 +61,16 @@ namespace NvCloth
             bool IsMotionConstraintsStreamDisabled() const;
             bool IsBackstopStreamDisabled() const;
 
+            AZ::SceneAPI::DataTypes::ColorChannel GetInverseMassesStreamChannel() const;
+            AZ::SceneAPI::DataTypes::ColorChannel GetMotionConstraintsStreamChannel() const;
+            AZ::SceneAPI::DataTypes::ColorChannel GetBackstopOffsetStreamChannel() const;
+            AZ::SceneAPI::DataTypes::ColorChannel GetBackstopRadiusStreamChannel() const;
+
+            void SetInverseMassesStreamChannel(AZ::SceneAPI::DataTypes::ColorChannel channel);
+            void SetMotionConstraintsStreamChannel(AZ::SceneAPI::DataTypes::ColorChannel channel);
+            void SetBackstopOffsetStreamChannel(AZ::SceneAPI::DataTypes::ColorChannel channel);
+            void SetBackstopRadiusStreamChannel(AZ::SceneAPI::DataTypes::ColorChannel channel);
+
         protected:
             AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IMeshVertexColorData> FindVertexColorData(
                 const AZ::SceneAPI::Containers::SceneGraph& graph,

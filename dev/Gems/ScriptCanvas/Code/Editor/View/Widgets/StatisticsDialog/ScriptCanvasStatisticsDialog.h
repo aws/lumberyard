@@ -79,7 +79,7 @@ namespace ScriptCanvasEditor
         void OnCatalogAssetAdded(const AZ::Data::AssetId& /*assetId*/) override;
 
         //! Called by the AssetProcessor when an asset in the cache has been removed.
-        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId, const AZ::Data::AssetInfo& assetInfo) override;
         ////
 
         // NodePaletteModelNotificationBus

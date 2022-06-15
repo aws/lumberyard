@@ -419,10 +419,15 @@ void DebugCamera::Update()
     {
         OnEnable();
         LoadPath();
-        m_runPath = true;
         m_loadRunPath = false;
-        m_currentPosition = m_path[0];
-        m_currentIndex = 0;
+
+        // If path was loaded successfully
+        if (m_path.size() > 0)
+        {
+            m_runPath = true;
+            m_currentPosition = m_path[0];
+            m_currentIndex = 0;
+        }
     }
 
     if (m_runPath)

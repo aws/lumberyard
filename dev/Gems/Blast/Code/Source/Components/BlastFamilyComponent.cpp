@@ -214,8 +214,11 @@ namespace Blast
 
         if (!m_blastAsset.IsReady())
         {
-            m_shouldSpawnOnAssetLoad = true;
-            return;
+            const bool queueLoadData = true;
+            const AZ::Data::AssetFilterCB assetLoadFilterCB = nullptr;
+            const bool loadBlocking = true;
+            m_blastAsset = AZ::Data::AssetManager::Instance().GetAsset<BlastAsset>(
+                m_blastAsset.GetId(), queueLoadData, assetLoadFilterCB, loadBlocking);
         }
 
         auto blastSystem = AZ::Interface<BlastSystemRequests>::Get();

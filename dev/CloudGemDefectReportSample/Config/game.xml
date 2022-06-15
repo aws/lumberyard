@@ -53,7 +53,7 @@
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.InputManagementFramework.59b1b2acc1974aae9f18faddcaddac5b.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
-				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudGemFramework.6fc787a982184217a5a553ca24676cfa.v1.1.4" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudGemFramework.6fc787a982184217a5a553ca24676cfa.v1.1.5" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.GraphCanvas.875b6fcbdeea44deaae7984ad9bb6cdc.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>

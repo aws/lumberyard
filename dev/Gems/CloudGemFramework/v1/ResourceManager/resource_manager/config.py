@@ -56,6 +56,7 @@ class ConfigContext(object):
         self.__create_admin_roles = None  # Needs to be loaded from local project settings
         self.__custom_domain_name = None
         self.__assume_role_name = None
+        self.__deploy_cloud_gem_portal = None
 
         # Need to call bootstrap/initialize to use these values
         self.local_project_settings = None
@@ -328,6 +329,18 @@ class ConfigContext(object):
                 self.__custom_domain_name = ''
         return self.__custom_domain_name
 
+    @property
+    def deploy_cloud_gem_portal(self):
+        """Returns True if CloudGemPortal should be deployed, False otherwise"""
+        if not self.__deploy_cloud_gem_portal:
+            metadata = self.local_project_settings.get(constant.METADATA, {})
+            # if stack is newer and has value set then use metadata value
+            if constant.DEPLOY_CLOUD_GEM_PORTAL in metadata:
+                self.__deploy_cloud_gem_portal = metadata[constant.DEPLOY_CLOUD_GEM_PORTAL]
+            else:
+                self.__deploy_cloud_gem_portal = False
+        return self.__deploy_cloud_gem_portal
+
     def __initialize_project_settings(self):
         if self.project_initialized:
 
@@ -467,6 +480,12 @@ class ConfigContext(object):
         metadata = self.local_project_settings.get(constant.METADATA, {})
         metadata[constant.CUSTOM_DOMAIN_NAME] = custom_domain_name
         self.__custom_domain_name = custom_domain_name
+        self.set_project_metadata(metadata)
+
+    def set_deploy_cloud_gem_portal(self, use_cgp):
+        metadata = self.local_project_settings.get(constant.METADATA, {})
+        metadata[constant.DEPLOY_CLOUD_GEM_PORTAL] = use_cgp
+        self.__deploy_cloud_gem_portal = use_cgp
         self.set_project_metadata(metadata)
 
     def set_pending_project_stack_id(self, project_stack_id):

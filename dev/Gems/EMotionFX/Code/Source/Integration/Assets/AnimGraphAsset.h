@@ -36,7 +36,7 @@ namespace EMotionFX
             AZ_CLASS_ALLOCATOR_DECL
             AZ_RTTI(AnimGraphAsset, "{28003359-4A29-41AE-8198-0AEFE9FF5263}", EMotionFXAsset);
 
-            AnimGraphAsset();
+            AnimGraphAsset(AZ::Data::AssetId id = AZ::Data::AssetId());
 
             typedef EMotionFXPtr<EMotionFX::AnimGraphInstance> AnimGraphInstancePtr;
             AnimGraphInstancePtr CreateInstance(
@@ -46,6 +46,8 @@ namespace EMotionFX
             EMotionFX::AnimGraph* GetAnimGraph() { return m_emfxAnimGraph ? m_emfxAnimGraph.get() : nullptr; }
 
             void SetData(EMotionFX::AnimGraph* animGraph);
+
+            void SetStatus(AssetStatus newStatus) { m_status.store(static_cast<int>(newStatus)); }
 
         private:
 

@@ -10,6 +10,7 @@
 #
 # $Revision: #1 $
 import datetime
+
 import staging
 
 
@@ -24,6 +25,7 @@ def invalid_file(filePath):
 
 def skipping_invalid_file(filePath):
     output_message('Skipping Invalid File: {}'.format(filePath))
+
 
 def skipping_manifest_update():
     output_message('No content change found. Skipping manifest upload.')
@@ -110,7 +112,7 @@ def show_staging_status(filePath, status_info):
                 time_delta = start_time - current_time
                 output_message('Which is {} days, {} hours, {} minutes from now '.format(time_delta.days,
                                                                                          time_delta.seconds / 3600, (
-                                                                                                     time_delta.seconds % 3600) / 60))
+                                                                                                 time_delta.seconds % 3600) / 60))
 
         staging_end = status_info.get('StagingEnd')
 

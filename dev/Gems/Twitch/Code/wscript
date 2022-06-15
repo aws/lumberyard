@@ -34,6 +34,7 @@ def build(bld):
         platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)],
 
         linux_rpath = ['$ORIGIN'],
+        vs_filter   = 'Gems/Twitch',
         file_list   = file_list
     )
 

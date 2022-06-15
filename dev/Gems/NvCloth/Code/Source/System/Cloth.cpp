@@ -26,7 +26,7 @@
 
 namespace NvCloth
 {
-    namespace
+    namespace Internal
     {
         // Returns AZ::Vector3 as physx::PxVec3 using the same memory.
         // It's safe to reinterpret AZ::Vector3 as physx::PxVec3 because they have the same memory layout
@@ -247,8 +247,8 @@ namespace NvCloth
 
     void Cloth::SetTransform(const AZ::Transform& transformWorld)
     {
-        m_nvCloth->setTranslation(AsPxVec3(transformWorld.GetPosition()));
-        m_nvCloth->setRotation(AsPxQuat(AZ::Quaternion::CreateFromTransform(transformWorld)));
+        m_nvCloth->setTranslation(Internal::AsPxVec3(transformWorld.GetPosition()));
+        m_nvCloth->setRotation(Internal::AsPxQuat(AZ::Quaternion::CreateFromTransform(transformWorld)));
     }
 
     void Cloth::ClearInertia()
@@ -279,7 +279,7 @@ namespace NvCloth
 
     void Cloth::SetGravity(const AZ::Vector3& gravity)
     {
-        m_nvCloth->setGravity(AsPxVec3(gravity));
+        m_nvCloth->setGravity(Internal::AsPxVec3(gravity));
     }
 
     void Cloth::SetStiffnessFrequency(float frequency)
@@ -289,37 +289,37 @@ namespace NvCloth
 
     void Cloth::SetDamping(const AZ::Vector3& damping)
     {
-        m_nvCloth->setDamping(AsPxVec3(damping));
+        m_nvCloth->setDamping(Internal::AsPxVec3(damping));
     }
 
     void Cloth::SetDampingLinearDrag(const AZ::Vector3& linearDrag)
     {
-        m_nvCloth->setLinearDrag(AsPxVec3(linearDrag));
+        m_nvCloth->setLinearDrag(Internal::AsPxVec3(linearDrag));
     }
 
     void Cloth::SetDampingAngularDrag(const AZ::Vector3& angularDrag)
     {
-        m_nvCloth->setAngularDrag(AsPxVec3(angularDrag));
+        m_nvCloth->setAngularDrag(Internal::AsPxVec3(angularDrag));
     }
 
     void Cloth::SetLinearInertia(const AZ::Vector3& linearInertia)
     {
-        m_nvCloth->setLinearInertia(AsPxVec3(linearInertia));
+        m_nvCloth->setLinearInertia(Internal::AsPxVec3(linearInertia));
     }
 
     void Cloth::SetAngularInertia(const AZ::Vector3& angularInertia)
     {
-        m_nvCloth->setAngularInertia(AsPxVec3(angularInertia));
+        m_nvCloth->setAngularInertia(Internal::AsPxVec3(angularInertia));
     }
 
     void Cloth::SetCentrifugalInertia(const AZ::Vector3& centrifugalInertia)
     {
-        m_nvCloth->setCentrifugalInertia(AsPxVec3(centrifugalInertia));
+        m_nvCloth->setCentrifugalInertia(Internal::AsPxVec3(centrifugalInertia));
     }
 
     void Cloth::SetWindVelocity(const AZ::Vector3& velocity)
     {
-        m_nvCloth->setWindVelocity(AsPxVec3(velocity));
+        m_nvCloth->setWindVelocity(Internal::AsPxVec3(velocity));
     }
 
     void Cloth::SetWindDragCoefficient(float drag)
@@ -479,7 +479,7 @@ namespace NvCloth
         }
         m_motionConstraints = constraints;
         nv::cloth::Range<physx::PxVec4> motionConstraints = m_nvCloth->getMotionConstraints();
-        FastCopy(m_motionConstraints, motionConstraints);
+        Internal::FastCopy(m_motionConstraints, motionConstraints);
     }
 
     void Cloth::SetMotionConstraints(AZStd::vector<AZ::Vector4>&& constraints)
@@ -492,7 +492,7 @@ namespace NvCloth
         }
         m_motionConstraints = AZStd::move(constraints);
         nv::cloth::Range<physx::PxVec4> motionConstraints = m_nvCloth->getMotionConstraints();
-        FastCopy(m_motionConstraints, motionConstraints);
+        Internal::FastCopy(m_motionConstraints, motionConstraints);
     }
 
     void Cloth::ClearMotionConstraints()
@@ -525,7 +525,7 @@ namespace NvCloth
             return;
         }
         nv::cloth::Range<physx::PxVec4> separationConstraints = m_nvCloth->getSeparationConstraints();
-        FastCopy(constraints, separationConstraints);
+        Internal::FastCopy(constraints, separationConstraints);
     }
 
     void Cloth::SetSeparationConstraints(AZStd::vector<AZ::Vector4>&& constraints)
@@ -537,7 +537,7 @@ namespace NvCloth
             return;
         }
         nv::cloth::Range<physx::PxVec4> separationConstraints = m_nvCloth->getSeparationConstraints();
-        FastMove(AZStd::move(constraints), separationConstraints);
+        Internal::FastMove(AZStd::move(constraints), separationConstraints);
     }
 
     void Cloth::ClearSeparationConstraints()
@@ -566,7 +566,7 @@ namespace NvCloth
         for (AZ::u32 i = 0; i < particles.size(); ++i)
         {
             // Checking NvCloth current particles is important because their W component will
-            // have the result left by the simulation applying both inverse masses and motion constrains.
+            // have the result left by the simulation applying both inverse masses and motion constraints.
             if (particles[i].w == 0.0f)
             {
                 auto& particle = particles[i];
@@ -625,15 +625,15 @@ namespace NvCloth
         if (m_numInvalidSimulations <= maxAttemptsToRestoreCloth)
         {
             // Leave the NvCloth simulation particles in their last known good position.
-            FastCopy(m_simParticles, previousParticles);
-            FastCopy(m_simParticles, currentParticles);
+            Internal::FastCopy(m_simParticles, previousParticles);
+            Internal::FastCopy(m_simParticles, currentParticles);
         }
         else
         {
             // Reset NvCloth simulation particles to their initial position if after a number of
             // attempts cloth has not been restored to a stable state.
-            FastCopy(m_initialParticlesWithMassApplied, previousParticles);
-            FastCopy(m_initialParticlesWithMassApplied, currentParticles);
+            Internal::FastCopy(m_initialParticlesWithMassApplied, previousParticles);
+            Internal::FastCopy(m_initialParticlesWithMassApplied, currentParticles);
         }
 
         m_nvCloth->clearInertia();
@@ -648,7 +648,7 @@ namespace NvCloth
         // Note: Inverse masses are copied as well to do a fast copy,
         //       but inverse masses copied to current particles have no effect.
         nv::cloth::MappedRange<physx::PxVec4> currentParticles = m_nvCloth->getCurrentParticles();
-        FastCopy(m_simParticles, currentParticles);
+        Internal::FastCopy(m_simParticles, currentParticles);
 
         CopySimInverseMassesToNvCloth();
     }

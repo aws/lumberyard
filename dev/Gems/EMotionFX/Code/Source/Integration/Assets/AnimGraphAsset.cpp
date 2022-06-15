@@ -23,9 +23,9 @@ namespace EMotionFX
         AZ_CLASS_ALLOCATOR_IMPL(AnimGraphAsset, EMotionFXAllocator, 0)
         AZ_CLASS_ALLOCATOR_IMPL(AnimGraphAssetHandler, EMotionFXAllocator, 0)
 
-        AnimGraphAsset::AnimGraphAsset()
-        {
-        }
+        AnimGraphAsset::AnimGraphAsset(AZ::Data::AssetId id)
+            : EMotionFXAsset(id)
+        {}
 
         AnimGraphAsset::AnimGraphInstancePtr AnimGraphAsset::CreateInstance(
             EMotionFX::ActorInstance* actorInstance,

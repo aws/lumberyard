@@ -49,9 +49,9 @@ namespace NvCloth
 
     void ClothComponent::Activate()
     {
-        // Cloth components only run on clients.
+        // Cloth components do not run on dedicated servers.
         AZ_Assert(gEnv, "Environment not ready");
-        if (!gEnv->IsClient())
+        if (gEnv->IsDedicated())
         {
             return;
         }

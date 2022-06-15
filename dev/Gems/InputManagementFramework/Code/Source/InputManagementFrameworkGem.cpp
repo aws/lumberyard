@@ -134,6 +134,59 @@ namespace Input
             }
         }
 
+        bool InsertContext(const AZStd::string& context, const AZStd::string& existingContextToInsertPriorTo) override
+        {
+            const auto it = AZStd::find(m_contexts.begin(), m_contexts.end(), existingContextToInsertPriorTo);
+            if (it == m_contexts.end())
+            {
+                return false;
+            }
+
+            m_contexts.insert(it, context);
+            return true;
+        }
+
+        bool ReplaceContext(const AZStd::string& context, const AZStd::string& existingContextToReplace) override
+        {
+            const auto it = AZStd::find(m_contexts.begin(), m_contexts.end(), existingContextToReplace);
+            if (it == m_contexts.end())
+            {
+                return false;
+            }
+
+            const bool isReplacingCurrentContext = (AZStd::next(it) == m_contexts.end());
+            if (isReplacingCurrentContext)
+            {
+                AZ::InputContextNotificationBus::Event(AZ::Crc32(GetCurrentContext().c_str()), &AZ::InputContextNotifications::OnInputContextDeactivated);
+            }
+            *it = context;
+            if (isReplacingCurrentContext)
+            {
+                AZ::InputContextNotificationBus::Event(AZ::Crc32(GetCurrentContext().c_str()), &AZ::InputContextNotifications::OnInputContextActivated);
+            }
+
+            return true;
+        }
+
+        bool RemoveContext(const AZStd::string& existingContextToRemove) override
+        {
+            const auto it = AZStd::find(m_contexts.begin(), m_contexts.end(), existingContextToRemove);
+            if (it == m_contexts.end())
+            {
+                return false;
+            }
+
+            const bool isRemovingCurrentContext = (AZStd::next(it) == m_contexts.end());
+            if (isRemovingCurrentContext)
+            {
+                PopContext();
+                return true;
+            }
+
+            m_contexts.erase(it);
+            return true;
+        }
+
         AZStd::string GetCurrentContext() override
         {
             if (m_contexts.size())

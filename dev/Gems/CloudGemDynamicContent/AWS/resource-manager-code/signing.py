@@ -168,7 +168,7 @@ def get_signature(context, to_sign):
     signing_key = _load_key(context)
 
     if signing_key is None:
-        raise HandledError('Public Key File not found: {}'.format(keypath))
+        raise HandledError('Unable to generate signing key')
 
     signature = signing_key.sign(to_sign)
 

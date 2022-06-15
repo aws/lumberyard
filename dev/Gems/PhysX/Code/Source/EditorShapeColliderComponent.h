@@ -143,5 +143,6 @@ namespace PhysX
         //! @note 16 is the number of subdivisions in the debug cylinder that is loaded as a mesh (not generated procedurally)
         AZ::u8 m_subdivisionCount = 16; 
         mutable GeometryCache m_geometryCache; //!< Cached data for generating sample points inside the attached shape.
+        AZ::Transform m_cachedWorldTransform;
     };
 } // namespace PhysX

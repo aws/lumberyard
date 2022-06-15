@@ -285,8 +285,8 @@ QString ResourceGroupStatusModel::GetDeleteConfirmationMessage() const
     return tr(
         "Do you want to disable the %1 resource group from the local configuration?"
         "<br><br>"
-        "This operation does not immediatly delete the resources in AWS. Each deployment "
-        "must be updated to delete the resoures in AWS."
+        "This operation does not immediately delete the resources in AWS. Each deployment "
+        "must be updated to delete the resources in AWS."
         "<br><br>"
         "This operation does not remove the resource group configuration data from "
         "the local disk. As long as that data exists, the resource group can be "

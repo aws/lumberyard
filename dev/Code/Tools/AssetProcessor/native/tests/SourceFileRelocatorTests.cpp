@@ -114,6 +114,7 @@ namespace UnitTests
 
             m_data->m_platformConfig.AddMetaDataType("metadataextension", "metadatatype");
             m_data->m_platformConfig.AddMetaDataType("bar", "foo");
+            m_data->m_platformConfig.AddMetaDataType("metafile", "");
 
             AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms;
             m_data->m_platformConfig.PopulatePlatformsForScanFolder(platforms);
@@ -214,7 +215,7 @@ namespace UnitTests
             ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/folder/file.bar")));
             ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/testfolder/file.foo")));
             ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/testfolder/File.bar")));
-
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/testfolder/file.foo.metafile")));
 
             AZ::IO::FileIOBase::SetInstance(nullptr); // The API requires the old instance to be destroyed first
             AZ::IO::FileIOBase::SetInstance(new AZ::IO::LocalFileIO());
@@ -434,7 +435,7 @@ namespace UnitTests
             AZ::JobContext* m_jobContext = nullptr;
         };
 
-        QTemporaryDir m_tempDir;
+        QTemporaryDir m_tempDir{ QDir::tempPath() + QLatin1String("/AssetProcessorUnitTest-XXXXXX") };
 
         // we store the above data in a unique_ptr so that its memory can be cleared during TearDown() in one call, before we destroy the memory
         // allocator, reducing the chance of missing or forgetting to destroy one in the future.
@@ -571,7 +572,7 @@ namespace UnitTests
         QDir tempPath(m_tempDir.path());
 
         auto filePath = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("testfolder/file.foo");
-        TestGetSourcesByPath(filePath.toUtf8().constData(), { "testfolder/file.foo", "testfolder/File.bar" }, true, false);
+        TestGetSourcesByPath(filePath.toUtf8().constData(), { "testfolder/file.foo", "testfolder/File.bar", "testfolder/file.foo.metafile" }, true, false);
     }
 
     TEST_F(SourceFileRelocatorTest, GetMetaDataFile_SingleFileWildcard_Succeeds)
@@ -888,6 +889,33 @@ namespace UnitTests
         ASSERT_EQ(successResult.m_updateTotalCount, 0);
     }
 
+    TEST_F(SourceFileRelocatorTest, Move_Real_ReadOnlyFileWithMetadata_Fails)
+    {
+        QDir tempPath(m_tempDir.path());
+
+        auto filePathMain = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("testfolder/file.foo");
+        auto filePathMeta = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("testfolder/file.foo.metafile");
+        auto searchPath = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("testfolder/file.fo*");
+
+        ASSERT_TRUE(AZ::IO::FileIOBase::GetInstance()->Exists(filePathMain.toUtf8().constData()));
+        ASSERT_TRUE(AZ::IO::FileIOBase::GetInstance()->Exists(filePathMeta.toUtf8().constData()));
+        ASSERT_TRUE(AZ::IO::SystemFile::SetWritable(filePathMain.toUtf8().constData(), false));
+        ASSERT_TRUE(AZ::IO::SystemFile::SetWritable(filePathMeta.toUtf8().constData(), false));
+
+        auto result = m_data->m_reporter->Move(searchPath.toUtf8().constData(), "someOtherPlace/file1Renamed.fo*", false);
+
+        ASSERT_TRUE(result.IsSuccess());
+        ASSERT_TRUE(AZ::IO::FileIOBase::GetInstance()->Exists(filePathMain.toUtf8().constData()));
+        ASSERT_TRUE(AZ::IO::FileIOBase::GetInstance()->Exists(filePathMeta.toUtf8().constData()));
+
+        RelocationSuccess successResult = result.TakeValue();
+
+        ASSERT_EQ(successResult.m_moveSuccessCount, 1);
+        ASSERT_EQ(successResult.m_moveFailureCount, 2);
+        ASSERT_EQ(successResult.m_moveTotalCount, 3);
+        ASSERT_EQ(successResult.m_updateTotalCount, 0);
+    }
+
     TEST_F(SourceFileRelocatorTest, Move_Real_WithDependencies_Fails)
     {
         QDir tempPath(m_tempDir.path());
@@ -958,6 +986,35 @@ namespace UnitTests
         ASSERT_EQ(successResult.m_updateTotalCount, 0);
 
         ASSERT_TRUE(AZ::IO::FileIOBase::GetInstance()->Exists(filePath.toUtf8().constData()));
+    }
+
+    TEST_F(SourceFileRelocatorTest, Delete_Real_ReadonlyWithMetadata_Fails)
+    {
+        QDir tempPath(m_tempDir.path());
+
+        auto filePath1 = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("testfolder/file.foo");
+        auto filePath2 = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("testfolder/file.foo.metafile");
+        auto filePath3 = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("testfolder/file.bar");
+
+        AZ::IO::SystemFile::SetWritable(filePath1.toUtf8().constData(), false);
+        AZ::IO::SystemFile::SetWritable(filePath2.toUtf8().constData(), false);
+        AZ::IO::SystemFile::SetWritable(filePath3.toUtf8().constData(), false);
+
+        auto result = m_data->m_reporter->Delete(
+            QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("testfolder/file.fo*").toUtf8().constData(), false);
+
+        ASSERT_TRUE(result.IsSuccess());
+
+        RelocationSuccess successResult = result.TakeValue();
+
+        ASSERT_EQ(successResult.m_moveSuccessCount, 0);
+        ASSERT_EQ(successResult.m_moveFailureCount, 3);
+        ASSERT_EQ(successResult.m_moveTotalCount, 3);
+        ASSERT_EQ(successResult.m_updateTotalCount, 0);
+
+        ASSERT_TRUE(AZ::IO::FileIOBase::GetInstance()->Exists(filePath1.toUtf8().constData()));
+        ASSERT_TRUE(AZ::IO::FileIOBase::GetInstance()->Exists(filePath2.toUtf8().constData()));
+        ASSERT_TRUE(AZ::IO::FileIOBase::GetInstance()->Exists(filePath3.toUtf8().constData()));
     }
 
     TEST_F(SourceFileRelocatorTest, Delete_Real_WithDependencies_Fails)

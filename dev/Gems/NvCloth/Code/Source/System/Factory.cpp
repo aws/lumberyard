@@ -118,6 +118,13 @@ namespace NvCloth
             return nullptr;
         }
 
+        if (initialParticles.size() != fabric->m_cookedData.m_particles.size())
+        {
+            AZ_Warning("NvCloth", false, "Factory failed to create cloth because the number of initial particles provided (%d) didn't match the fabric's (%d).",
+                initialParticles.size(), fabric->m_cookedData.m_particles.size());
+            return nullptr;
+        }
+
         NvClothUniquePtr nvCloth(
             m_nvFactory->createCloth(
                 ToPxVec4NvRange(initialParticles),

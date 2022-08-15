@@ -1,5 +1,11 @@
 ![lmbr](http://d2tinsms4add52.cloudfront.net/github/readme_header.jpg)
 
+------------
+
+**Amazon Lumberyard is no longer offered. We recommend Open 3D Engine, Lumberyard’s Apache-licensed successor. O3DE is maintained by the open-source community, including developers from Adobe, AWS, Epic, Microsoft, Intel, Lightspeed Studios, Niantic, and others. Visit O3DE's [website](https://www.o3de.org/ "website"), [Discord](https://discord.gg/o3de), and [Github](https://github.com/o3de/o3de).**
+
+------------
+
 # Amazon Lumberyard
 Amazon Lumberyard is a free, AAA game engine that gives you the tools you need to create high quality games. Deeply integrated with AWS and Twitch, Amazon Lumberyard includes full source code, allowing you to customize your project at any level.
 

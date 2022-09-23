@@ -2,7 +2,7 @@
 
 ------------
 
-**Amazon Lumberyard is no longer offered. We recommend Open 3D Engine, Lumberyard’s Apache-licensed successor. O3DE is maintained by the open-source community, including developers from Adobe, AWS, Epic, Microsoft, Intel, Lightspeed Studios, Niantic, and others. Visit O3DE's [website](https://www.o3de.org/ "website"), [Discord](https://discord.gg/o3de), and [Github](https://github.com/o3de/o3de).**
+**Amazon Lumberyard is no longer offered. For continued support, visit our [documentation archive on GitHub](https://github.com/awsdocs/amazon-lumberyard-user-guide/) or https://pages.awscloud.com/Amazon-Game-Tech-Contact-Us.html). We recommend Open 3D Engine, Lumberyard’s Apache-licensed successor. O3DE is maintained by the open-source community, including developers from Adobe, AWS, Epic, Microsoft, Intel, Lightspeed Studios, Niantic, and others. Visit O3DE's [website](https://www.o3de.org/ "website"), [Discord](https://discord.gg/o3de), and [Github](https://github.com/o3de/o3de).**
 
 ------------
 
@@ -33,9 +33,6 @@ Once the repository exists locally on your machine, manually execute ```git_boot
 
 ### Running the Setup Assistant
 ```git_bootstrap.exe``` will launch the Setup Assistant when it completes. Setup Assistant lets you configure your environment and launch the Lumberyard Editor.
-
-## Contributing code to Lumberyard
-You can submit changes or fixes to Lumberyard using pull requests. When you submit a pull request, the Lumberyard support team is notified and evaluates the code you submitted. You may be contacted to provide further detail or clarification while the support team evaluates your submitted code.
 
 ### Best practices for submitting pull requests
 Before submitting a pull request to a Lumberyard branch, please merge the latest changes from that branch into your project. We only accept pull requests on the latest version of a branch.

@@ -39,9 +39,6 @@ Before submitting a pull request to a Lumberyard branch, please merge the latest
 
 For more information about working with pull requests, see the [GitHub documentation](https://help.github.com/articles/cloning-a-repository/).
 
-## Purpose of Lumberyard on GitHub
-Lumberyard on GitHub provides a way for you to view and acquire the engine source code, and contribute by submitting pull requests. Lumberyard does not endorse any particular source control system for your personal use.
-
 ## Lumberyard Documentation
 Full Lumberyard documentation can be found here:
 https://aws.amazon.com/documentation/lumberyard/

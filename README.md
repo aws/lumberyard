@@ -2,7 +2,7 @@
 
 ------------
 
-**Amazon Lumberyard is no longer offered. For continued support, visit our [documentation archive on GitHub](https://github.com/awsdocs/amazon-lumberyard-user-guide/) or [contact lumberyard customer support](https://pages.awscloud.com/Amazon-Game-Tech-Contact-Us.html). We recommend Open 3D Engine, Lumberyard’s Apache-licensed successor. O3DE is maintained by the open-source community, including developers from Adobe, AWS, Epic, Microsoft, Intel, Lightspeed Studios, Niantic, and others. Visit O3DE's [website](https://www.o3de.org/ "website"), [Discord](https://discord.gg/o3de), and [Github](https://github.com/o3de/o3de).**
+**Amazon Lumberyard is no longer offered. For continued support, visit our [documentation archive on GitHub](https://github.com/awsdocs/amazon-lumberyard-user-guide/) or [contact Lumberyard customer support](https://pages.awscloud.com/Amazon-Game-Tech-Contact-Us.html). We recommend Open 3D Engine, Lumberyard’s Apache-licensed successor. O3DE is maintained by the open-source community, including developers from Adobe, AWS, Epic, Microsoft, Intel, Lightspeed Studios, Niantic, and others. Visit O3DE's [website](https://www.o3de.org/ "website"), [Discord](https://discord.gg/o3de), and [Github](https://github.com/o3de/o3de).**
 
 ------------
 

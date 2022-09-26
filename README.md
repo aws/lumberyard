@@ -7,7 +7,7 @@
 ------------
  
 # Amazon Lumberyard
-Amazon Lumberyard is a free, AAA game engine that gives you the tools you need to create high quality games. This archive provides source for convenience only. If you are currently developing on the engine, all the [documentation archive can be found here](https://github.com/awsdocs/amazon-lumberyard-user-guide/). 
+Amazon Lumberyard is a free, AAA game engine that gives you the tools you need to create high quality games.
 
 ## Acquiring Lumberyard source 
 Each release of Lumberyard exists as a separate branch in GitHub. You can get Lumberyard from GitHub using the following steps:

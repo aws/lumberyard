@@ -41,7 +41,7 @@ For more information about working with pull requests, see the [GitHub documenta
 
 ## Lumberyard Documentation
 Full Lumberyard documentation can be found here:
-https://aws.amazon.com/documentation/lumberyard/
+https://github.com/awsdocs/amazon-lumberyard-user-guide/
 We also have tutorials available at https://www.youtube.com/amazongamedev
 
 ## License

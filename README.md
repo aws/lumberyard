@@ -34,11 +34,6 @@ Once the repository exists locally on your machine, manually execute ```git_boot
 ### Running the Setup Assistant
 ```git_bootstrap.exe``` will launch the Setup Assistant when it completes. Setup Assistant lets you configure your environment and launch the Lumberyard Editor.
 
-### Best practices for submitting pull requests
-Before submitting a pull request to a Lumberyard branch, please merge the latest changes from that branch into your project. We only accept pull requests on the latest version of a branch.
-
-For more information about working with pull requests, see the [GitHub documentation](https://help.github.com/articles/cloning-a-repository/).
-
 ## Lumberyard Documentation
 Full Lumberyard documentation can be found here:
 https://github.com/awsdocs/amazon-lumberyard-user-guide/

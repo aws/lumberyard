@@ -37,7 +37,7 @@ Once the repository exists locally on your machine, manually execute ```git_boot
 ## Lumberyard Documentation
 Full Lumberyard documentation can be found here:
 https://github.com/awsdocs/amazon-lumberyard-user-guide/
-We also have tutorials available at https://www.youtube.com/amazongamedev
+<br>We also have tutorials available at https://www.youtube.com/amazongamedev
 
 ## License
 Your use of Lumberyard is governed by the AWS Customer Agreement at https://aws.amazon.com/agreement/ and Lumberyard Service Terms at https://aws.amazon.com/serviceterms/#57._Amazon_Lumberyard_Engine.
